@@ -9,7 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "electron:dev": "bun scripts/electron-dev.mjs",
-    "electron:preview": "bun run build && electron .",
+    "electron:preview": "bun run build && bun scripts/electron-preview.mjs",
     "electron:pack": "bun run build && electron-builder --dir",
     "electron:dist": "bun run build && electron-builder",
     "lint": "oxlint .",

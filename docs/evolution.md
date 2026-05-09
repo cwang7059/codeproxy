@@ -41,7 +41,7 @@ The management panel needed a desktop wrapper that reuses the existing `/manage`
 
 ### Decision
 
-Add an Electron shell with `electron/main.cjs` as the desktop entry and `electron/preload.cjs` as a context-isolated bridge. In development, `bun run electron:dev` wraps the Vite UI at `http://127.0.0.1:5173/manage/`. In packaged mode, Electron serves the built `dist` files through a local loopback server and proxies `/v0`, `/v1`, and `/v1beta` to `CODE_PROXY_API_BASE`.
+Add an Electron shell with `electron/main.cjs` as the desktop entry and `electron/preload.cjs` as a context-isolated bridge. In development, `bun run electron:dev` wraps the Vite UI at `http://127.0.0.1:5173/manage/`. In packaged mode, Electron serves the built `dist` files through a local loopback server and proxies `/v0`, `/v1`, and `/v1beta` to `CODE_PROXY_API_BASE`. Electron launchers clear `ELECTRON_RUN_AS_NODE` so desktop startup is not affected by parent terminal state.
 
 ### Impact
 

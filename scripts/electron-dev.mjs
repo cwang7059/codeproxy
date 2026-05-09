@@ -13,7 +13,7 @@ const electronExecutable = path.join(
   rootDir,
   "node_modules",
   ".bin",
-  isWindows ? "electron.cmd" : "electron",
+  isWindows ? "electron.exe" : "electron",
 );
 
 let viteProcess = null;
@@ -65,6 +65,15 @@ function stopChild(child) {
   child.kill();
 }
 
+function createElectronEnv(overrides = {}) {
+  const env = {
+    ...process.env,
+    ...overrides,
+  };
+  delete env.ELECTRON_RUN_AS_NODE;
+  return env;
+}
+
 function shutdown(exitCode = 0) {
   if (isShuttingDown) {
     return;
@@ -100,10 +109,9 @@ if (!(await canReach(rendererUrl))) {
 await waitForRenderer(rendererUrl);
 
 electronProcess = spawnProcess(electronExecutable, ["."], {
-  env: {
-    ...process.env,
+  env: createElectronEnv({
     CODE_PROXY_ADMIN_URL: rendererUrl,
-  },
+  }),
 });
 
 electronProcess.on("exit", (code) => {

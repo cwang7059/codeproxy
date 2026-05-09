@@ -339,6 +339,7 @@ Desktop-related paths:
 - `electron/main.cjs`: Electron main process, local static server, and API proxy.
 - `electron/preload.cjs`: Context-isolated desktop bridge.
 - `scripts/electron-dev.mjs`: Development launcher that reuses or starts Vite.
+- `scripts/electron-preview.mjs`: Production-preview launcher that clears Node-mode Electron env flags.
 
 ## 🤝 Contributing
 
