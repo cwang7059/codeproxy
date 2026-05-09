@@ -33,6 +33,27 @@
 
 （可选）在此处追加本项目的历史演进条目（脚手架不会覆盖）。
 
+## 2026-05-09 - Electron desktop shell
+
+### Background
+
+The management panel needed a desktop wrapper that reuses the existing `/manage` React UI instead of maintaining a separate C# frontend.
+
+### Decision
+
+Add an Electron shell with `electron/main.cjs` as the desktop entry and `electron/preload.cjs` as a context-isolated bridge. In development, `bun run electron:dev` wraps the Vite UI at `http://127.0.0.1:5173/manage/`. In packaged mode, Electron serves the built `dist` files through a local loopback server and proxies `/v0`, `/v1`, and `/v1beta` to `CODE_PROXY_API_BASE`.
+
+### Impact
+
+- Adds Electron runtime/build dependencies and package scripts.
+- Adds a desktop entrypoint without changing the React route tree or visual implementation.
+- Keeps Windows desktop builds unsigned by default so local packaging works without a code-signing certificate.
+- Keeps the browser-hosted panel behavior unchanged.
+
+### Rollback
+
+Remove the `electron/` directory, `scripts/electron-dev.mjs`, Electron package scripts, Electron dependencies, and the related README/AGENTS entries.
+
 ## 2026-05-06 · API Key 权限配置独立页面
 
 ### 背景

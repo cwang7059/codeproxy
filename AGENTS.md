@@ -124,4 +124,13 @@
 
 （可选）在此处追加本项目特有的关键路径、命令、约束与注意事项。该区块不会被生成脚本覆盖。
 
+## Electron desktop shell
+
+- Desktop entry: `electron/main.cjs`.
+- Secure preload bridge: `electron/preload.cjs`.
+- Development launcher: `scripts/electron-dev.mjs`.
+- Commands: `bun run electron:dev`, `bun run electron:preview`, `bun run electron:pack`, `bun run electron:dist`.
+- Packaged desktop mode serves the built `dist` UI through a local loopback server and proxies `/v0`, `/v1`, and `/v1beta` to `CODE_PROXY_API_BASE` (default `http://127.0.0.1:8317`).
+- Windows Electron builds are unsigned by default (`win.signAndEditExecutable=false`) so local packaging does not require a code-signing certificate.
+
 <!-- PROJECT-OVERRIDES:END -->

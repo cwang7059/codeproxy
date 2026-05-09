@@ -218,6 +218,7 @@ The gallery below uses the latest 13 management-panel screenshots and maps each 
 | **Build Tool**       | Vite 7.3                                       |
 | **Package Manager**  | Bun 1.2                                        |
 | **Styling**          | Tailwind CSS v4                                |
+| **Desktop Shell**    | Electron                                       |
 | **State Management** | Zustand                                        |
 | **Charts**           | Apache ECharts                                 |
 | **Routing**          | React Router v7                                |
@@ -309,6 +310,35 @@ This dashboard communicates with the CliRelay backend via the Management API:
 > **Note:** The API base is automatically normalized to `{apiBase}/v0/management`
 
 For full backend API documentation, see the [CliRelay Management API](https://help.router-for.me/management/api).
+
+## Desktop Shell
+
+The Electron shell reuses the same `/manage` React interface rather than maintaining a
+separate desktop UI. In development it wraps `http://127.0.0.1:5173/manage/`; in packaged
+mode it serves the built `dist` assets from a local loopback server and proxies `/v0`, `/v1`,
+and `/v1beta` to `CODE_PROXY_API_BASE` (default: `http://127.0.0.1:8317`).
+Windows desktop builds are unsigned by default so local development machines can produce
+`win-unpacked` without a code-signing certificate.
+
+```bash
+# Run the desktop wrapper against the Vite management UI
+bun run electron:dev
+
+# Build the web UI and launch it through Electron
+bun run electron:preview
+
+# Create an unpacked desktop build
+bun run electron:pack
+
+# Create distributable desktop installers
+bun run electron:dist
+```
+
+Desktop-related paths:
+
+- `electron/main.cjs`: Electron main process, local static server, and API proxy.
+- `electron/preload.cjs`: Context-isolated desktop bridge.
+- `scripts/electron-dev.mjs`: Development launcher that reuses or starts Vite.
 
 ## 🤝 Contributing
 
