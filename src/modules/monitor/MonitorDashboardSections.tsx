@@ -1,4 +1,4 @@
-import { Activity, ChartSpline, Coins, ShieldCheck, Sigma } from "lucide-react";
+import { Activity, ChartSpline, Coins, DatabaseZap, ShieldCheck, Sigma } from "lucide-react";
 import type { HourWindow } from "@/modules/monitor/monitor-constants";
 import { formatNumber, formatRate } from "@/modules/monitor/monitor-utils";
 import { AnimatedNumber } from "@/modules/ui/AnimatedNumber";
@@ -11,6 +11,61 @@ import {
   KpiCard,
   MonitorCard as Card,
 } from "@/modules/monitor/MonitorPagePieces";
+
+export function MonitorRecordingNotice({
+  t,
+  requestLogEnabled,
+  usageStatisticsEnabled,
+  isEnabling,
+  onEnable,
+}: {
+  t: (key: string, options?: Record<string, unknown>) => string;
+  requestLogEnabled: boolean;
+  usageStatisticsEnabled: boolean;
+  isEnabling: boolean;
+  onEnable: () => void;
+}) {
+  const missing = [
+    requestLogEnabled ? null : t("monitor.recording_request_log"),
+    usageStatisticsEnabled ? null : t("monitor.recording_usage_stats"),
+  ].filter(Boolean);
+
+  return (
+    <Reveal>
+      <section className="overflow-hidden rounded-2xl border border-amber-200/80 bg-amber-50/90 p-4 shadow-sm dark:border-amber-400/20 dark:bg-amber-400/10">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 text-amber-700 dark:bg-amber-300/15 dark:text-amber-200">
+              <DatabaseZap size={18} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
+                {t("monitor.recording_disabled_title")}
+              </p>
+              <p className="mt-1 text-sm text-amber-800/85 dark:text-amber-100/70">
+                {t("monitor.recording_disabled_desc", {
+                  items: missing.join(" / "),
+                })}
+              </p>
+              <p className="mt-1 text-xs text-amber-700/75 dark:text-amber-100/55">
+                {t("monitor.recording_waiting_for_traffic")}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onEnable}
+            disabled={isEnabling}
+            aria-busy={isEnabling}
+            className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-amber-500 px-4 py-2 text-sm font-semibold text-amber-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-65 dark:bg-amber-300 dark:hover:bg-amber-200"
+          >
+            {isEnabling ? t("monitor.enabling_recording") : t("monitor.enable_recording")}
+          </button>
+        </div>
+      </section>
+    </Reveal>
+  );
+}
 
 export function MonitorKpiSection({
   t,

@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
-import { usageApi } from "@/lib/http/apis";
+import { configApi, usageApi } from "@/lib/http/apis";
 import { useTheme } from "@/modules/ui/ThemeProvider";
 import { CHART_COLOR_CLASSES, HOURLY_MODEL_COLORS } from "@/modules/monitor/monitor-constants";
-import {
-  formatCompact,
-  formatMonthDay,
-} from "@/modules/monitor/monitor-format";
+import { formatCompact, formatMonthDay } from "@/modules/monitor/monitor-format";
 import {
   createDailyTrendOption,
   createHourlyModelOption,
@@ -16,6 +13,7 @@ import {
   MonitorDistributionSections,
   MonitorHourlySections,
   MonitorKpiSection,
+  MonitorRecordingNotice,
 } from "@/modules/monitor/MonitorDashboardSections";
 import { useMonitorDashboardState } from "@/modules/monitor/hooks/useMonitorDashboardState";
 import { MonitorToolbarSection } from "@/modules/monitor/MonitorToolbarSection";
@@ -35,6 +33,20 @@ const HOURLY_TOKEN_KEYS = {
   cached: "hourly_cached",
   total: "__total_token__",
 } as const;
+
+const readRuntimeFlag = (record: Record<string, unknown>, ...keys: string[]): boolean => {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "boolean") return value;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === "true") return true;
+      if (normalized === "false") return false;
+    }
+    if (typeof value === "number") return value !== 0;
+  }
+  return false;
+};
 
 export function MonitorPage() {
   const { t } = useTranslation();
@@ -91,12 +103,31 @@ export function MonitorPage() {
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(true);
   const [isPending, startTransition] = useTransition();
+  const [requestLogEnabled, setRequestLogEnabled] = useState<boolean | null>(null);
+  const [usageStatisticsEnabled, setUsageStatisticsEnabled] = useState<boolean | null>(null);
+  const [isEnablingRecording, setIsEnablingRecording] = useState(false);
+
+  const refreshRuntimeFlags = useCallback(async () => {
+    const config = await configApi.getConfig();
+    const record =
+      config && typeof config === "object" && !Array.isArray(config)
+        ? (config as Record<string, unknown>)
+        : {};
+
+    setRequestLogEnabled(readRuntimeFlag(record, "request-log", "requestLog"));
+    setUsageStatisticsEnabled(
+      readRuntimeFlag(record, "usage-statistics-enabled", "usageStatisticsEnabled"),
+    );
+  }, []);
 
   const refreshData = useCallback(async () => {
     setIsRefreshing(true);
     setError(null);
     try {
-      const chartResp = await usageApi.getChartData(timeRange, apiFilter);
+      const [chartResp] = await Promise.all([
+        usageApi.getChartData(timeRange, apiFilter),
+        refreshRuntimeFlags().catch(() => undefined),
+      ]);
       startTransition(() => {
         setChartData(chartResp);
       });
@@ -107,7 +138,24 @@ export function MonitorPage() {
     } finally {
       setIsRefreshing(false);
     }
-  }, [t, timeRange, apiFilter]);
+  }, [apiFilter, refreshRuntimeFlags, t, timeRange]);
+
+  const enableRecording = useCallback(async () => {
+    setIsEnablingRecording(true);
+    setError(null);
+    try {
+      await Promise.all([configApi.updateUsageStatistics(true), configApi.updateRequestLog(true)]);
+      setUsageStatisticsEnabled(true);
+      setRequestLogEnabled(true);
+      await refreshData();
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error ? requestError.message : t("monitor.recording_enable_failed");
+      setError(message);
+    } finally {
+      setIsEnablingRecording(false);
+    }
+  }, [refreshData, t]);
 
   const metrics = useMemo(() => {
     let requests = 0;
@@ -159,6 +207,7 @@ export function MonitorPage() {
 
   const hasData = metrics.totalRequests > 0;
   const isLoading = isRefreshing || isPending;
+  const shouldShowRecordingNotice = requestLogEnabled === false || usageStatisticsEnabled === false;
 
   useEffect(() => {
     void refreshData();
@@ -592,6 +641,16 @@ export function MonitorPage() {
         isLoading={isLoading}
         error={error}
       />
+
+      {shouldShowRecordingNotice ? (
+        <MonitorRecordingNotice
+          t={t}
+          requestLogEnabled={Boolean(requestLogEnabled)}
+          usageStatisticsEnabled={Boolean(usageStatisticsEnabled)}
+          isEnabling={isEnablingRecording}
+          onEnable={() => void enableRecording()}
+        />
+      ) : null}
 
       <MonitorKpiSection
         t={t}
