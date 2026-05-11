@@ -332,6 +332,9 @@ bun run electron:pack
 
 # Create distributable desktop installers
 bun run electron:dist
+
+# Windows one-click launcher
+start-electron-admin.cmd
 ```
 
 Desktop-related paths:
@@ -340,6 +343,7 @@ Desktop-related paths:
 - `electron/preload.cjs`: Context-isolated desktop bridge.
 - `scripts/electron-dev.mjs`: Development launcher that reuses or starts Vite.
 - `scripts/electron-preview.mjs`: Production-preview launcher that clears Node-mode Electron env flags.
+- `start-electron-admin.cmd`: Windows one-click launcher that checks the local backend, builds when needed, and opens the desktop app.
 
 ## 🤝 Contributing
 

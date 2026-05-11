@@ -47,6 +47,7 @@ Add an Electron shell with `electron/main.cjs` as the desktop entry and `electro
 
 - Adds Electron runtime/build dependencies and package scripts.
 - Adds a desktop entrypoint without changing the React route tree or visual implementation.
+- Adds `start-electron-admin.cmd` as a Windows one-click launcher for local desktop startup, with a local backend reachability hint.
 - Keeps Windows desktop builds unsigned by default so local packaging works without a code-signing certificate.
 - Keeps the browser-hosted panel behavior unchanged.
 
