@@ -10,6 +10,7 @@ import { Modal } from "@/modules/ui/Modal";
 import { SearchableSelect, type SearchableSelectOption } from "@/modules/ui/SearchableSelect";
 import { Select } from "@/modules/ui/Select";
 import { Tabs, TabsList, TabsTrigger } from "@/modules/ui/Tabs";
+import { ToggleSwitch } from "@/modules/ui/ToggleSwitch";
 import {
   CC_SWITCH_CLIENTS,
   getCcSwitchClientConfig,
@@ -275,6 +276,7 @@ export function CcSwitchImportConfigModal({
     if (!open) return;
     setDraft({
       ...value,
+      enabled: value.enabled !== false,
       endpointPath:
         value.endpointPath || DEFAULT_CC_SWITCH_IMPORT_SETTINGS[value.clientType].endpointPath,
     });
@@ -646,6 +648,15 @@ export function CcSwitchImportConfigModal({
               className={controlClassName}
             />
           </label>
+
+          <div className="border-t border-slate-200/70 pt-3 dark:border-neutral-800 sm:col-span-2">
+            <ToggleSwitch
+              checked={draft.enabled !== false}
+              onCheckedChange={(enabled) => setDraft((current) => ({ ...current, enabled }))}
+              label={t("ccswitch.config_enabled")}
+              description={t("ccswitch.config_enabled_desc")}
+            />
+          </div>
 
           {draft.clientType === "claude" ? (
             <label className={fieldClassName}>

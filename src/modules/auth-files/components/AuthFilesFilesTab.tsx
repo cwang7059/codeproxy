@@ -52,6 +52,10 @@ interface AuthFilesFilesTabProps {
   filter: string;
   setFilter: (value: string) => void;
   filterCounts: { total: number; counts: Record<string, number> };
+  planFilterChips: string[];
+  planFilter: string;
+  setPlanFilter: (value: string) => void;
+  planFilterCounts: { total: number; counts: Record<string, number> };
   modelOwnerGroupsLoading: boolean;
   modelOwnerGroups: AuthFileModelOwnerGroup[];
   selectedModelOwner: string;
@@ -125,6 +129,10 @@ export function AuthFilesFilesTab({
   filter,
   setFilter,
   filterCounts,
+  planFilterChips,
+  planFilter,
+  setPlanFilter,
+  planFilterCounts,
   modelOwnerGroupsLoading,
   modelOwnerGroups,
   selectedModelOwner,
@@ -274,6 +282,43 @@ export function AuthFilesFilesTab({
                   </TabsList>
                 </Tabs>
               </div>
+
+              {planFilterChips.length > 1 ? (
+                <div className="w-fit max-w-full space-y-1.5">
+                  <p className="text-[11px] font-semibold text-slate-600 dark:text-white/65">
+                    {t("auth_files.account_type_filter")}
+                  </p>
+                  <Tabs value={planFilter} onValueChange={setPlanFilter}>
+                    <TabsList>
+                      {planFilterChips.map((key) => {
+                        const active = planFilter === key;
+                        const normalizedKey = normalizeProviderKey(key);
+                        const count =
+                          key === "all"
+                            ? planFilterCounts.total
+                            : (planFilterCounts.counts[normalizedKey] ?? 0);
+                        const label = key === "all" ? t("auth_files.all") : formatPlanTypeLabel(key);
+                        const countClass = active
+                          ? "bg-black/[0.06] text-[#18181B] dark:bg-white/12 dark:text-white"
+                          : "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-white/70";
+                        return (
+                          <TabsTrigger key={key} value={key}>
+                            {label}
+                            <span
+                              className={[
+                                "ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums",
+                                countClass,
+                              ].join(" ")}
+                            >
+                              {count}
+                            </span>
+                          </TabsTrigger>
+                        );
+                      })}
+                    </TabsList>
+                  </Tabs>
+                </div>
+              ) : null}
 
               {canSetModelOwnerGroup ? (
                 <div className="flex items-end">

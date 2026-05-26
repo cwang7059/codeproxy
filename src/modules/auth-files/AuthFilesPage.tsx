@@ -115,6 +115,7 @@ export function AuthFilesPage() {
   const [oauthDialogDefaultTab, setOauthDialogDefaultTab] = useState<OAuthDialogTab>("codex");
 
   const [filter, setFilter] = useState("all");
+  const [planFilter, setPlanFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
@@ -219,6 +220,7 @@ export function AuthFilesPage() {
     if (!state) return;
     if (state.tab) setTab(state.tab);
     if (typeof state.filter === "string") setFilter(state.filter);
+    if (typeof state.planFilter === "string") setPlanFilter(state.planFilter);
     if (typeof state.search === "string") setSearch(state.search);
     if (typeof state.page === "number" && Number.isFinite(state.page))
       setPage(Math.max(1, Math.round(state.page)));
@@ -239,8 +241,8 @@ export function AuthFilesPage() {
   }, []);
 
   useEffect(() => {
-    writeAuthFilesUiState({ tab, filter, search, page });
-  }, [filter, page, search, tab]);
+    writeAuthFilesUiState({ tab, filter, planFilter, search, page });
+  }, [filter, page, planFilter, search, tab]);
 
   useEffect(() => {
     if (tab !== "files") return;
@@ -249,7 +251,9 @@ export function AuthFilesPage() {
 
   const {
     providerOptions,
+    planOptions,
     filterCounts,
+    planFilterCounts,
     filteredFiles,
     totalPages,
     safePage,
@@ -267,6 +271,7 @@ export function AuthFilesPage() {
   } = useAuthFilesListState({
     files,
     filter,
+    planFilter,
     search,
     page,
     setPage,
@@ -351,11 +356,17 @@ export function AuthFilesPage() {
   });
 
   const filterChips = useMemo(() => ["all", ...providerOptions], [providerOptions]);
+  const planFilterChips = useMemo(() => ["all", ...planOptions], [planOptions]);
   const tagsEditorFile = useMemo(
     () => files.find((file) => file.name === tagsEditorFileName) ?? null,
     [files, tagsEditorFileName],
   );
   const normalizedFilter = useMemo(() => normalizeProviderKey(filter), [filter]);
+  useEffect(() => {
+    if (planFilter === "all") return;
+    if (planFilterChips.includes(planFilter)) return;
+    setPlanFilter("all");
+  }, [planFilter, planFilterChips]);
   const selectedModelOwner =
     normalizedFilter === "all" ? "" : (modelOwnerByAuthGroup[normalizedFilter] ?? "");
   const detailModelOwnerValue = detailFile
@@ -413,6 +424,10 @@ export function AuthFilesPage() {
             filter={filter}
             setFilter={setFilter}
             filterCounts={filterCounts}
+            planFilterChips={planFilterChips}
+            planFilter={planFilter}
+            setPlanFilter={setPlanFilter}
+            planFilterCounts={planFilterCounts}
             modelOwnerGroupsLoading={modelOwnerGroupsLoading}
             modelOwnerGroups={modelOwnerGroups}
             selectedModelOwner={selectedModelOwner}

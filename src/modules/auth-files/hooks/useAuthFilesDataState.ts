@@ -5,6 +5,7 @@ import type { AuthFileItem, EntityStatsResponse } from "@/lib/http/types";
 import { useToast } from "@/modules/ui/ToastProvider";
 import {
   buildUsageIndex,
+  hydrateAuthFilesWithQuotaPlans,
   readAuthFilesDataCache,
   sanitizeAuthFilesForCache,
   writeAuthFilesDataCache,
@@ -15,7 +16,9 @@ export function useAuthFilesDataState() {
   const { notify } = useToast();
   const initialDataCache = useMemo(() => readAuthFilesDataCache(), []);
 
-  const [files, setFiles] = useState<AuthFileItem[]>(() => initialDataCache?.files ?? []);
+  const [files, setFiles] = useState<AuthFileItem[]>(() =>
+    hydrateAuthFilesWithQuotaPlans(initialDataCache?.files ?? [], initialDataCache?.quotaByFileName),
+  );
   const [loading, setLoading] = useState(() => !((initialDataCache?.files?.length ?? 0) > 0));
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [usageLoading, setUsageLoading] = useState(false);
@@ -37,7 +40,11 @@ export function useAuthFilesDataState() {
         authFilesApi.list(),
         usageApi.getEntityStats(30, "all").catch(() => null),
       ]);
-      const list = Array.isArray(filesRes?.files) ? filesRes.files : [];
+      const cachedQuotaByFileName = readAuthFilesDataCache()?.quotaByFileName;
+      const list = hydrateAuthFilesWithQuotaPlans(
+        Array.isArray(filesRes?.files) ? filesRes.files : [],
+        cachedQuotaByFileName ?? initialDataCache?.quotaByFileName,
+      );
       setFiles(list);
       setUsageData((prev) => usageRes ?? prev);
       return list;
@@ -52,7 +59,7 @@ export function useAuthFilesDataState() {
       else setLoading(false);
       if (!hasExisting) setUsageLoading(false);
     }
-  }, [notify, t]);
+  }, [initialDataCache?.quotaByFileName, notify, t]);
 
   useEffect(() => {
     void loadAll();

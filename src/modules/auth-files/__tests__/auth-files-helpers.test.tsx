@@ -420,10 +420,16 @@ describe("Auth Files helper coverage", () => {
 
   test("filters auth files, paginates, and prunes runtime-only selections", async () => {
     const files = [
-      { name: "beta.json", type: "codex", provider: "codex" },
-      { name: "alpha.json", type: "codex", provider: "codex" },
-      { name: "runtime.json", type: "codex", provider: "codex", runtimeOnly: true },
-      { name: "gemini.json", type: "gemini-cli", provider: "gemini-cli" },
+      { name: "beta.json", type: "codex", provider: "codex", plan_type: "free" },
+      { name: "alpha.json", type: "codex", provider: "codex", plan_type: "pro" },
+      {
+        name: "runtime.json",
+        type: "codex",
+        provider: "codex",
+        runtimeOnly: true,
+        plan_type: "pro",
+      },
+      { name: "gemini.json", type: "gemini-cli", provider: "gemini-cli", plan_type: "team" },
     ] as AuthFileItem[];
 
     const { result } = renderHook(
@@ -433,6 +439,7 @@ describe("Auth Files helper coverage", () => {
         return useAuthFilesListState({
           files,
           filter: "codex",
+          planFilter: "pro",
           search: ".json",
           page,
           setPage,
@@ -447,14 +454,16 @@ describe("Auth Files helper coverage", () => {
       expect(result.current.safePage).toBe(1);
       expect(result.current.filteredFiles.map((file) => file.name)).toEqual([
         "alpha.json",
-        "beta.json",
         "runtime.json",
       ]);
       expect(Array.from(result.current.selectedFileNameSet)).toEqual(["alpha.json"]);
-      expect(result.current.filterCounts.counts.codex).toBe(3);
+      expect(result.current.filterCounts.total).toBe(2);
+      expect(result.current.filterCounts.counts.codex).toBe(2);
+      expect(result.current.planFilterCounts.total).toBe(3);
+      expect(result.current.planFilterCounts.counts.free).toBe(1);
+      expect(result.current.planFilterCounts.counts.pro).toBe(2);
       expect(result.current.selectableFilteredFiles.map((file) => file.name)).toEqual([
         "alpha.json",
-        "beta.json",
       ]);
     });
   });

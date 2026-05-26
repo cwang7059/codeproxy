@@ -57,6 +57,20 @@ export function CcSwitchImportCardList({
                   <span className="truncate text-sm font-semibold text-slate-900 dark:text-white">
                     {config.providerName}
                   </span>
+                  <span
+                    className={[
+                      "shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold",
+                      config.enabled !== false
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-300"
+                        : "border-slate-200 bg-slate-50 text-slate-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-white/45",
+                    ].join(" ")}
+                  >
+                    {t(
+                      config.enabled !== false
+                        ? "ccswitch.config_enabled"
+                        : "ccswitch.config_disabled",
+                    )}
+                  </span>
                   {config.clientType === "claude" && config.apiKeyField ? (
                     <span className="shrink-0 rounded-md border border-slate-200/70 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-white/45">
                       {config.apiKeyField}

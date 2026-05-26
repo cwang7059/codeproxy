@@ -54,6 +54,55 @@ describe("resolveQuotaProvider", () => {
   });
 });
 
+describe("fetchQuota for codex", () => {
+  test("uses top-level account_id when the id token lacks chatgpt_account_id", async () => {
+    mocks.request.mockResolvedValueOnce({
+      statusCode: 200,
+      header: {},
+      bodyText: "",
+      body: {
+        plan_type: "plus",
+        rate_limit: {
+          primary_window: {
+            used_percent: 5,
+            limit_window_seconds: 18000,
+            reset_after_seconds: 120,
+          },
+          secondary_window: {
+            used_percent: 1,
+            limit_window_seconds: 604800,
+            reset_after_seconds: 240,
+          },
+        },
+      },
+    });
+
+    const result = await fetchQuota("codex", {
+      name: "codex-tarah.json",
+      provider: "codex",
+      auth_index: "codex-1",
+      account_id: "org-f413rogC7lFc3CwxeSaW4uYM",
+      id_token: {},
+    } as any);
+
+    expect(mocks.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authIndex: "codex-1",
+        method: "GET",
+        url: "https://chatgpt.com/backend-api/wham/usage",
+        header: expect.objectContaining({
+          "Chatgpt-Account-Id": "org-f413rogC7lFc3CwxeSaW4uYM",
+        }),
+      }),
+    );
+    expect(result.planType).toBe("plus");
+    expect(result.items.map((item) => item.label)).toEqual([
+      "m_quota.code_5h",
+      "m_quota.code_weekly",
+    ]);
+  });
+});
+
 describe("fetchQuota for antigravity", () => {
   test("requests fetchAvailableModels with the auth project and returns dynamic quota items", async () => {
     mocks.downloadText.mockResolvedValueOnce(

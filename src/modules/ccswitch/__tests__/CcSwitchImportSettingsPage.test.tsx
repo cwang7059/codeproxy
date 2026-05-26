@@ -439,6 +439,47 @@ describe("CcSwitchImportSettingsPage", () => {
     );
   });
 
+  test("toggles a saved config enabled state through the API", async () => {
+    listConfigs.mockResolvedValue([
+      {
+        id: "cfg-1",
+        clientType: "codex",
+        providerName: "Relay Codex",
+        note: "Toggle me",
+        enabled: true,
+        defaultModel: "gpt-5.5",
+        allowedChannelGroups: ["team-a"],
+        endpointPath: "/v1",
+        usageAutoInterval: 30,
+        modelMappings: [
+          {
+            requestModel: "gpt-5.5",
+            targetModel: "gpt-5.5",
+          },
+        ],
+      },
+    ]);
+
+    renderPage();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText("Relay Codex")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("switch", {
+        name: /toggle config enabled state for relay codex/i,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(replaceConfigs).toHaveBeenCalledWith([
+        expect.objectContaining({
+          id: "cfg-1",
+          enabled: false,
+        }),
+      ]),
+    );
+  });
+
   test("previews the full BaseURL request address from the selected channel group path", async () => {
     renderPage();
     const user = userEvent.setup();

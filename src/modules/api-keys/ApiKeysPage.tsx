@@ -485,7 +485,7 @@ export function ApiKeysPage() {
         apiKey: ccSwitchImportEntry.key,
         baseUrl,
         clientType: config.clientType,
-        enabled: true,
+        enabled: config.enabled !== false,
         providerName: config.providerName || ccSwitchImportEntry.name || "CliProxy",
         model: config.defaultModel,
         modelMappings: config.modelMappings,

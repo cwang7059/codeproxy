@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { apiClient } from "@/lib/http/client";
-import { ccSwitchImportConfigsApi } from "@/lib/http/apis/ccswitch-import-configs";
+import {
+  ccSwitchImportConfigsApi,
+  normalizeCcSwitchImportConfigs,
+} from "@/lib/http/apis/ccswitch-import-configs";
 
 vi.mock("@/lib/http/client", () => ({
   apiClient: {
@@ -24,6 +27,7 @@ describe("ccSwitchImportConfigsApi", () => {
         clientType: "claude",
         providerName: "Kimi code",
         note: "kimicode",
+        enabled: true,
         defaultModel: "kimi-k2.5",
         allowedChannelGroups: ["kimicode"],
         routePath: "/kimicode/cs_kimi",
@@ -41,6 +45,7 @@ describe("ccSwitchImportConfigsApi", () => {
       expect.objectContaining({
         id: "kimi-code",
         "client-type": "claude",
+        enabled: true,
         "route-path": "/kimicode/cs_kimi",
         "model-mappings": [
           { role: "main", "request-model": "kimi-k2.5", "target-model": "kimi-k2.5" },
@@ -51,6 +56,29 @@ describe("ccSwitchImportConfigsApi", () => {
           },
         ],
       }),
+    ]);
+  });
+
+  test("normalizes missing and disabled enabled flags", () => {
+    const configs = normalizeCcSwitchImportConfigs([
+      {
+        id: "enabled-legacy",
+        "client-type": "codex",
+        "provider-name": "Relay Codex",
+        "default-model": "gpt-5.5",
+      },
+      {
+        id: "disabled",
+        "client-type": "codex",
+        "provider-name": "Relay Disabled",
+        enabled: false,
+        "default-model": "gpt-5.5",
+      },
+    ]);
+
+    expect(configs.map((config) => [config.id, config.enabled])).toEqual([
+      ["enabled-legacy", true],
+      ["disabled", false],
     ]);
   });
 });

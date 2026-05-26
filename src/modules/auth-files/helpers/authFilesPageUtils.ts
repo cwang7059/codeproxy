@@ -53,6 +53,7 @@ export type AuthFilesModelOwnerGroupMap = Record<string, string>;
 export type AuthFilesUiState = {
   tab?: "files" | "excluded" | "alias";
   filter?: string;
+  planFilter?: string;
   search?: string;
   page?: number;
 };
@@ -790,6 +791,28 @@ export const resolveAuthFilePlanType = (
   file: AuthFileItem,
   quotaState?: QuotaState | null,
 ): string | null => resolveCodexPlanType(file) ?? normalizePlanType(quotaState?.planType);
+
+export const hydrateAuthFilesWithQuotaPlans = (
+  files: AuthFileItem[],
+  quotaByFileName?: Record<string, QuotaState>,
+): AuthFileItem[] => {
+  if (!quotaByFileName) return files;
+
+  let changed = false;
+  const hydrated = files.map((file) => {
+    if (resolveAuthFilePlanType(file)) return file;
+    const planType = normalizePlanType(quotaByFileName[file.name]?.planType);
+    if (!planType) return file;
+    changed = true;
+    return {
+      ...file,
+      plan_type: file.plan_type ?? planType,
+      planType: file.planType ?? planType,
+    };
+  });
+
+  return changed ? hydrated : files;
+};
 
 export const resolveAuthFileSupplementalTags = (
   file: AuthFileItem,

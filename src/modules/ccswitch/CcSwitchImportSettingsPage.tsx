@@ -1,5 +1,5 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import iconClaude from "@/assets/icons/claude.svg";
 import iconCodex from "@/assets/icons/codex.svg";
@@ -15,6 +15,7 @@ import { ccSwitchImportConfigsApi } from "@/lib/http/apis/ccswitch-import-config
 import { Button } from "@/modules/ui/Button";
 import { Card } from "@/modules/ui/Card";
 import { ConfirmModal } from "@/modules/ui/ConfirmModal";
+import { ToggleSwitch } from "@/modules/ui/ToggleSwitch";
 import { useToast } from "@/modules/ui/ToastProvider";
 import { VirtualTable, type VirtualTableColumn } from "@/modules/ui/VirtualTable";
 import {
@@ -150,7 +151,7 @@ export function CcSwitchImportSettingsPage() {
       .list()
       .then((items) => {
         if (cancelled) return;
-        setConfigs(items);
+        setConfigs(normalizeCcSwitchImportConfigList(items));
       })
       .catch((error: unknown) => {
         if (cancelled) return;
@@ -165,6 +166,33 @@ export function CcSwitchImportSettingsPage() {
       cancelled = true;
     };
   }, [notify, t]);
+
+  const persistConfigs = useCallback(async (next: CcSwitchImportConfigListItem[]) => {
+    const normalized = normalizeCcSwitchImportConfigList(next);
+    await ccSwitchImportConfigsApi.replace(normalized);
+    setConfigs(normalized);
+  }, []);
+
+  const toggleConfigEnabled = useCallback(
+    async (row: CcSwitchImportConfigListItem, enabled: boolean) => {
+      const next = configs.map((item) => (item.id === row.id ? { ...item, enabled } : item));
+      try {
+        await persistConfigs(next);
+        notify({
+          type: "success",
+          message: t(enabled ? "ccswitch.config_enabled_toast" : "ccswitch.config_disabled_toast", {
+            name: row.providerName,
+          }),
+        });
+      } catch (error: unknown) {
+        notify({
+          type: "error",
+          message: error instanceof Error ? error.message : t("common.save_failed"),
+        });
+      }
+    },
+    [configs, notify, persistConfigs, t],
+  );
 
   const columns = useMemo<VirtualTableColumn<CcSwitchImportConfigListItem>[]>(
     () => [
@@ -244,6 +272,30 @@ export function CcSwitchImportSettingsPage() {
           ),
       },
       {
+        key: "enabled",
+        label: t("ccswitch.config_table_status"),
+        width: "w-40",
+        render: (row) => (
+          <div className="flex items-center gap-2">
+            <ToggleSwitch
+              checked={row.enabled !== false}
+              onCheckedChange={(enabled) => void toggleConfigEnabled(row, enabled)}
+              ariaLabel={t("ccswitch.config_toggle_enabled", { name: row.providerName })}
+            />
+            <span
+              className={[
+                "inline-flex h-6 shrink-0 items-center rounded-full border px-2 text-[11px] font-semibold",
+                row.enabled !== false
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-300"
+                  : "border-slate-200 bg-slate-50 text-slate-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-white/45",
+              ].join(" ")}
+            >
+              {t(row.enabled !== false ? "ccswitch.config_enabled" : "ccswitch.config_disabled")}
+            </span>
+          </div>
+        ),
+      },
+      {
         key: "actions",
         label: t("ccswitch.config_table_actions"),
         width: "w-28",
@@ -275,14 +327,8 @@ export function CcSwitchImportSettingsPage() {
         ),
       },
     ],
-    [t],
+    [t, toggleConfigEnabled],
   );
-
-  const persistConfigs = async (next: CcSwitchImportConfigListItem[]) => {
-    const normalized = normalizeCcSwitchImportConfigList(next);
-    await ccSwitchImportConfigsApi.replace(normalized);
-    setConfigs(normalized);
-  };
   const importBaseUrl = auth?.state.apiBase || detectApiBaseFromLocation();
 
   return (
@@ -321,7 +367,7 @@ export function CcSwitchImportSettingsPage() {
           columns={columns}
           rowKey={(row) => row.id}
           virtualize={false}
-          minWidth="min-w-[1100px]"
+          minWidth="min-w-[1220px]"
           height="h-[420px]"
           minHeight="min-h-[280px]"
           caption={t("ccswitch.config_table_caption")}

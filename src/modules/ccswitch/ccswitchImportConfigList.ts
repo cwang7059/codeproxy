@@ -23,6 +23,7 @@ export interface CcSwitchImportConfigListItem {
   clientType: CcSwitchClientType;
   providerName: string;
   note: string;
+  enabled: boolean;
   defaultModel: string;
   modelMappings: CcSwitchModelMapping[];
   allowedChannelGroups: string[];
@@ -216,6 +217,7 @@ export function createCcSwitchImportConfig(
     clientType: input.clientType,
     providerName: String(input.providerName ?? "").trim() || defaultProviderName(input.clientType),
     note: String(input.note ?? "").trim(),
+    enabled: input.enabled !== false,
     defaultModel:
       String(input.defaultModel ?? "").trim() ||
       String(mappedDefaultModel ?? "").trim() ||

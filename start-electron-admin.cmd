@@ -2,7 +2,7 @@
 setlocal
 
 cd /d "%~dp0"
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start-electron-admin.ps1" %*
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\run-admin.ps1" %*
 
 if errorlevel 1 (
   echo.

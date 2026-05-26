@@ -5,6 +5,7 @@ import {
   authFilesSortCollator,
   normalizeProviderKey,
   resolveAuthFileSortKey,
+  resolveAuthFilePlanType,
   resolveFileType,
 } from "@/modules/auth-files/helpers/authFilesPageUtils";
 import { isRuntimeOnlyAuthFile } from "@/modules/auth-files/helpers/authFilesPageUtils";
@@ -12,6 +13,7 @@ import { isRuntimeOnlyAuthFile } from "@/modules/auth-files/helpers/authFilesPag
 interface UseAuthFilesListStateOptions {
   files: AuthFileItem[];
   filter: string;
+  planFilter: string;
   search: string;
   page: number;
   setPage: Dispatch<SetStateAction<number>>;
@@ -22,6 +24,7 @@ interface UseAuthFilesListStateOptions {
 export function useAuthFilesListState({
   files,
   filter,
+  planFilter,
   search,
   page,
   setPage,
@@ -34,6 +37,24 @@ export function useAuthFilesListState({
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [files]);
 
+  const planOptions = useMemo(() => {
+    const set = new Set<string>();
+    files.forEach((file) => {
+      const planType = normalizeProviderKey(resolveAuthFilePlanType(file) ?? "");
+      if (planType) set.add(planType);
+    });
+    const rank = (value: string) => {
+      const order = ["plus", "team", "pro", "free"];
+      const index = order.indexOf(value);
+      return index === -1 ? order.length : index;
+    };
+    return Array.from(set).sort((a, b) => {
+      const rankA = rank(a);
+      const rankB = rank(b);
+      return rankA === rankB ? a.localeCompare(b) : rankA - rankB;
+    });
+  }, [files]);
+
   const searchFilteredFiles = useMemo(() => {
     const q = search.trim().toLowerCase();
     return files.filter((file) => {
@@ -41,31 +62,63 @@ export function useAuthFilesListState({
       const name = String(file.name || "").toLowerCase();
       const provider = String(file.provider || "").toLowerCase();
       const type = String(file.type || "").toLowerCase();
-      return name.includes(q) || provider.includes(q) || type.includes(q);
+      const planType = String(resolveAuthFilePlanType(file) || "").toLowerCase();
+      return name.includes(q) || provider.includes(q) || type.includes(q) || planType.includes(q);
     });
   }, [files, search]);
 
+  const searchAndProviderFilteredFiles = useMemo(() => {
+    const normalizedFilter = normalizeProviderKey(filter);
+    return !normalizedFilter || normalizedFilter === "all"
+      ? searchFilteredFiles
+      : searchFilteredFiles.filter(
+          (file) => normalizeProviderKey(resolveFileType(file)) === normalizedFilter,
+        );
+  }, [filter, searchFilteredFiles]);
+
+  const searchAndPlanFilteredFiles = useMemo(() => {
+    const normalizedPlanFilter = normalizeProviderKey(planFilter);
+    if (!normalizedPlanFilter || normalizedPlanFilter === "all") {
+      return searchFilteredFiles;
+    }
+    return searchFilteredFiles.filter(
+      (file) => normalizeProviderKey(resolveAuthFilePlanType(file) ?? "") === normalizedPlanFilter,
+    );
+  }, [planFilter, searchFilteredFiles]);
+
   const filterCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    searchFilteredFiles.forEach((file) => {
+    searchAndPlanFilteredFiles.forEach((file) => {
       const typeKey = normalizeProviderKey(resolveFileType(file));
       counts[typeKey] = (counts[typeKey] ?? 0) + 1;
     });
-    return { total: searchFilteredFiles.length, counts };
-  }, [searchFilteredFiles]);
+    return { total: searchAndPlanFilteredFiles.length, counts };
+  }, [searchAndPlanFilteredFiles]);
+
+  const providerScopedFiles = useMemo(() => {
+    const normalizedFilter = normalizeProviderKey(filter);
+    return !normalizedFilter || normalizedFilter === "all"
+      ? searchAndPlanFilteredFiles
+      : searchAndPlanFilteredFiles.filter(
+          (file) => normalizeProviderKey(resolveFileType(file)) === normalizedFilter,
+        );
+  }, [filter, searchAndPlanFilteredFiles]);
+
+  const planFilterCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    searchAndProviderFilteredFiles.forEach((file) => {
+      const planType = normalizeProviderKey(resolveAuthFilePlanType(file) ?? "");
+      if (!planType) return;
+      counts[planType] = (counts[planType] ?? 0) + 1;
+    });
+    return { total: searchAndProviderFilteredFiles.length, counts };
+  }, [searchAndProviderFilteredFiles]);
 
   const filteredFiles = useMemo(() => {
-    const normalizedFilter = normalizeProviderKey(filter);
-    const scoped =
-      !normalizedFilter || normalizedFilter === "all"
-        ? searchFilteredFiles
-        : searchFilteredFiles.filter(
-            (file) => normalizeProviderKey(resolveFileType(file)) === normalizedFilter,
-          );
-    return [...scoped].sort((a, b) =>
+    return [...providerScopedFiles].sort((a, b) =>
       authFilesSortCollator.compare(resolveAuthFileSortKey(a), resolveAuthFileSortKey(b)),
     );
-  }, [filter, searchFilteredFiles]);
+  }, [providerScopedFiles]);
 
   const totalPages = Math.max(1, Math.ceil(filteredFiles.length / AUTH_FILES_PAGE_SIZE));
   const safePage = Math.min(totalPages, Math.max(1, page));
@@ -153,7 +206,9 @@ export function useAuthFilesListState({
 
   return {
     providerOptions,
+    planOptions,
     filterCounts,
+    planFilterCounts,
     filteredFiles,
     totalPages,
     safePage,

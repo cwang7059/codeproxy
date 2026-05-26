@@ -20,6 +20,15 @@ const normalizeNumber = (value: unknown): number | undefined => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const normalizeEnabled = (value: unknown): boolean => {
+  if (value === false || value === 0) return false;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized !== "false" && normalized !== "0";
+  }
+  return true;
+};
+
 const normalizeStringList = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
   return value.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean);
@@ -70,6 +79,7 @@ export function normalizeCcSwitchImportConfigs(raw: unknown): CcSwitchImportConf
         clientType,
         providerName: normalizeString(record["provider-name"]),
         note: normalizeString(record.note),
+        enabled: normalizeEnabled(record.enabled),
         defaultModel: normalizeString(record["default-model"]),
         modelMappings: normalizeModelMappings(record["model-mappings"] ?? record.modelMappings),
         allowedChannelGroups: normalizeStringList(
@@ -94,6 +104,7 @@ const serializeCcSwitchImportConfig = (config: CcSwitchImportConfigListItem) => 
   "client-type": config.clientType,
   "provider-name": config.providerName,
   note: config.note,
+  enabled: config.enabled !== false,
   "default-model": config.defaultModel,
   "model-mappings": config.modelMappings.map((mapping) => ({
     ...(mapping.role ? { role: mapping.role } : {}),
