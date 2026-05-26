@@ -101,6 +101,90 @@ describe("fetchQuota for codex", () => {
       "m_quota.code_weekly",
     ]);
   });
+
+  test("uses default organization from codex id token when account_id is missing", async () => {
+    mocks.request.mockResolvedValueOnce({
+      statusCode: 200,
+      header: {},
+      bodyText: "",
+      body: {
+        plan_type: "free",
+        rate_limit: {
+          primary_window: {
+            used_percent: 12,
+            limit_window_seconds: 18000,
+            reset_after_seconds: 120,
+          },
+        },
+      },
+    });
+
+    await fetchQuota("codex", {
+      name: "codex-free.json",
+      provider: "codex",
+      auth_index: "codex-2",
+      id_token: {
+        "https://api.openai.com/auth": {
+          organizations: [
+            { id: "org-non-default", is_default: false },
+            { id: "org-default", is_default: true },
+          ],
+        },
+      },
+    } as any);
+
+    expect(mocks.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authIndex: "codex-2",
+        method: "GET",
+        url: "https://chatgpt.com/backend-api/wham/usage",
+        header: expect.objectContaining({
+          "Chatgpt-Account-Id": "org-default",
+        }),
+      }),
+    );
+  });
+
+  test("downloads codex auth file for account_id when list metadata is stale", async () => {
+    mocks.downloadText.mockResolvedValueOnce(
+      JSON.stringify({
+        account_id: "org-from-file",
+        chatgpt_account_id: "org-from-file",
+      }),
+    );
+    mocks.request.mockResolvedValueOnce({
+      statusCode: 200,
+      header: {},
+      bodyText: "",
+      body: {
+        plan_type: "free",
+        rate_limit: {
+          primary_window: {
+            used_percent: 0,
+            limit_window_seconds: 18000,
+            reset_after_seconds: 120,
+          },
+        },
+      },
+    });
+
+    await fetchQuota("codex", {
+      name: "codex-stale-list.json",
+      provider: "codex",
+      auth_index: "codex-3",
+      id_token: {},
+    } as any);
+
+    expect(mocks.downloadText).toHaveBeenCalledWith("codex-stale-list.json");
+    expect(mocks.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authIndex: "codex-3",
+        header: expect.objectContaining({
+          "Chatgpt-Account-Id": "org-from-file",
+        }),
+      }),
+    );
+  });
 });
 
 describe("fetchQuota for antigravity", () => {

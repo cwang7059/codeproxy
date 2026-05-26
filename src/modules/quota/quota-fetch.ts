@@ -94,6 +94,21 @@ const isClaudeOAuthLikeFile = (file: AuthFileItem): boolean => {
   return true;
 };
 
+const resolveCodexAccountIdFromDownloadedAuthFile = async (
+  file: AuthFileItem,
+): Promise<string | null> => {
+  try {
+    const text = await authFilesApi.downloadText(file.name);
+    const trimmed = text.trim();
+    if (!trimmed) return null;
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (!isRecord(parsed)) return null;
+    return resolveCodexChatgptAccountId({ name: file.name, ...parsed } as AuthFileItem);
+  } catch {
+    return null;
+  }
+};
+
 export const fetchQuota = async (
   type: QuotaProvider,
   file: AuthFileItem,
@@ -129,7 +144,8 @@ export const fetchQuota = async (
   }
 
   if (type === "codex") {
-    const accountId = resolveCodexChatgptAccountId(file);
+    const accountId =
+      resolveCodexChatgptAccountId(file) ?? (await resolveCodexAccountIdFromDownloadedAuthFile(file));
     if (!accountId) throw new Error("missing_account_id");
     const result = await apiCallApi.request({
       authIndex,

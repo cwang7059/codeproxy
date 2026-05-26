@@ -50,6 +50,57 @@ export type CodexUsagePayload = {
   additionalRateLimits?: CodexAdditionalRateLimit[];
 };
 
+const OPENAI_AUTH_CLAIM_KEY = "https://api.openai.com/auth";
+
+const resolveCodexAuthPayload = (
+  payload: Record<string, unknown>,
+): Record<string, unknown> | null => {
+  const nested = payload[OPENAI_AUTH_CLAIM_KEY];
+  return isRecord(nested) ? nested : null;
+};
+
+const readDefaultOrganizationId = (payload: Record<string, unknown>): string | null => {
+  const organizations = Array.isArray(payload.organizations) ? payload.organizations : [];
+  const records = organizations.filter(isRecord);
+  if (records.length === 0) return null;
+
+  const preferred =
+    records.find((org) => org.is_default === true || org.isDefault === true) ?? records[0];
+  return normalizeStringValue(
+    preferred.id ??
+      preferred.organization_id ??
+      preferred.organizationId ??
+      preferred.account_id ??
+      preferred.accountId,
+  );
+};
+
+const resolveCodexChatgptAccountIdFromPayload = (
+  payload: Record<string, unknown>,
+): string | null => {
+  const direct = normalizeStringValue(
+    payload.chatgpt_account_id ??
+      payload.chatgptAccountId ??
+      payload.account_id ??
+      payload.accountId,
+  );
+  if (direct) return direct;
+
+  const authPayload = resolveCodexAuthPayload(payload);
+  if (authPayload) {
+    const nested = normalizeStringValue(
+      authPayload.chatgpt_account_id ??
+        authPayload.chatgptAccountId ??
+        authPayload.account_id ??
+        authPayload.accountId,
+    );
+    if (nested) return nested;
+    return readDefaultOrganizationId(authPayload);
+  }
+
+  return readDefaultOrganizationId(payload);
+};
+
 export const resolveCodexChatgptAccountId = (file: AuthFileItem): string | null => {
   const metadata = isRecord(file.metadata) ? (file.metadata as Record<string, unknown>) : null;
   const attributes = isRecord(file.attributes)
@@ -78,9 +129,7 @@ export const resolveCodexChatgptAccountId = (file: AuthFileItem): string | null 
   const candidates = [file.id_token, metadata?.id_token, attributes?.id_token];
   for (const candidate of candidates) {
     const payload = parseIdTokenPayload(candidate);
-    const id = payload
-      ? normalizeStringValue(payload.chatgpt_account_id ?? payload.chatgptAccountId)
-      : null;
+    const id = payload ? resolveCodexChatgptAccountIdFromPayload(payload) : null;
     if (id) return id;
   }
   return null;

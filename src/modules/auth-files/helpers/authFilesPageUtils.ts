@@ -8,7 +8,7 @@ import type {
 import { normalizeUsageSourceId, type KeyStatBucket } from "@/modules/providers/provider-usage";
 import type { QuotaItem, QuotaState, QuotaStatus } from "@/modules/quota/quota-helpers";
 import { resolveCodexPlanType } from "@/utils/quota/resolvers";
-import { normalizePlanType } from "@/utils/quota/parsers";
+import { normalizePlanType, normalizeStringValue } from "@/utils/quota/parsers";
 import type { StatusBarData, StatusBlockDetail, StatusBlockState } from "@/utils/usage";
 
 export type AuthFileModelItem = {
@@ -68,6 +68,29 @@ export type AuthFilesDataCache = {
 const sanitizeDecodedIdToken = (value: unknown): unknown => {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   return value;
+};
+
+const sanitizeAuthFileMetadataForCache = (value: unknown): Record<string, unknown> | undefined => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const output: Record<string, unknown> = {};
+  const safeStringKeys = [
+    "account_id",
+    "accountId",
+    "chatgpt_account_id",
+    "chatgptAccountId",
+    "plan_type",
+    "planType",
+    "account_structure",
+    "accountStructure",
+  ];
+  safeStringKeys.forEach((key) => {
+    const normalized = normalizeStringValue(record[key]);
+    if (normalized) output[key] = normalized;
+  });
+  const decodedIdToken = sanitizeDecodedIdToken(record.id_token ?? record.idToken);
+  if (decodedIdToken !== undefined) output.id_token = decodedIdToken;
+  return Object.keys(output).length > 0 ? output : undefined;
 };
 
 const sanitizeAuthFileRestrictionsForCache = (
@@ -189,6 +212,12 @@ export const sanitizeAuthFilesForCache = (files: AuthFileItem[]): AuthFileItem[]
     status_message: file.status_message,
     unavailable: file.unavailable,
     next_retry_after: file.next_retry_after,
+    account_id: normalizeStringValue(file.account_id) ?? undefined,
+    accountId: normalizeStringValue(file.accountId) ?? undefined,
+    chatgpt_account_id: normalizeStringValue(file.chatgpt_account_id) ?? undefined,
+    chatgptAccountId: normalizeStringValue(file.chatgptAccountId) ?? undefined,
+    metadata: sanitizeAuthFileMetadataForCache(file.metadata),
+    attributes: sanitizeAuthFileMetadataForCache(file.attributes),
     restrictions: sanitizeAuthFileRestrictionsForCache(file.restrictions),
     modified: file.modified,
     modtime: file.modtime,
