@@ -17,13 +17,17 @@ describe("dashboard card composition", () => {
     expect(source).toContain("ThroughputTrendChart");
     expect(source).toContain("ChartLegend");
     expect(source).toContain("useInterval");
+    expect(source).toContain("const DASHBOARD_RANGES = [1, 7, 30, 365, 1095] as const");
+    expect(source).toContain('"dashboard.last_365_days"');
+    expect(source).toContain('"dashboard.last_1095_days"');
     expect(source).toContain("summary?.trends");
     expect(source).toContain("const { stats, connected } = useSystemStats(5)");
     expect(source).toContain("rpm={stats?.total_rpm ?? 0}");
     expect(source).toContain("tpm={stats?.total_tpm ?? 0}");
     expect(source).toContain("meta.generated_at");
+    expect(source).toContain("const autoRefreshMs = range > 30 ? 60_000 : 5_000");
     expect(source).toContain('<EChart option={option} className="h-10" overflowVisible />');
-    expect(source).toContain("}, 5000);");
+    expect(source).toContain("}, autoRefreshMs);");
     expect(source).not.toContain('replaceMerge="series"');
     expect(source).not.toContain('from "@/modules/monitor/MonitorPagePieces"');
     expect(source).not.toContain("<KpiCard");

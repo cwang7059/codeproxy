@@ -88,6 +88,7 @@ describe("Auth Files helper coverage", () => {
     writeAuthFilesUiState({
       tab: "files",
       filter: "codex",
+      sortMode: "usage_desc",
       search: "oauth",
       page: 3,
     });
@@ -95,6 +96,7 @@ describe("Auth Files helper coverage", () => {
     expect(readAuthFilesUiState()).toEqual({
       tab: "files",
       filter: "codex",
+      sortMode: "usage_desc",
       search: "oauth",
       page: 3,
     });
@@ -461,7 +463,9 @@ describe("Auth Files helper coverage", () => {
           files,
           filter: "codex",
           planFilter: "pro",
+          sortMode: "name",
           search: ".json",
+          usageIndex: { statsBySource: {}, statsByAuthIndex: {} },
           page,
           setPage,
           selectedFileNames,
@@ -487,6 +491,54 @@ describe("Auth Files helper coverage", () => {
         "alpha.json",
       ]);
     });
+  });
+
+  test("sorts auth files by usage totals", () => {
+    const files = [
+      { name: "alpha.json", type: "codex", provider: "codex" },
+      { name: "beta.json", type: "codex", provider: "codex" },
+      { name: "gamma.json", type: "codex", provider: "codex" },
+    ] as AuthFileItem[];
+    const usage = buildUsageIndex({
+      source: [
+        { entity_name: "alpha.json", requests: 4, failed: 1 },
+        { entity_name: "beta.json", requests: 12, failed: 2 },
+      ],
+    } as any);
+
+    const { result, rerender } = renderHook(
+      ({ sortMode }: { sortMode: "usage_desc" | "usage_asc" }) => {
+        const [page, setPage] = useState(1);
+        const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
+        return useAuthFilesListState({
+          files,
+          filter: "all",
+          planFilter: "all",
+          sortMode,
+          search: "",
+          usageIndex: usage.index,
+          page,
+          setPage,
+          selectedFileNames,
+          setSelectedFileNames,
+        });
+      },
+      { initialProps: { sortMode: "usage_desc" }, wrapper },
+    );
+
+    expect(result.current.filteredFiles.map((file) => file.name)).toEqual([
+      "beta.json",
+      "alpha.json",
+      "gamma.json",
+    ]);
+
+    rerender({ sortMode: "usage_asc" });
+
+    expect(result.current.filteredFiles.map((file) => file.name)).toEqual([
+      "gamma.json",
+      "alpha.json",
+      "beta.json",
+    ]);
   });
 
   test("transitions oauth alias import state and de-duplicates imported models", async () => {

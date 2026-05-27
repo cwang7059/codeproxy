@@ -48,14 +48,21 @@ export const AUTH_FILES_MODEL_OWNER_GROUP_MAP_KEY = "authFilesPage.modelOwnerGro
 export type QuotaPreviewMode = "5h" | "week";
 export type QuotaAutoRefreshMs = 0 | 5000 | 10000 | 30000 | 60000;
 export type FilesViewMode = "table" | "cards";
+export type AuthFilesSortMode = "name" | "usage_desc" | "usage_asc";
 export type AuthFilesModelOwnerGroupMap = Record<string, string>;
 
 export type AuthFilesUiState = {
   tab?: "files" | "excluded" | "alias";
   filter?: string;
   planFilter?: string;
+  sortMode?: AuthFilesSortMode;
   search?: string;
   page?: number;
+};
+
+export const normalizeAuthFilesSortMode = (value: unknown): AuthFilesSortMode => {
+  if (value === "usage_desc" || value === "usage_asc") return value;
+  return "name";
 };
 
 export type AuthFilesDataCache = {

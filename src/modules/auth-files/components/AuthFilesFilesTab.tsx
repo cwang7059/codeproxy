@@ -26,6 +26,7 @@ import { VirtualTable, type VirtualTableColumn } from "@/modules/ui/VirtualTable
 import { ToggleSwitch } from "@/modules/ui/ToggleSwitch";
 import type {
   AuthFileModelOwnerGroup,
+  AuthFilesSortMode,
   FilesViewMode,
   OAuthDialogTab,
   QuotaAutoRefreshMs,
@@ -35,6 +36,7 @@ import {
   TYPE_BADGE_CLASSES,
   formatModified,
   isRuntimeOnlyAuthFile,
+  normalizeAuthFilesSortMode,
   normalizeProviderKey,
   resolveAuthFileDisplayName,
   resolveAuthFilePlanType,
@@ -56,6 +58,8 @@ interface AuthFilesFilesTabProps {
   planFilter: string;
   setPlanFilter: (value: string) => void;
   planFilterCounts: { total: number; counts: Record<string, number> };
+  sortMode: AuthFilesSortMode;
+  setSortMode: (value: AuthFilesSortMode) => void;
   modelOwnerGroupsLoading: boolean;
   modelOwnerGroups: AuthFileModelOwnerGroup[];
   selectedModelOwner: string;
@@ -133,6 +137,8 @@ export function AuthFilesFilesTab({
   planFilter,
   setPlanFilter,
   planFilterCounts,
+  sortMode,
+  setSortMode,
   modelOwnerGroupsLoading,
   modelOwnerGroups,
   selectedModelOwner,
@@ -319,6 +325,22 @@ export function AuthFilesFilesTab({
                   </Tabs>
                 </div>
               ) : null}
+
+              <div className="w-full max-w-[190px] space-y-1.5 sm:w-[190px]">
+                <p className="text-[11px] font-semibold text-slate-600 dark:text-white/65">
+                  {t("auth_files.sort")}
+                </p>
+                <Select
+                  value={sortMode}
+                  onChange={(value) => setSortMode(normalizeAuthFilesSortMode(value))}
+                  options={[
+                    { value: "name", label: t("auth_files.sort_name") },
+                    { value: "usage_desc", label: t("auth_files.sort_usage_desc") },
+                    { value: "usage_asc", label: t("auth_files.sort_usage_asc") },
+                  ]}
+                  aria-label={t("auth_files.sort")}
+                />
+              </div>
 
               {canSetModelOwnerGroup ? (
                 <div className="flex items-end">

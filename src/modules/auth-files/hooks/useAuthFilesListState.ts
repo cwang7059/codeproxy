@@ -3,18 +3,23 @@ import type { AuthFileItem } from "@/lib/http/types";
 import {
   AUTH_FILES_PAGE_SIZE,
   authFilesSortCollator,
+  isRuntimeOnlyAuthFile,
   normalizeProviderKey,
+  resolveAuthFileStats,
   resolveAuthFileSortKey,
   resolveAuthFilePlanType,
   resolveFileType,
+  type AuthFilesSortMode,
+  type UsageIndex,
 } from "@/modules/auth-files/helpers/authFilesPageUtils";
-import { isRuntimeOnlyAuthFile } from "@/modules/auth-files/helpers/authFilesPageUtils";
 
 interface UseAuthFilesListStateOptions {
   files: AuthFileItem[];
   filter: string;
   planFilter: string;
+  sortMode: AuthFilesSortMode;
   search: string;
+  usageIndex: UsageIndex;
   page: number;
   setPage: Dispatch<SetStateAction<number>>;
   selectedFileNames: string[];
@@ -25,7 +30,9 @@ export function useAuthFilesListState({
   files,
   filter,
   planFilter,
+  sortMode,
   search,
+  usageIndex,
   page,
   setPage,
   selectedFileNames,
@@ -115,10 +122,21 @@ export function useAuthFilesListState({
   }, [searchAndProviderFilteredFiles]);
 
   const filteredFiles = useMemo(() => {
-    return [...providerScopedFiles].sort((a, b) =>
-      authFilesSortCollator.compare(resolveAuthFileSortKey(a), resolveAuthFileSortKey(b)),
-    );
-  }, [providerScopedFiles]);
+    const compareByName = (a: AuthFileItem, b: AuthFileItem) =>
+      authFilesSortCollator.compare(resolveAuthFileSortKey(a), resolveAuthFileSortKey(b));
+    const resolveUsageTotal = (file: AuthFileItem) => {
+      const stats = resolveAuthFileStats(file, usageIndex);
+      return stats.success + stats.failure;
+    };
+
+    return [...providerScopedFiles].sort((a, b) => {
+      if (sortMode === "usage_desc" || sortMode === "usage_asc") {
+        const diff = resolveUsageTotal(a) - resolveUsageTotal(b);
+        if (diff !== 0) return sortMode === "usage_desc" ? -diff : diff;
+      }
+      return compareByName(a, b);
+    });
+  }, [providerScopedFiles, sortMode, usageIndex]);
 
   const totalPages = Math.max(1, Math.ceil(filteredFiles.length / AUTH_FILES_PAGE_SIZE));
   const safePage = Math.min(totalPages, Math.max(1, page));

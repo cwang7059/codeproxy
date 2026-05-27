@@ -20,12 +20,15 @@ import { EChart } from "@/modules/ui/charts/EChart";
 import { ChartLegend } from "@/modules/ui/charts/ChartLegend";
 import { useInterval } from "@/hooks/useInterval";
 
-type DashboardRange = 1 | 7 | 30;
+const DASHBOARD_RANGES = [1, 7, 30, 365, 1095] as const;
+type DashboardRange = (typeof DASHBOARD_RANGES)[number];
 
 const RANGE_KEYS: Record<DashboardRange, string> = {
   1: "dashboard.today",
   7: "dashboard.last_7_days",
   30: "dashboard.last_30_days",
+  365: "dashboard.last_365_days",
+  1095: "dashboard.last_1095_days",
 };
 
 const formatNumber = (n: number) =>
@@ -392,9 +395,11 @@ export function DashboardPage() {
     void refresh(range);
   }, [refresh, range]);
 
+  const autoRefreshMs = range > 30 ? 60_000 : 5_000;
+
   useInterval(() => {
     void refresh(range, true);
-  }, 5000);
+  }, autoRefreshMs);
 
   const kpi = summary?.kpi;
   const trends = summary?.trends;
@@ -448,7 +453,7 @@ export function DashboardPage() {
             onValueChange={(next) => setRange(Number(next) as DashboardRange)}
           >
             <TabsList>
-              {([1, 7, 30] as DashboardRange[]).map((val) => (
+              {DASHBOARD_RANGES.map((val) => (
                 <TabsTrigger key={val} value={String(val)}>
                   {t(RANGE_KEYS[val])}
                 </TabsTrigger>

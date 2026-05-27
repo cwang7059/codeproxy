@@ -24,6 +24,7 @@ import { useAuthFilesGroupOverview } from "@/modules/auth-files/hooks/useAuthFil
 import { useAuthFilesOAuthConfig } from "@/modules/auth-files/hooks/useAuthFilesOAuthConfig";
 import { resolveQuotaProvider } from "@/modules/quota/quota-fetch";
 import {
+  normalizeAuthFilesSortMode,
   normalizeProviderKey,
   normalizeQuotaAutoRefreshMs,
   readAuthFilesUiState,
@@ -31,6 +32,7 @@ import {
   resolveFileType,
   resolveProviderLabel,
   writeAuthFilesUiState,
+  type AuthFilesSortMode,
   type OAuthDialogTab,
 } from "@/modules/auth-files/helpers/authFilesPageUtils";
 
@@ -116,6 +118,7 @@ export function AuthFilesPage() {
 
   const [filter, setFilter] = useState("all");
   const [planFilter, setPlanFilter] = useState("all");
+  const [sortMode, setSortMode] = useState<AuthFilesSortMode>("name");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
@@ -221,6 +224,7 @@ export function AuthFilesPage() {
     if (state.tab) setTab(state.tab);
     if (typeof state.filter === "string") setFilter(state.filter);
     if (typeof state.planFilter === "string") setPlanFilter(state.planFilter);
+    if (typeof state.sortMode === "string") setSortMode(normalizeAuthFilesSortMode(state.sortMode));
     if (typeof state.search === "string") setSearch(state.search);
     if (typeof state.page === "number" && Number.isFinite(state.page))
       setPage(Math.max(1, Math.round(state.page)));
@@ -241,8 +245,8 @@ export function AuthFilesPage() {
   }, []);
 
   useEffect(() => {
-    writeAuthFilesUiState({ tab, filter, planFilter, search, page });
-  }, [filter, page, planFilter, search, tab]);
+    writeAuthFilesUiState({ tab, filter, planFilter, sortMode, search, page });
+  }, [filter, page, planFilter, search, sortMode, tab]);
 
   useEffect(() => {
     if (tab !== "files") return;
@@ -272,7 +276,9 @@ export function AuthFilesPage() {
     files,
     filter,
     planFilter,
+    sortMode,
     search,
+    usageIndex,
     page,
     setPage,
     selectedFileNames,
@@ -323,6 +329,11 @@ export function AuthFilesPage() {
     const filesRefreshPromise = loadAll();
     await Promise.all([filesRefreshPromise, quotaRefreshPromise]);
   }, [forceRefreshPage, loadAll]);
+
+  const handleSortModeChange = useCallback((value: AuthFilesSortMode) => {
+    setSortMode(value);
+    setPage(1);
+  }, []);
 
   const {
     groupOverviewOpen,
@@ -428,6 +439,8 @@ export function AuthFilesPage() {
             planFilter={planFilter}
             setPlanFilter={setPlanFilter}
             planFilterCounts={planFilterCounts}
+            sortMode={sortMode}
+            setSortMode={handleSortModeChange}
             modelOwnerGroupsLoading={modelOwnerGroupsLoading}
             modelOwnerGroups={modelOwnerGroups}
             selectedModelOwner={selectedModelOwner}
