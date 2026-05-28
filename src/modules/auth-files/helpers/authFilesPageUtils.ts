@@ -532,6 +532,9 @@ export const resolveAuthFileRestrictionBadges = (
     .filter((badge): badge is AuthFileRestrictionBadge => Boolean(badge));
 };
 
+export const isAuthFileCurrentlyRestricted = (file: AuthFileItem, nowMs = Date.now()): boolean =>
+  resolveAuthFileRestrictionBadges(file, nowMs).length > 0;
+
 export type AuthFileSubscriptionStatus = {
   startedAtMs: number;
   startedAtText: string;

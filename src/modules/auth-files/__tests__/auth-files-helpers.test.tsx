@@ -541,6 +541,58 @@ describe("Auth Files helper coverage", () => {
     ]);
   });
 
+  test("keeps currently restricted auth files at the end of sorted lists", () => {
+    const files = [
+      { name: "alpha.json", type: "codex", provider: "codex" },
+      {
+        name: "beta.json",
+        type: "codex",
+        provider: "codex",
+        restrictions: [
+          {
+            scope: "auth",
+            http_status: 429,
+            quota_exceeded: true,
+            next_retry_after: "2999-01-01T00:00:00.000Z",
+          },
+        ],
+      },
+      { name: "gamma.json", type: "codex", provider: "codex" },
+    ] as AuthFileItem[];
+    const usage = buildUsageIndex({
+      source: [
+        { entity_name: "alpha.json", requests: 4, failed: 1 },
+        { entity_name: "beta.json", requests: 12, failed: 2 },
+      ],
+    } as any);
+
+    const { result } = renderHook(
+      () => {
+        const [page, setPage] = useState(1);
+        const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
+        return useAuthFilesListState({
+          files,
+          filter: "all",
+          planFilter: "all",
+          sortMode: "usage_desc",
+          search: "",
+          usageIndex: usage.index,
+          page,
+          setPage,
+          selectedFileNames,
+          setSelectedFileNames,
+        });
+      },
+      { wrapper },
+    );
+
+    expect(result.current.filteredFiles.map((file) => file.name)).toEqual([
+      "alpha.json",
+      "gamma.json",
+      "beta.json",
+    ]);
+  });
+
   test("transitions oauth alias import state and de-duplicates imported models", async () => {
     const { result } = renderHook(() => useAuthFilesOAuthConfig("alias"), { wrapper });
 

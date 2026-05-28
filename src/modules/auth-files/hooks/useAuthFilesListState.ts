@@ -3,6 +3,7 @@ import type { AuthFileItem } from "@/lib/http/types";
 import {
   AUTH_FILES_PAGE_SIZE,
   authFilesSortCollator,
+  isAuthFileCurrentlyRestricted,
   isRuntimeOnlyAuthFile,
   normalizeProviderKey,
   resolveAuthFileStats,
@@ -128,8 +129,14 @@ export function useAuthFilesListState({
       const stats = resolveAuthFileStats(file, usageIndex);
       return stats.success + stats.failure;
     };
+    const nowMs = Date.now();
 
     return [...providerScopedFiles].sort((a, b) => {
+      const restrictionDiff =
+        Number(isAuthFileCurrentlyRestricted(a, nowMs)) -
+        Number(isAuthFileCurrentlyRestricted(b, nowMs));
+      if (restrictionDiff !== 0) return restrictionDiff;
+
       if (sortMode === "usage_desc" || sortMode === "usage_asc") {
         const diff = resolveUsageTotal(a) - resolveUsageTotal(b);
         if (diff !== 0) return sortMode === "usage_desc" ? -diff : diff;
