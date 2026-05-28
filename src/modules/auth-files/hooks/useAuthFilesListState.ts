@@ -3,9 +3,9 @@ import type { AuthFileItem } from "@/lib/http/types";
 import {
   AUTH_FILES_PAGE_SIZE,
   authFilesSortCollator,
-  isAuthFileCurrentlyRestricted,
   isRuntimeOnlyAuthFile,
   normalizeProviderKey,
+  resolveAuthFileAvailabilityRank,
   resolveAuthFileStats,
   resolveAuthFileSortKey,
   resolveAuthFilePlanType,
@@ -132,10 +132,9 @@ export function useAuthFilesListState({
     const nowMs = Date.now();
 
     return [...providerScopedFiles].sort((a, b) => {
-      const restrictionDiff =
-        Number(isAuthFileCurrentlyRestricted(a, nowMs)) -
-        Number(isAuthFileCurrentlyRestricted(b, nowMs));
-      if (restrictionDiff !== 0) return restrictionDiff;
+      const availabilityDiff =
+        resolveAuthFileAvailabilityRank(a, nowMs) - resolveAuthFileAvailabilityRank(b, nowMs);
+      if (availabilityDiff !== 0) return availabilityDiff;
 
       if (sortMode === "usage_desc" || sortMode === "usage_asc") {
         const diff = resolveUsageTotal(a) - resolveUsageTotal(b);

@@ -215,6 +215,7 @@ export const sanitizeAuthFilesForCache = (files: AuthFileItem[]): AuthFileItem[]
     auth_index: file.auth_index,
     authIndex: file.authIndex,
     disabled: file.disabled,
+    recoverable: file.recoverable,
     status: file.status,
     status_message: file.status_message,
     unavailable: file.unavailable,
@@ -534,6 +535,73 @@ export const resolveAuthFileRestrictionBadges = (
 
 export const isAuthFileCurrentlyRestricted = (file: AuthFileItem, nowMs = Date.now()): boolean =>
   resolveAuthFileRestrictionBadges(file, nowMs).length > 0;
+
+const readAuthFileBooleanFlag = (value: unknown): boolean => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "1" || normalized === "yes";
+  }
+  return false;
+};
+
+const authFileTextLooksUnauthorized = (value: unknown): boolean => {
+  const text = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  if (!text) return false;
+  return (
+    text.includes("401") ||
+    text.includes("unauthorized") ||
+    text.includes("invalidated") ||
+    text.includes("invalid authentication") ||
+    text.includes("invalid token") ||
+    text.includes("authentication token")
+  );
+};
+
+const restrictionLooksUnauthorized = (restriction: AuthFileRestriction): boolean => {
+  const status = Number(restriction.http_status);
+  return (
+    status === 401 ||
+    authFileTextLooksUnauthorized(restriction.status) ||
+    authFileTextLooksUnauthorized(restriction.status_message) ||
+    authFileTextLooksUnauthorized(restriction.code) ||
+    authFileTextLooksUnauthorized(restriction.reason)
+  );
+};
+
+export const resolveAuthFileAvailabilityRank = (
+  file: AuthFileItem,
+  nowMs = Date.now(),
+): number => {
+  const status = normalizeTagValue(file.status);
+  const restrictions = Array.isArray(file.restrictions) ? file.restrictions : [];
+
+  if (
+    readAuthFileBooleanFlag(file.disabled) ||
+    readAuthFileBooleanFlag(file.recoverable) ||
+    status === "disabled" ||
+    status === "recoverable" ||
+    authFileTextLooksUnauthorized(file.status) ||
+    authFileTextLooksUnauthorized(file.status_message) ||
+    restrictions.some(restrictionLooksUnauthorized)
+  ) {
+    return 2;
+  }
+
+  if (
+    readAuthFileBooleanFlag(file.unavailable) ||
+    status === "error" ||
+    status === "limited" ||
+    status === "restricted" ||
+    isAuthFileCurrentlyRestricted(file, nowMs)
+  ) {
+    return 1;
+  }
+
+  return 0;
+};
 
 export type AuthFileSubscriptionStatus = {
   startedAtMs: number;

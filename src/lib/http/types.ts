@@ -58,6 +58,7 @@ export interface AuthFileItem extends TagDisplayFields {
   runtimeOnly?: boolean | string;
   runtime_only?: boolean | string;
   disabled?: boolean;
+  recoverable?: boolean;
   status?: string;
   status_message?: string;
   unavailable?: boolean;

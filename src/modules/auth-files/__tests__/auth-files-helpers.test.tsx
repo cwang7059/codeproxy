@@ -593,6 +593,54 @@ describe("Auth Files helper coverage", () => {
     ]);
   });
 
+  test("keeps disabled and 401 auth files behind active accounts before name sorting", () => {
+    const files = [
+      {
+        name: "aaa-401.json",
+        type: "codex",
+        provider: "codex",
+        status_message: "401 Your authentication token has been invalidated.",
+      },
+      { name: "aab-disabled.json", type: "codex", provider: "codex", disabled: true },
+      {
+        name: "aac-recoverable.json",
+        type: "codex",
+        provider: "codex",
+        recoverable: true,
+      },
+      { name: "beta-active.json", type: "codex", provider: "codex", status: "active" },
+      { name: "zeta-active.json", type: "codex", provider: "codex", status: "active" },
+    ] as AuthFileItem[];
+
+    const { result } = renderHook(
+      () => {
+        const [page, setPage] = useState(1);
+        const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
+        return useAuthFilesListState({
+          files,
+          filter: "all",
+          planFilter: "all",
+          sortMode: "name",
+          search: "",
+          usageIndex: { statsBySource: {}, statsByAuthIndex: {} },
+          page,
+          setPage,
+          selectedFileNames,
+          setSelectedFileNames,
+        });
+      },
+      { wrapper },
+    );
+
+    expect(result.current.filteredFiles.map((file) => file.name)).toEqual([
+      "beta-active.json",
+      "zeta-active.json",
+      "aaa-401.json",
+      "aab-disabled.json",
+      "aac-recoverable.json",
+    ]);
+  });
+
   test("transitions oauth alias import state and de-duplicates imported models", async () => {
     const { result } = renderHook(() => useAuthFilesOAuthConfig("alias"), { wrapper });
 
