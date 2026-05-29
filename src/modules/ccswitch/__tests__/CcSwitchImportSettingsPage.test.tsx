@@ -131,6 +131,43 @@ describe("CcSwitchImportSettingsPage", () => {
     expect(listConfigs).toHaveBeenCalledTimes(1);
   });
 
+  test("shows the new.106.hair external relay shortcut and opens signup", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    renderPage();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText(/no cc switch configs yet/i)).toBeInTheDocument();
+    expect(screen.getByText("External relay: new.106.hair")).toBeInTheDocument();
+    expect(screen.getByText("http://new.106.hair/sign-up?aff=9bxk")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /open signup/i }));
+
+    expect(openSpy).toHaveBeenCalledWith(
+      "http://new.106.hair/sign-up?aff=9bxk",
+      "_blank",
+      "noopener,noreferrer",
+    );
+
+    openSpy.mockRestore();
+  });
+
+  test("prefills a Codex config from the new.106.hair relay shortcut", async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: /create codex preset/i }));
+
+    const dialog = await screen.findByRole("dialog", { name: /new cc switch config/i });
+    expect(within(dialog).getByRole("tab", { name: /codex/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(within(dialog).getByDisplayValue("new.106.hair Codex")).toBeInTheDocument();
+    expect(
+      within(dialog).getByDisplayValue("Signup: http://new.106.hair/sign-up?aff=9bxk"),
+    ).toBeInTheDocument();
+  });
+
   test("creates a Codex config from a single channel group and model mapping table", async () => {
     listChannelGroups.mockResolvedValue([
       {

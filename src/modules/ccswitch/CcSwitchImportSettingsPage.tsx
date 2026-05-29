@@ -1,4 +1,4 @@
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import iconClaude from "@/assets/icons/claude.svg";
@@ -36,6 +36,9 @@ const iconByType: Record<CcSwitchClientType, string> = {
   codex: iconCodex,
   gemini: iconGemini,
 };
+
+const NEW_106_RELAY_SIGNUP_URL = "http://new.106.hair/sign-up?aff=9bxk";
+const NEW_106_RELAY_PROVIDER_NAME = "new.106.hair Codex";
 
 function createDraft(clientType: CcSwitchClientType = "codex") {
   return {
@@ -284,6 +287,18 @@ export function CcSwitchImportSettingsPage() {
     setConfigs(normalized);
   };
   const importBaseUrl = auth?.state.apiBase || detectApiBaseFromLocation();
+  const openNew106RelaySignup = () => {
+    window.open(NEW_106_RELAY_SIGNUP_URL, "_blank", "noopener,noreferrer");
+  };
+  const createNew106RelayPreset = () => {
+    setModalMode("create");
+    setDraft({
+      ...createDraft("codex"),
+      providerName: NEW_106_RELAY_PROVIDER_NAME,
+      note: t("ccswitch.external_relay_note", { url: NEW_106_RELAY_SIGNUP_URL }),
+    });
+    setModalOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -309,6 +324,37 @@ export function CcSwitchImportSettingsPage() {
           {t("ccswitch.config_new")}
         </Button>
       </div>
+
+      <Card padding="compact" className="rounded-2xl">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200/75 bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900">
+              <img src={iconCodex} alt="" className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                {t("ccswitch.external_relay_title")}
+              </h3>
+              <p className="max-w-3xl text-xs leading-5 text-slate-600 dark:text-white/60">
+                {t("ccswitch.external_relay_description")}
+              </p>
+              <p className="truncate font-mono text-[11px] text-slate-500 dark:text-white/45">
+                {NEW_106_RELAY_SIGNUP_URL}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Button variant="secondary" size="sm" onClick={openNew106RelaySignup}>
+              <ExternalLink size={14} />
+              {t("ccswitch.external_relay_signup")}
+            </Button>
+            <Button variant="primary" size="sm" onClick={createNew106RelayPreset}>
+              <Plus size={14} />
+              {t("ccswitch.external_relay_create_codex")}
+            </Button>
+          </div>
+        </div>
+      </Card>
 
       <Card
         title={t("ccswitch.config_table_title")}
