@@ -74,9 +74,7 @@ export function RequestLogsFilters({
               searchPlaceholder={t("request_logs.search_keys")}
               selectFilteredLabel={t("request_logs.select_filtered")}
               deselectFilteredLabel={t("request_logs.deselect_filtered")}
-              selectedCountLabel={(count: number) =>
-                t("request_logs.selected_count", { count: String(count) })
-              }
+              selectedCountLabel={(count: number) => t("request_logs.selected_count", { count })}
               noResultsLabel={t("request_logs.no_filter_results")}
               aria-label={t("request_logs.filter_key")}
               clearLabel={t("request_logs.clear_key_filter")}
@@ -93,9 +91,7 @@ export function RequestLogsFilters({
               searchPlaceholder={t("request_logs.search_models")}
               selectFilteredLabel={t("request_logs.select_filtered")}
               deselectFilteredLabel={t("request_logs.deselect_filtered")}
-              selectedCountLabel={(count: number) =>
-                t("request_logs.selected_count", { count: String(count) })
-              }
+              selectedCountLabel={(count: number) => t("request_logs.selected_count", { count })}
               noResultsLabel={t("request_logs.no_filter_results")}
               aria-label={t("request_logs.filter_model")}
               clearLabel={t("request_logs.clear_model_filter")}
@@ -112,9 +108,7 @@ export function RequestLogsFilters({
               searchPlaceholder={t("request_logs.search_channels")}
               selectFilteredLabel={t("request_logs.select_filtered")}
               deselectFilteredLabel={t("request_logs.deselect_filtered")}
-              selectedCountLabel={(count: number) =>
-                t("request_logs.selected_count", { count: String(count) })
-              }
+              selectedCountLabel={(count: number) => t("request_logs.selected_count", { count })}
               noResultsLabel={t("request_logs.no_filter_results")}
               aria-label={t("request_logs.filter_channel")}
               clearLabel={t("request_logs.clear_channel_filter")}
