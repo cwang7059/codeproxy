@@ -14,18 +14,38 @@ function Write-Step {
   Write-Host "[Code Proxy Admin] $Message"
 }
 
-function Get-BunExecutable {
+function Get-JavaScriptToolchain {
   $pathBun = Get-Command bun -ErrorAction SilentlyContinue
   if ($pathBun) {
-    return $pathBun.Source
+    return [pscustomobject]@{
+      Name = "bun"
+      Executable = $pathBun.Source
+      InstallArguments = @("install")
+      BuildArguments = @("run", "electron:pack")
+    }
   }
 
   $userBun = Join-Path $env:USERPROFILE ".bun\bin\bun.exe"
   if (Test-Path -LiteralPath $userBun) {
-    return $userBun
+    return [pscustomobject]@{
+      Name = "bun"
+      Executable = $userBun
+      InstallArguments = @("install")
+      BuildArguments = @("run", "electron:pack")
+    }
   }
 
-  throw "Bun was not found. Install Bun or add it to PATH, then run this script again."
+  $npm = Get-Command npm -ErrorAction SilentlyContinue
+  if ($npm) {
+    return [pscustomobject]@{
+      Name = "npm"
+      Executable = $npm.Source
+      InstallArguments = @("install")
+      BuildArguments = @("run", "electron:pack")
+    }
+  }
+
+  throw "Neither Bun nor npm was found. Install Bun (recommended) or Node.js/npm, then run this script again."
 }
 
 function Get-LatestSourceWriteTime {
@@ -129,15 +149,16 @@ if ($BackendBase.Trim()) {
 }
 
 if (Test-ShouldBuild) {
-  $bun = Get-BunExecutable
+  $toolchain = Get-JavaScriptToolchain
+  Write-Step "Using JavaScript toolchain: $($toolchain.Name)"
 
   if (!(Test-Path -LiteralPath (Join-Path $rootDir "node_modules"))) {
     Write-Step "Installing dependencies..."
-    Invoke-Checked -FilePath $bun -Arguments @("install")
+    Invoke-Checked -FilePath $toolchain.Executable -Arguments $toolchain.InstallArguments
   }
 
   Write-Step "Building desktop package..."
-  Invoke-Checked -FilePath $bun -Arguments @("run", "electron:pack")
+  Invoke-Checked -FilePath $toolchain.Executable -Arguments $toolchain.BuildArguments
 }
 
 if (!(Test-Path -LiteralPath $appExe)) {
