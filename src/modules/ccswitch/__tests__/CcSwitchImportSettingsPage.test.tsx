@@ -313,6 +313,9 @@ describe("CcSwitchImportSettingsPage", () => {
       await within(dialog).findByLabelText(/cc switch request model for gpt-5\.5/i),
     ).toBeInTheDocument();
     expect(
+      within(dialog).getByLabelText(/^actual channel model: gpt-5\.5$/i),
+    ).toBeInTheDocument();
+    expect(
       within(dialog).queryByLabelText(/cc switch request model for gpt-5-codex/i),
     ).not.toBeInTheDocument();
     expect(listAvailableModels).toHaveBeenCalledWith({

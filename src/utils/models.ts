@@ -183,11 +183,11 @@ export const PREDEFINED_MODEL_GROUPS: ModelGroup[] = [
     id: "deepseek",
     label: "DeepSeek",
     items: [
-      { name: "deepseek-chat", alias: "DeepSeek Chat" },
-      { name: "deepseek-coder", alias: "DeepSeek Coder" },
-      { name: "deepseek-reasoner", alias: "DeepSeek Reasoner" },
-      { name: "deepseek-v3", alias: "DeepSeek V3" },
-      { name: "deepseek-r1", alias: "DeepSeek R1" },
+      { name: "deepseek-v4-flash", alias: "DeepSeek V4 Flash" },
+      { name: "deepseek-v4-pro", alias: "DeepSeek V4 Pro" },
+      { name: "deepseek/deepseek-v4-flash:free", alias: "OpenRouter DeepSeek V4 Flash Free" },
+      { name: "deepseek/deepseek-v4-flash", alias: "OpenRouter DeepSeek V4 Flash" },
+      { name: "deepseek/deepseek-v4-pro", alias: "OpenRouter DeepSeek V4 Pro" },
     ],
   },
   {

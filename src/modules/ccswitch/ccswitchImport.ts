@@ -57,7 +57,10 @@ const MODEL_PRIORITY: Record<CcSwitchClientType, string[]> = {
   claude: ["claude-sonnet", "claude-opus", "claude-haiku", "claude"],
   codex: [
     "gpt-5.5",
+    "gpt-5.4",
+    "gpt-5.4-mini",
     "gpt-5.3-codex",
+    "gpt-5.3-codex-spark",
     "gpt-5-codex",
     "codex",
     "gpt-5",
@@ -68,6 +71,29 @@ const MODEL_PRIORITY: Record<CcSwitchClientType, string[]> = {
   ],
   gemini: ["gemini-3", "gemini-2.5-pro", "gemini-2.5-flash", "gemini"],
 };
+
+/** Common Codex model IDs always offered in CCSwitch mapping editors. */
+export const CC_SWITCH_CODEX_SUGGESTED_MODELS = [
+  "gpt-5.5",
+  "gpt-5.4",
+  "gpt-5.4-mini",
+  "gpt-5.3-codex",
+  "gpt-5.3-codex-spark",
+  "gpt-5-codex",
+  "gpt-5",
+  "codex-auto-review",
+] as const;
+
+export function augmentCcSwitchModelChoices(
+  clientType: CcSwitchClientType,
+  models: readonly string[],
+): string[] {
+  const normalized = models.map((model) => String(model ?? "").trim()).filter(Boolean);
+  if (clientType !== "codex") {
+    return Array.from(new Set(normalized));
+  }
+  return Array.from(new Set([...normalized, ...CC_SWITCH_CODEX_SUGGESTED_MODELS]));
+}
 
 export function getCcSwitchClientConfig(type: CcSwitchClientType): CcSwitchClientConfig {
   return CLIENT_BY_TYPE.get(type) ?? CC_SWITCH_CLIENTS[0]!;

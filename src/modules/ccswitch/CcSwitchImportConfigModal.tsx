@@ -12,6 +12,7 @@ import { Select } from "@/modules/ui/Select";
 import { Tabs, TabsList, TabsTrigger } from "@/modules/ui/Tabs";
 import { ToggleSwitch } from "@/modules/ui/ToggleSwitch";
 import {
+  augmentCcSwitchModelChoices,
   CC_SWITCH_CLIENTS,
   getCcSwitchClientConfig,
   type CcSwitchClientType,
@@ -393,7 +394,11 @@ export function CcSwitchImportConfigModal({
     selectedGroupOwnerKey,
   ]);
 
-  const availableModelsKey = availableModels.join("\n");
+  const resolvedModelChoices = useMemo(
+    () => augmentCcSwitchModelChoices(draft.clientType, availableModels),
+    [availableModels, draft.clientType],
+  );
+
   useEffect(() => {
     if (!open) return;
     setDraft((current) => {
@@ -406,7 +411,7 @@ export function CcSwitchImportConfigModal({
             modelMappings: [],
           };
     });
-  }, [availableModelsKey, open, selectedGroup]);
+  }, [availableModels, open, selectedGroup]);
 
   const authFieldOptions = useMemo(
     () =>
@@ -460,7 +465,10 @@ export function CcSwitchImportConfigModal({
     appendUrlPath(baseUrl, previewRoutePath),
     DEFAULT_CC_SWITCH_IMPORT_SETTINGS[draft.clientType].endpointPath,
   );
-  const currentModelOptions = useMemo(() => modelOptions(availableModels), [availableModels]);
+  const currentModelOptions = useMemo(
+    () => modelOptions(resolvedModelChoices),
+    [resolvedModelChoices],
+  );
   const preparedDraft = prepareDraftForSave(draft);
   const isSaveDisabled =
     !preparedDraft.providerName.trim() ||
@@ -495,6 +503,24 @@ export function CcSwitchImportConfigModal({
         availableModels,
       ),
     );
+  };
+
+  const updateGenericTargetModel = (previousTarget: string, nextTarget: string) => {
+    const normalizedTarget = nextTarget.trim();
+    if (!normalizedTarget) return;
+    setDraft((current) => {
+      const modelMappings = current.modelMappings.map((mapping) => {
+        if (mapping.role || mapping.targetModel !== previousTarget) return mapping;
+        const requestModel = mapping.requestModel.trim();
+        return {
+          ...mapping,
+          targetModel: normalizedTarget,
+          requestModel:
+            !requestModel || requestModel === previousTarget ? normalizedTarget : requestModel,
+        };
+      });
+      return reconcileModelMappings({ ...current, modelMappings }, availableModels);
+    });
   };
 
   const updateGenericRequestModel = (targetModel: string, requestModel: string) => {
@@ -796,12 +822,20 @@ export function CcSwitchImportConfigModal({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/70 dark:divide-neutral-800">
-                    {draft.modelMappings.map((mapping) => (
-                      <tr key={mapping.targetModel}>
+                    {draft.modelMappings.map((mapping, index) => (
+                      <tr key={`${mapping.targetModel}-${index}`}>
                         <td className="px-4 py-3">
-                          <span className="font-mono text-xs font-semibold text-slate-700 dark:text-white/75">
-                            {mapping.targetModel}
-                          </span>
+                          <SearchableSelect
+                            value={mapping.targetModel}
+                            onChange={(next) => updateGenericTargetModel(mapping.targetModel, next)}
+                            options={currentModelOptions}
+                            allowCreate
+                            createLabel={(value) => t("ccswitch.model_use_custom", { value })}
+                            placeholder={t("ccswitch.import_model_placeholder")}
+                            searchPlaceholder={t("ccswitch.config_model_search_placeholder")}
+                            aria-label={`${t("ccswitch.config_actual_channel_model")}: ${mapping.targetModel}`}
+                            className={`${controlClassName} w-full`}
+                          />
                         </td>
                         <td className="px-4 py-3">
                           <TextInput

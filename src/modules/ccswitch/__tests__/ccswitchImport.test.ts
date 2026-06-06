@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
+  augmentCcSwitchModelChoices,
   buildCcSwitchImportUrl,
   openCcSwitchImportUrl,
   pickCcSwitchDefaultModel,
@@ -161,6 +162,25 @@ describe("ccswitchImport", () => {
     expect(pickCcSwitchDefaultModel("claude", models)).toBe("claude-sonnet-4-5");
     expect(pickCcSwitchDefaultModel("codex", models)).toBe("gpt-5.5");
     expect(pickCcSwitchDefaultModel("gemini", models)).toBe("gemini-2.5-pro");
+  });
+
+  test("prefers gpt-5.4 over older codex models when configured default is empty", () => {
+    const models = ["gpt-5.4", "gpt-5.3-codex"];
+
+    expect(
+      pickCcSwitchDefaultModel("codex", models, {
+        codex: { defaultModel: "" },
+      }),
+    ).toBe("gpt-5.4");
+  });
+
+  test("always offers gpt-5.4 in codex CCSwitch model choices", () => {
+    expect(augmentCcSwitchModelChoices("codex", ["gpt-5.5"])).toEqual(
+      expect.arrayContaining(["gpt-5.4", "gpt-5.5"]),
+    );
+    expect(augmentCcSwitchModelChoices("claude", ["claude-sonnet-4-5"])).toEqual([
+      "claude-sonnet-4-5",
+    ]);
   });
 
   test("resolves import settings overrides for endpoint path and default model", () => {
