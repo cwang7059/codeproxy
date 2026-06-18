@@ -120,6 +120,7 @@ describe("IdentityFingerprintPage provider tabs", () => {
       await screen.findByRole("heading", { name: /Claude Code Fingerprint/i }),
     ).toBeInTheDocument();
     expect(screen.getByDisplayValue("claude-cli/2.1.88 (external, cli)")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Show advanced/i }));
     expect(screen.getByDisplayValue("0.74.0")).toBeInTheDocument();
     expect(screen.queryByText(/reserved/i)).not.toBeInTheDocument();
 
@@ -158,9 +159,7 @@ describe("IdentityFingerprintPage provider tabs", () => {
         }),
       },
     });
-    await userEvent.click(
-      within(section as HTMLElement).getByRole("button", { name: /Save Gemini/i }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: /Save Gemini/i }));
 
     await waitFor(() => {
       expect(mocks.saveConfigYaml).toHaveBeenCalledTimes(1);

@@ -52,6 +52,12 @@
 
 <!-- PROJECT-OVERRIDES:START -->
 
-（可选）在此处添加本项目真实的优化计划条目（脚手架不会覆盖）。
+## 2026-06-18 · 管理端 UI/UX 优化评审
+
+完整条目见 [ui-ux-optimization-review.md](./ui-ux-optimization-review.md)。
+
+- **目标**：统一空状态/工具栏、合入 worktree 优化、补 i18n、降低巨型页面维护成本。
+- **首批（1–2 天）**：EmptyState 三页、Identity Fingerprint cherry-pick、Providers i18n、Dashboard 配置清单。
+- **验证**：相关页面测试 + `bun run build` + 中英文/暗色模式抽查。
 
 <!-- PROJECT-OVERRIDES:END -->
