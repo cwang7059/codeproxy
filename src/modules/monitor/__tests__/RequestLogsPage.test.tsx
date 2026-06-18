@@ -1,10 +1,23 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import i18n from "@/i18n";
 import { RequestLogsPage } from "@/modules/monitor/RequestLogsPage";
 import { ThemeProvider } from "@/modules/ui/ThemeProvider";
 import { ToastProvider } from "@/modules/ui/ToastProvider";
+
+function renderRequestLogsPage(initialEntries?: string[]) {
+  return render(
+    <MemoryRouter initialEntries={initialEntries ?? ["/monitor/request-logs"]}>
+      <ThemeProvider>
+        <ToastProvider>
+          <RequestLogsPage />
+        </ToastProvider>
+      </ThemeProvider>
+    </MemoryRouter>,
+  );
+}
 
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -104,13 +117,7 @@ describe("RequestLogsPage", () => {
       },
     });
 
-    render(
-      <ThemeProvider>
-        <ToastProvider>
-          <RequestLogsPage />
-        </ToastProvider>
-      </ThemeProvider>,
-    );
+    renderRequestLogsPage();
 
     expect(await screen.findByText("First Token")).toBeInTheDocument();
     expect(await screen.findByText("183ms")).toBeInTheDocument();
@@ -137,13 +144,7 @@ describe("RequestLogsPage", () => {
       },
     });
 
-    render(
-      <ThemeProvider>
-        <ToastProvider>
-          <RequestLogsPage />
-        </ToastProvider>
-      </ThemeProvider>,
-    );
+    renderRequestLogsPage();
 
     expect(await screen.findByText("No Data")).toBeInTheDocument();
   });
@@ -190,13 +191,7 @@ describe("RequestLogsPage", () => {
       },
     });
 
-    const { container } = render(
-      <ThemeProvider>
-        <ToastProvider>
-          <RequestLogsPage />
-        </ToastProvider>
-      </ThemeProvider>,
-    );
+    const { container } = renderRequestLogsPage();
 
     await screen.findByRole("table", { name: "请求日志表" });
     expect(container.querySelector(".table-scrollbar")).not.toBeNull();
@@ -290,13 +285,7 @@ describe("RequestLogsPage", () => {
       deleted_contents: 1,
     });
 
-    render(
-      <ThemeProvider>
-        <ToastProvider>
-          <RequestLogsPage />
-        </ToastProvider>
-      </ThemeProvider>,
-    );
+    renderRequestLogsPage();
 
     await user.click(await screen.findByRole("button", { name: "More Actions" }));
     await user.click(await screen.findByRole("menuitem", { name: /Clear Database Logs/i }));
@@ -322,13 +311,7 @@ describe("RequestLogsPage", () => {
       .mockImplementationOnce(() => refresh.promise);
     mocks.clearUsageLogs.mockImplementationOnce(() => cleanup.promise);
 
-    render(
-      <ThemeProvider>
-        <ToastProvider>
-          <RequestLogsPage />
-        </ToastProvider>
-      </ThemeProvider>,
-    );
+    renderRequestLogsPage();
 
     await user.click(await screen.findByRole("button", { name: "More Actions" }));
     await user.click(await screen.findByRole("menuitem", { name: /Clear Database Logs/i }));

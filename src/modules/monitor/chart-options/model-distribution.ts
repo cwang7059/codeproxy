@@ -5,10 +5,43 @@ import type { ModelDistributionDatum } from "@/modules/monitor/chart-options/typ
 export const createModelDistributionOption = (input: {
   isDark: boolean;
   data: ModelDistributionDatum[];
+  centerLabel?: string;
+  centerValue?: string;
 }): Record<string, unknown> => {
+  const centerGraphic =
+    input.centerLabel && input.centerValue
+      ? [
+          {
+            type: "text",
+            left: "center",
+            top: "44%",
+            style: {
+              text: input.centerValue,
+              textAlign: "center",
+              fill: input.isDark ? "rgba(255,255,255,0.92)" : "#0f172a",
+              fontSize: 20,
+              fontWeight: 700,
+            },
+          },
+          {
+            type: "text",
+            left: "center",
+            top: "54%",
+            style: {
+              text: input.centerLabel,
+              textAlign: "center",
+              fill: input.isDark ? "rgba(255,255,255,0.55)" : "#64748b",
+              fontSize: 11,
+              fontWeight: 500,
+            },
+          },
+        ]
+      : [];
+
   return {
     backgroundColor: "transparent",
     color: [...CHART_COLORS, "#94a3b8"],
+    graphic: centerGraphic,
     tooltip: {
       trigger: "item",
       renderMode: "html",

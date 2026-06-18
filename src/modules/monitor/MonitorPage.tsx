@@ -4,6 +4,10 @@ import { useTheme } from "@/modules/ui/ThemeProvider";
 import { CHART_COLOR_CLASSES, HOURLY_MODEL_COLORS } from "@/modules/monitor/monitor-constants";
 import { formatCompact, formatMonthDay } from "@/modules/monitor/monitor-format";
 import {
+  formatHourAxisLabel,
+  sortHourKeys,
+} from "@/modules/monitor/monitor-hourly-utils";
+import {
   createDailyTrendOption,
   createHourlyModelOption,
   createHourlyTokenOption,
@@ -63,6 +67,7 @@ export function MonitorPage() {
     setApiFilterInput,
     apiFilter,
     applyFilter,
+    clearFilter,
     modelHourWindow,
     setModelHourWindow,
     tokenHourWindow,
@@ -102,6 +107,7 @@ export function MonitorPage() {
   >({});
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(true);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
   const [requestLogEnabled, setRequestLogEnabled] = useState<boolean | null>(null);
   const [usageStatisticsEnabled, setUsageStatisticsEnabled] = useState<boolean | null>(null);
@@ -130,6 +136,7 @@ export function MonitorPage() {
       ]);
       startTransition(() => {
         setChartData(chartResp);
+        setLastUpdatedAt(Date.now());
       });
     } catch (requestError) {
       const message =
@@ -294,49 +301,44 @@ export function MonitorPage() {
 
   const hourlySeries = useMemo(() => {
     const modelKeys = [...topModelKeys, HOURLY_MODEL_OTHER_KEY];
+    const modelBucketMap = new Map<string, Map<string, number>>();
 
-    const modelPoints = (chartData?.hourly_models || [])
-      .reduce(
-        (acc, pt) => {
-          const [, timePart] = pt.hour.split(" "); // "2023-10-10 15:00"
-          const label = timePart || pt.hour;
+    for (const point of chartData?.hourly_models || []) {
+      if (!modelBucketMap.has(point.hour)) {
+        modelBucketMap.set(point.hour, new Map());
+      }
+      const stacksMap = modelBucketMap.get(point.hour)!;
+      stacksMap.set(point.model, (stacksMap.get(point.model) || 0) + point.requests);
+    }
 
-          let bucket = acc.find((x) => x.label === label);
-          if (!bucket) {
-            bucket = { label, stacksMap: new Map<string, number>() };
-            acc.push(bucket);
+    const modelPoints = sortHourKeys([...modelBucketMap.keys()]).map((hourKey) => {
+      const stacksMap = modelBucketMap.get(hourKey)!;
+      const stacks = modelKeys.map((key) => {
+        if (key === HOURLY_MODEL_OTHER_KEY) {
+          let sum = 0;
+          for (const [model, value] of stacksMap.entries()) {
+            if (!topModelKeys.includes(model)) sum += value;
           }
-          const current = bucket.stacksMap.get(pt.model) || 0;
-          bucket.stacksMap.set(pt.model, current + pt.requests);
-          return acc;
-        },
-        [] as { label: string; stacksMap: Map<string, number> }[],
-      )
-      .map((bucket) => {
-        const stacks = modelKeys.map((key) => {
-          if (key === HOURLY_MODEL_OTHER_KEY) {
-            let sum = 0;
-            for (const [m, v] of bucket.stacksMap.entries()) {
-              if (!topModelKeys.includes(m)) sum += v;
-            }
-            return { key, value: sum };
-          }
-          return { key, value: bucket.stacksMap.get(key) || 0 };
-        });
-        return { label: bucket.label, stacks };
+          return { key, value: sum };
+        }
+        return { key, value: stacksMap.get(key) || 0 };
       });
+      return { label: formatHourAxisLabel(hourKey), stacks };
+    });
 
-    const tokenPoints = (chartData?.hourly_tokens || []).map((pt) => {
-      const [, timePart] = pt.hour.split(" ");
-      const label = timePart || pt.hour;
+    const tokenByHour = new Map(
+      (chartData?.hourly_tokens || []).map((point) => [point.hour, point] as const),
+    );
+    const tokenPoints = sortHourKeys([...tokenByHour.keys()]).map((hourKey) => {
+      const point = tokenByHour.get(hourKey)!;
       return {
-        label,
+        label: formatHourAxisLabel(hourKey),
         stacks: [
-          { key: HOURLY_TOKEN_KEYS.input, value: pt.input_tokens },
-          { key: HOURLY_TOKEN_KEYS.output, value: pt.output_tokens },
-          { key: HOURLY_TOKEN_KEYS.reasoning, value: pt.reasoning_tokens },
-          { key: HOURLY_TOKEN_KEYS.cached, value: pt.cached_tokens },
-          { key: HOURLY_TOKEN_KEYS.total, value: pt.total_tokens },
+          { key: HOURLY_TOKEN_KEYS.input, value: point.input_tokens },
+          { key: HOURLY_TOKEN_KEYS.output, value: point.output_tokens },
+          { key: HOURLY_TOKEN_KEYS.reasoning, value: point.reasoning_tokens },
+          { key: HOURLY_TOKEN_KEYS.cached, value: point.cached_tokens },
+          { key: HOURLY_TOKEN_KEYS.total, value: point.total_tokens },
         ],
       };
     });
@@ -423,10 +425,18 @@ export function MonitorPage() {
     });
   }, [hourlySeries.tokenKeys]);
 
-  const modelDistributionOption = useMemo(
-    () => createModelDistributionOption({ isDark, data: visibleModelDistributionData }),
-    [isDark, visibleModelDistributionData],
-  );
+  const modelDistributionOption = useMemo(() => {
+    const total = visibleModelDistributionData.reduce(
+      (acc, item) => acc + (Number.isFinite(item.value) ? item.value : 0),
+      0,
+    );
+    return createModelDistributionOption({
+      isDark,
+      data: visibleModelDistributionData,
+      centerLabel: t("monitor.distribution_center_total"),
+      centerValue: formatCompact(total),
+    });
+  }, [isDark, t, visibleModelDistributionData]);
 
   // --- API Key Distribution ---
   const apikeyDistributionData = useMemo(() => {
@@ -465,10 +475,18 @@ export function MonitorPage() {
     [apikeyDistributionData, apikeyDistributionSelected],
   );
 
-  const apikeyDistributionOption = useMemo(
-    () => createModelDistributionOption({ isDark, data: visibleApikeyDistributionData }),
-    [isDark, visibleApikeyDistributionData],
-  );
+  const apikeyDistributionOption = useMemo(() => {
+    const total = visibleApikeyDistributionData.reduce(
+      (acc, item) => acc + (Number.isFinite(item.value) ? item.value : 0),
+      0,
+    );
+    return createModelDistributionOption({
+      isDark,
+      data: visibleApikeyDistributionData,
+      centerLabel: t("monitor.distribution_center_total"),
+      centerValue: formatCompact(total),
+    });
+  }, [isDark, t, visibleApikeyDistributionData]);
 
   const apikeyDistributionLegend = useMemo(() => {
     const total = apikeyDistributionData.reduce(
@@ -628,83 +646,116 @@ export function MonitorPage() {
     [hourlySeries.modelKeys],
   );
 
+  const hasDailyTrend = useMemo(
+    () =>
+      dailySeries.some(
+        (point) => point.requests > 0 || point.inputTokens > 0 || point.outputTokens > 0,
+      ),
+    [dailySeries],
+  );
+
+  const hasHourlyData = useMemo(
+    () => hourlySeries.modelPoints.length > 0 || hourlySeries.tokenPoints.length > 0,
+    [hourlySeries.modelPoints.length, hourlySeries.tokenPoints.length],
+  );
+
+  const lastUpdatedText = useMemo(() => {
+    if (!lastUpdatedAt) return t("monitor.updated_fallback");
+    return t("monitor.updated_at", {
+      time: new Date(lastUpdatedAt).toLocaleTimeString(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    });
+  }, [lastUpdatedAt, t]);
+
   return (
-    <div className="space-y-4">
-      <MonitorToolbarSection
-        t={t}
-        timeRange={timeRange}
-        setTimeRange={setTimeRange}
-        apiFilterInput={apiFilterInput}
-        setApiFilterInput={setApiFilterInput}
-        applyFilter={applyFilter}
-        refreshData={() => void refreshData()}
-        isLoading={isLoading}
-        error={error}
-      />
-
-      {shouldShowRecordingNotice ? (
-        <MonitorRecordingNotice
+    <section className="flex flex-1 flex-col">
+      <h1 className="sr-only">{t("monitor.title")}</h1>
+      <div className="flex flex-1 flex-col rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgb(15_23_42_/_0.035)] dark:border-white/[0.06] dark:bg-neutral-950/70 dark:shadow-[0_1px_2px_rgb(0_0_0_/_0.22)]">
+        <MonitorToolbarSection
           t={t}
-          requestLogEnabled={Boolean(requestLogEnabled)}
-          usageStatisticsEnabled={Boolean(usageStatisticsEnabled)}
-          isEnabling={isEnablingRecording}
-          onEnable={() => void enableRecording()}
+          timeRange={timeRange}
+          setTimeRange={setTimeRange}
+          apiFilterInput={apiFilterInput}
+          setApiFilterInput={setApiFilterInput}
+          applyFilter={applyFilter}
+          clearFilter={clearFilter}
+          apiFilter={apiFilter}
+          refreshData={() => void refreshData()}
+          isLoading={isLoading}
+          error={error}
+          lastUpdatedText={lastUpdatedText}
         />
-      ) : null}
 
-      <MonitorKpiSection
-        t={t}
-        metrics={metrics}
-        hasData={hasData}
-        isLoading={isLoading}
-        refreshData={refreshData}
-      />
-
-      {hasData ? (
-        <>
-          <MonitorDistributionSections
+        {shouldShowRecordingNotice ? (
+          <MonitorRecordingNotice
             t={t}
-            timeRange={timeRange}
-            modelMetric={modelMetric}
-            setModelMetric={setModelMetric}
-            modelDistributionOption={modelDistributionOption}
-            modelDistributionLegend={modelDistributionLegend}
-            toggleModelDistributionLegend={toggleModelDistributionLegend}
-            dailyTrendOption={dailyTrendOption}
-            dailyLegendAvailability={dailyLegendAvailability}
-            dailyLegendSelected={dailyLegendSelected}
-            toggleDailyLegend={toggleDailyLegend}
-            apikeyDistributionData={apikeyDistributionData}
-            apikeyMetric={apikeyMetric}
-            setApikeyMetric={setApikeyMetric}
-            apikeyDistributionOption={apikeyDistributionOption}
-            apikeyDistributionLegend={apikeyDistributionLegend}
-            toggleApikeyDistributionLegend={toggleApikeyDistributionLegend}
-            isRefreshing={isRefreshing}
+            requestLogEnabled={Boolean(requestLogEnabled)}
+            usageStatisticsEnabled={Boolean(usageStatisticsEnabled)}
+            isEnabling={isEnablingRecording}
+            onEnable={() => void enableRecording()}
+          />
+        ) : null}
+
+        <div className="space-y-6 px-5 pb-5">
+          <MonitorKpiSection
+            t={t}
+            metrics={metrics}
+            hasData={hasData}
+            isLoading={isLoading}
+            refreshData={refreshData}
           />
 
-          <MonitorHourlySections
-            t={t}
-            isRefreshing={isRefreshing}
-            modelHourWindow={modelHourWindow}
-            setModelHourWindow={setModelHourWindow}
-            hourlyModelLegendKeys={hourlyModelLegendKeys}
-            hourlyModelOption={hourlyModelOption}
-            hourlySeries={hourlySeries}
-            getHourlyModelSeriesLabel={getHourlyModelSeriesLabel}
-            hourlyModelPalette={hourlyModelPalette}
-            hourlyModelSelected={hourlyModelSelected}
-            toggleHourlyModelLegend={toggleHourlyModelLegend}
-            tokenHourWindow={tokenHourWindow}
-            setTokenHourWindow={setTokenHourWindow}
-            hourlyTokenOption={hourlyTokenOption}
-            hourlyTokenLabels={hourlyTokenLabels}
-            hourlyTokenPalette={hourlyTokenPalette}
-            hourlyTokenSelected={hourlyTokenSelected}
-            toggleHourlyTokenLegend={toggleHourlyTokenLegend}
-          />
-        </>
-      ) : null}
-    </div>
+          {hasData ? (
+            <>
+              <MonitorDistributionSections
+                t={t}
+                timeRange={timeRange}
+                modelMetric={modelMetric}
+                setModelMetric={setModelMetric}
+                modelDistributionOption={modelDistributionOption}
+                modelDistributionLegend={modelDistributionLegend}
+                toggleModelDistributionLegend={toggleModelDistributionLegend}
+                dailyTrendOption={dailyTrendOption}
+                dailyLegendAvailability={dailyLegendAvailability}
+                dailyLegendSelected={dailyLegendSelected}
+                toggleDailyLegend={toggleDailyLegend}
+                hasDailyTrend={hasDailyTrend}
+                apikeyDistributionData={apikeyDistributionData}
+                apikeyMetric={apikeyMetric}
+                setApikeyMetric={setApikeyMetric}
+                apikeyDistributionOption={apikeyDistributionOption}
+                apikeyDistributionLegend={apikeyDistributionLegend}
+                toggleApikeyDistributionLegend={toggleApikeyDistributionLegend}
+                isRefreshing={isRefreshing}
+              />
+
+              <MonitorHourlySections
+                t={t}
+                isRefreshing={isRefreshing}
+                modelHourWindow={modelHourWindow}
+                setModelHourWindow={setModelHourWindow}
+                hourlyModelLegendKeys={hourlyModelLegendKeys}
+                hourlyModelOption={hourlyModelOption}
+                hourlySeries={hourlySeries}
+                getHourlyModelSeriesLabel={getHourlyModelSeriesLabel}
+                hourlyModelPalette={hourlyModelPalette}
+                hourlyModelSelected={hourlyModelSelected}
+                toggleHourlyModelLegend={toggleHourlyModelLegend}
+                tokenHourWindow={tokenHourWindow}
+                setTokenHourWindow={setTokenHourWindow}
+                hourlyTokenOption={hourlyTokenOption}
+                hourlyTokenLabels={hourlyTokenLabels}
+                hourlyTokenPalette={hourlyTokenPalette}
+                hourlyTokenSelected={hourlyTokenSelected}
+                toggleHourlyTokenLegend={toggleHourlyTokenLegend}
+                hasHourlyData={hasHourlyData}
+              />
+            </>
+          ) : null}
+        </div>
+      </div>
+    </section>
   );
 }

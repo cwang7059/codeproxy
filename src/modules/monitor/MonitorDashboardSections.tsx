@@ -1,16 +1,23 @@
-import { Activity, ChartSpline, Coins, DatabaseZap, ShieldCheck, Sigma } from "lucide-react";
+import { Activity, ChartSpline, Coins, DatabaseZap, ShieldCheck, TriangleAlert } from "lucide-react";
 import type { HourWindow } from "@/modules/monitor/monitor-constants";
-import { formatNumber, formatRate } from "@/modules/monitor/monitor-utils";
+import { formatCompact } from "@/modules/monitor/monitor-format";
+import { formatRate } from "@/modules/monitor/monitor-utils";
 import { AnimatedNumber } from "@/modules/ui/AnimatedNumber";
 import { Reveal } from "@/modules/ui/Reveal";
 import { EChart } from "@/modules/ui/charts/EChart";
 import { ChartLegend } from "@/modules/ui/charts/ChartLegend";
 import { Tabs, TabsList, TabsTrigger } from "@/modules/ui/Tabs";
 import {
+  CompactDistributionList,
+  DistributionLegendList,
   HourWindowSelector,
   KpiCard,
   MonitorCard as Card,
+  MonitorSectionHeader,
+  type DistributionLegendItem,
 } from "@/modules/monitor/MonitorPagePieces";
+
+const formatKpiNumber = (value: number) => formatCompact(value);
 
 export function MonitorRecordingNotice({
   t,
@@ -32,7 +39,7 @@ export function MonitorRecordingNotice({
 
   return (
     <Reveal>
-      <section className="overflow-hidden rounded-2xl border border-amber-200/80 bg-amber-50/90 p-4 shadow-sm dark:border-amber-400/20 dark:bg-amber-400/10">
+      <section className="mx-5 mb-4 overflow-hidden rounded-2xl border border-amber-200/80 bg-amber-50/90 p-4 shadow-sm dark:border-amber-400/20 dark:bg-amber-400/10">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 text-amber-700 dark:bg-amber-300/15 dark:text-amber-200">
@@ -90,43 +97,50 @@ export function MonitorKpiSection({
 }) {
   return (
     <>
+      <MonitorSectionHeader title={t("monitor.section_overview")} />
       <Reveal>
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard
             title={t("monitor.total_requests")}
-            value={<AnimatedNumber value={metrics.totalRequests} format={formatNumber} />}
+            value={
+              <AnimatedNumber value={metrics.totalRequests} format={formatKpiNumber} />
+            }
             hint={t("monitor.filtered_by_time")}
             icon={Activity}
+            to="/monitor/request-logs"
           />
           <KpiCard
             title={t("monitor.success_rate")}
             value={<AnimatedNumber value={metrics.successRate} format={formatRate} />}
             hint={t("monitor.success_count", {
-              success: formatNumber(metrics.successCount),
-              failed: formatNumber(metrics.failureCount),
+              success: formatKpiNumber(metrics.successCount),
+              failed: formatKpiNumber(metrics.failureCount),
             })}
             icon={ShieldCheck}
+            to="/monitor/request-logs"
           />
           <KpiCard
             title={t("monitor.total_token")}
-            value={<AnimatedNumber value={metrics.totalTokens} format={formatNumber} />}
-            hint={t("monitor.input_output_hint")}
-            icon={Sigma}
+            value={<AnimatedNumber value={metrics.totalTokens} format={formatKpiNumber} />}
+            hint={t("monitor.token_io_hint", {
+              input: formatKpiNumber(metrics.inputTokens),
+              output: formatKpiNumber(metrics.outputTokens),
+            })}
+            icon={Coins}
           />
           <KpiCard
-            title={t("monitor.output_token")}
-            value={<AnimatedNumber value={metrics.outputTokens} format={formatNumber} />}
-            hint={t("monitor.input_tokens_hint", {
-              count: formatNumber(metrics.inputTokens),
-            } as Record<string, unknown>)}
-            icon={Coins}
+            title={t("monitor.failed_requests")}
+            value={<AnimatedNumber value={metrics.failureCount} format={formatKpiNumber} />}
+            hint={t("monitor.failed_hint")}
+            icon={TriangleAlert}
+            to="/monitor/request-logs?status=failed"
           />
         </section>
       </Reveal>
 
       {!hasData && !isLoading ? (
         <Reveal>
-          <section className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
+          <section className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
             <div className="mx-auto flex max-w-md flex-col items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900/5 text-slate-700 dark:bg-white/10 dark:text-white/70">
                 <ChartSpline size={20} />
@@ -134,9 +148,7 @@ export function MonitorKpiSection({
               <p className="text-sm font-semibold text-slate-900 dark:text-white">
                 {t("monitor.no_data")}
               </p>
-              <p className="text-sm text-slate-600 dark:text-white/65">
-                {t("monitor.no_data_hint")}
-              </p>
+              <p className="text-sm text-slate-600 dark:text-white/65">{t("monitor.no_data_hint")}</p>
               <button
                 type="button"
                 onClick={() => void refreshData()}
@@ -152,6 +164,45 @@ export function MonitorKpiSection({
   );
 }
 
+function DistributionPanel({
+  title,
+  description,
+  actions,
+  loading,
+  legend,
+  onToggleLegend,
+  chartOption,
+  noDataLabel,
+}: {
+  title: string;
+  description: string;
+  actions?: React.ReactNode;
+  loading: boolean;
+  legend: DistributionLegendItem[];
+  onToggleLegend: (name: string) => void;
+  chartOption: Record<string, unknown>;
+  noDataLabel: string;
+}) {
+  const useCompactList = legend.length > 0 && legend.length <= 2;
+
+  return (
+    <Card title={title} description={description} actions={actions} loading={loading}>
+      {legend.length === 0 ? (
+        <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-slate-200/80 text-sm text-slate-500 dark:border-white/10 dark:text-white/45">
+          {noDataLabel}
+        </div>
+      ) : useCompactList ? (
+        <CompactDistributionList items={legend} />
+      ) : (
+        <div className="flex h-auto flex-col gap-4 md:grid md:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)] md:items-center">
+          <EChart option={chartOption} className="h-56 min-w-0 md:h-[22rem]" />
+          <DistributionLegendList items={legend} onToggle={onToggleLegend} />
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export function MonitorDistributionSections({
   t,
   timeRange,
@@ -164,6 +215,7 @@ export function MonitorDistributionSections({
   dailyLegendAvailability,
   dailyLegendSelected,
   toggleDailyLegend,
+  hasDailyTrend,
   apikeyDistributionData,
   apikeyMetric,
   setApikeyMetric,
@@ -177,29 +229,18 @@ export function MonitorDistributionSections({
   modelMetric: "requests" | "tokens";
   setModelMetric: (value: "requests" | "tokens") => void;
   modelDistributionOption: Record<string, unknown>;
-  modelDistributionLegend: Array<{
-    name: string;
-    valueLabel: string;
-    percentLabel: string;
-    colorClass: string;
-    enabled: boolean;
-  }>;
+  modelDistributionLegend: DistributionLegendItem[];
   toggleModelDistributionLegend: (name: string) => void;
   dailyTrendOption: Record<string, unknown>;
   dailyLegendAvailability: { hasInput: boolean; hasOutput: boolean; hasRequests: boolean };
   dailyLegendSelected: Record<string, boolean>;
   toggleDailyLegend: (key: string) => void;
+  hasDailyTrend: boolean;
   apikeyDistributionData: Array<{ name: string; value: number }>;
   apikeyMetric: "requests" | "tokens";
   setApikeyMetric: (value: "requests" | "tokens") => void;
   apikeyDistributionOption: Record<string, unknown>;
-  apikeyDistributionLegend: Array<{
-    name: string;
-    valueLabel: string;
-    percentLabel: string;
-    colorClass: string;
-    enabled: boolean;
-  }>;
+  apikeyDistributionLegend: DistributionLegendItem[];
   toggleApikeyDistributionLegend: (name: string) => void;
   isRefreshing: boolean;
 }) {
@@ -226,9 +267,10 @@ export function MonitorDistributionSections({
 
   return (
     <>
+      <MonitorSectionHeader title={t("monitor.section_distribution")} />
       <Reveal>
         <section className="grid gap-4 lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)]">
-          <Card
+          <DistributionPanel
             title={t("monitor.model_distribution")}
             description={t("monitor.last_days_desc", {
               days: timeRange,
@@ -236,100 +278,82 @@ export function MonitorDistributionSections({
             })}
             actions={modelActions}
             loading={isRefreshing}
-          >
-            <div className="flex h-auto flex-col gap-4 md:grid md:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)] md:items-center">
-              <EChart option={modelDistributionOption} className="h-56 min-w-0 md:h-[22rem]" />
-              <div className="flex h-auto flex-col justify-start gap-2 overflow-y-auto pr-2 md:max-h-[22rem]">
-                {modelDistributionLegend.map((item) => (
-                  <button
-                    key={item.name}
-                    type="button"
-                    aria-pressed={item.enabled}
-                    onClick={() => toggleModelDistributionLegend(item.name)}
-                    className={[
-                      "grid w-full grid-cols-[minmax(0,1fr)_max-content_max-content] items-center gap-x-3 rounded-xl px-2 py-1.5 text-left text-sm transition",
-                      item.enabled
-                        ? "text-slate-900 hover:bg-slate-100 dark:text-white dark:hover:bg-white/10"
-                        : "text-slate-400 opacity-60 hover:bg-slate-50 dark:text-white/35 dark:hover:bg-white/5",
-                    ].join(" ")}
-                  >
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span
-                        className={`h-3.5 w-3.5 shrink-0 rounded-full ${item.colorClass} opacity-80 ring-1 ring-black/5 dark:ring-white/10`}
-                      />
-                      <span className="min-w-0 truncate text-slate-700 dark:text-white/80">
-                        {item.name}
-                      </span>
-                    </div>
-                    <span className="min-w-[3.5rem] whitespace-nowrap text-right font-semibold tabular-nums text-slate-900 dark:text-white">
-                      {item.valueLabel}
-                    </span>
-                    <span className="min-w-[4.25rem] whitespace-nowrap text-right tabular-nums text-slate-500 dark:text-white/55">
-                      {item.percentLabel}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </Card>
+            legend={modelDistributionLegend}
+            onToggleLegend={toggleModelDistributionLegend}
+            chartOption={modelDistributionOption}
+            noDataLabel={t("monitor.no_data")}
+          />
 
           <Card
             title={t("monitor.daily_usage_trend")}
             description={t("monitor.daily_desc", { days: timeRange })}
             loading={isRefreshing}
           >
-            <div className="flex h-72 min-w-0 flex-col overflow-hidden">
-              <EChart
-                option={dailyTrendOption}
-                className="min-h-0 flex-1 min-w-0"
-                replaceMerge="series"
-              />
-              <ChartLegend
-                className="shrink-0 pt-4"
-                items={[
-                  ...(dailyLegendAvailability.hasInput
-                    ? [
-                        {
-                          key: "daily_input",
-                          label: t("monitor.input_token"),
-                          colorClass: "bg-violet-400",
-                          enabled: dailyLegendSelected["daily_input"] ?? true,
-                          onToggle: toggleDailyLegend,
-                        },
-                      ]
-                    : []),
-                  ...(dailyLegendAvailability.hasOutput
-                    ? [
-                        {
-                          key: "daily_output",
-                          label: t("monitor.output_token_legend"),
-                          colorClass: "bg-emerald-400",
-                          enabled: dailyLegendSelected["daily_output"] ?? true,
-                          onToggle: toggleDailyLegend,
-                        },
-                      ]
-                    : []),
-                  ...(dailyLegendAvailability.hasRequests
-                    ? [
-                        {
-                          key: "daily_requests",
-                          label: t("monitor.requests"),
-                          colorClass: "bg-blue-500",
-                          enabled: dailyLegendSelected["daily_requests"] ?? true,
-                          onToggle: toggleDailyLegend,
-                        },
-                      ]
-                    : []),
-                ]}
-              />
-            </div>
+            {hasDailyTrend ? (
+              <div className="flex h-72 min-w-0 flex-col overflow-hidden">
+                <EChart
+                  option={dailyTrendOption}
+                  className="min-h-0 min-w-0 flex-1"
+                  replaceMerge="series"
+                />
+                <ChartLegend
+                  className="shrink-0 pt-4"
+                  items={[
+                    ...(dailyLegendAvailability.hasInput
+                      ? [
+                          {
+                            key: "daily_input",
+                            label: t("monitor.input_token"),
+                            colorClass: "bg-violet-400",
+                            enabled: dailyLegendSelected["daily_input"] ?? true,
+                            onToggle: toggleDailyLegend,
+                          },
+                        ]
+                      : []),
+                    ...(dailyLegendAvailability.hasOutput
+                      ? [
+                          {
+                            key: "daily_output",
+                            label: t("monitor.output_token_legend"),
+                            colorClass: "bg-emerald-400",
+                            enabled: dailyLegendSelected["daily_output"] ?? true,
+                            onToggle: toggleDailyLegend,
+                          },
+                        ]
+                      : []),
+                    ...(dailyLegendAvailability.hasRequests
+                      ? [
+                          {
+                            key: "daily_requests",
+                            label: t("monitor.requests"),
+                            colorClass: "bg-blue-500",
+                            enabled: dailyLegendSelected["daily_requests"] ?? true,
+                            onToggle: toggleDailyLegend,
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
+              </div>
+            ) : (
+              <div className="flex h-72 items-center justify-center rounded-xl border border-dashed border-slate-200/80 bg-slate-50/50 text-center dark:border-white/10 dark:bg-white/[0.02]">
+                <div className="max-w-sm px-4">
+                  <p className="text-sm font-semibold text-slate-700 dark:text-white/80">
+                    {t("monitor.daily_empty_title")}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-white/55">
+                    {t("monitor.daily_empty_desc")}
+                  </p>
+                </div>
+              </div>
+            )}
           </Card>
         </section>
       </Reveal>
 
       {apikeyDistributionData.length > 0 ? (
         <Reveal>
-          <Card
+          <DistributionPanel
             title={t("monitor.apikey_distribution")}
             description={t("monitor.apikey_distribution_desc", {
               days: timeRange,
@@ -337,42 +361,11 @@ export function MonitorDistributionSections({
             })}
             actions={apikeyActions}
             loading={isRefreshing}
-          >
-            <div className="flex h-auto flex-col gap-4 md:grid md:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)] md:items-center">
-              <EChart option={apikeyDistributionOption} className="h-56 min-w-0 md:h-[22rem]" />
-              <div className="flex h-auto flex-col justify-start gap-2 overflow-y-auto pr-2 md:max-h-[22rem]">
-                {apikeyDistributionLegend.map((item) => (
-                  <button
-                    key={item.name}
-                    type="button"
-                    aria-pressed={item.enabled}
-                    onClick={() => toggleApikeyDistributionLegend(item.name)}
-                    className={[
-                      "grid w-full grid-cols-[minmax(0,1fr)_max-content_max-content] items-center gap-x-3 rounded-xl px-2 py-1.5 text-left text-sm transition",
-                      item.enabled
-                        ? "text-slate-900 hover:bg-slate-100 dark:text-white dark:hover:bg-white/10"
-                        : "text-slate-400 opacity-60 hover:bg-slate-50 dark:text-white/35 dark:hover:bg-white/5",
-                    ].join(" ")}
-                  >
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span
-                        className={`h-3.5 w-3.5 shrink-0 rounded-full ${item.colorClass} opacity-80 ring-1 ring-black/5 dark:ring-white/10`}
-                      />
-                      <span className="min-w-0 truncate text-slate-700 dark:text-white/80">
-                        {item.name}
-                      </span>
-                    </div>
-                    <span className="min-w-[3.5rem] whitespace-nowrap text-right font-semibold tabular-nums text-slate-900 dark:text-white">
-                      {item.valueLabel}
-                    </span>
-                    <span className="min-w-[4.25rem] whitespace-nowrap text-right tabular-nums text-slate-500 dark:text-white/55">
-                      {item.percentLabel}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </Card>
+            legend={apikeyDistributionLegend}
+            onToggleLegend={toggleApikeyDistributionLegend}
+            chartOption={apikeyDistributionOption}
+            noDataLabel={t("monitor.no_data")}
+          />
         </Reveal>
       ) : null}
     </>
@@ -398,6 +391,7 @@ export function MonitorHourlySections({
   hourlyTokenPalette,
   hourlyTokenSelected,
   toggleHourlyTokenLegend,
+  hasHourlyData,
 }: {
   t: (key: string, options?: Record<string, unknown>) => string;
   isRefreshing: boolean;
@@ -420,54 +414,76 @@ export function MonitorHourlySections({
   hourlyTokenPalette: { classByKey: Record<string, string> };
   hourlyTokenSelected: Record<string, boolean>;
   toggleHourlyTokenLegend: (key: string) => void;
+  hasHourlyData: boolean;
 }) {
+  if (!hasHourlyData) {
+    return (
+      <>
+        <MonitorSectionHeader title={t("monitor.section_realtime")} />
+        <Reveal>
+          <section className="rounded-2xl border border-dashed border-slate-200/80 bg-white p-8 text-center dark:border-white/10 dark:bg-neutral-950/60">
+            <p className="text-sm font-semibold text-slate-700 dark:text-white/80">
+              {t("monitor.hourly_empty_title")}
+            </p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-white/55">
+              {t("monitor.hourly_empty_desc")}
+            </p>
+          </section>
+        </Reveal>
+      </>
+    );
+  }
+
   return (
     <>
-      <Reveal>
-        <Card
-          title={t("monitor.hourly_model.title")}
-          description={t("monitor.hourly_model_desc")}
-          actions={
-            <HourWindowSelector value={modelHourWindow as any} onChange={setModelHourWindow} />
-          }
-          loading={isRefreshing}
-        >
-          <EChart option={hourlyModelOption} className="h-64 sm:h-72" replaceMerge="series" />
-          <ChartLegend
-            className="max-h-32 justify-start overflow-y-auto pt-4 sm:max-h-none sm:justify-center"
-            items={hourlyModelLegendKeys.map((key) => ({
-              key,
-              label: getHourlyModelSeriesLabel(key),
-              colorClass: hourlyModelPalette.classByKey[key] ?? "bg-slate-400",
-              enabled: hourlyModelSelected[key] ?? true,
-              onToggle: toggleHourlyModelLegend,
-            }))}
-          />
-        </Card>
-      </Reveal>
+      <MonitorSectionHeader title={t("monitor.section_realtime")} />
+      <section className="grid gap-4 xl:grid-cols-2">
+        <Reveal>
+          <Card
+            title={t("monitor.hourly_model.title")}
+            description={t("monitor.hourly_model_desc")}
+            actions={
+              <HourWindowSelector value={modelHourWindow as HourWindow} onChange={setModelHourWindow} />
+            }
+            loading={isRefreshing}
+          >
+            <EChart option={hourlyModelOption} className="h-64 sm:h-72" replaceMerge="series" />
+            <ChartLegend
+              className="max-h-32 justify-start overflow-y-auto pt-4 sm:max-h-none sm:justify-center"
+              items={hourlyModelLegendKeys.map((key) => ({
+                key,
+                label: getHourlyModelSeriesLabel(key),
+                colorClass: hourlyModelPalette.classByKey[key] ?? "bg-slate-400",
+                enabled: hourlyModelSelected[key] ?? true,
+                onToggle: toggleHourlyModelLegend,
+              }))}
+            />
+          </Card>
+        </Reveal>
 
-      <Reveal>
-        <Card
-          title={t("monitor.hourly_token.title")}
-          description={t("monitor.hourly_token_desc")}
-          actions={
-            <HourWindowSelector value={tokenHourWindow as any} onChange={setTokenHourWindow} />
-          }
-          loading={isRefreshing}
-        >
-          <EChart option={hourlyTokenOption} className="h-64 sm:h-72" replaceMerge="series" />
-          <ChartLegend
-            className="max-h-32 justify-start overflow-y-auto pt-4 sm:max-h-none sm:justify-center"
-            items={hourlySeries.tokenKeys.map((key) => ({
-              key,
-              label: hourlyTokenLabels[key] ?? key,
-              colorClass: hourlyTokenPalette.classByKey[key] ?? "bg-slate-400",
-              enabled: hourlyTokenSelected[key] ?? true,
-              onToggle: toggleHourlyTokenLegend,
-            }))}
-          />
-        </Card>
-      </Reveal>
+        <Reveal>
+          <Card
+            title={t("monitor.hourly_token.title")}
+            description={t("monitor.hourly_token_desc")}
+            actions={
+              <HourWindowSelector value={tokenHourWindow as HourWindow} onChange={setTokenHourWindow} />
+            }
+            loading={isRefreshing}
+          >
+            <EChart option={hourlyTokenOption} className="h-64 sm:h-72" replaceMerge="series" />
+            <ChartLegend
+              className="max-h-32 justify-start overflow-y-auto pt-4 sm:max-h-none sm:justify-center"
+              items={hourlySeries.tokenKeys.map((key) => ({
+                key,
+                label: hourlyTokenLabels[key] ?? key,
+                colorClass: hourlyTokenPalette.classByKey[key] ?? "bg-slate-400",
+                enabled: hourlyTokenSelected[key] ?? true,
+                onToggle: toggleHourlyTokenLegend,
+              }))}
+            />
+          </Card>
+        </Reveal>
+      </section>
     </>
   );
 }

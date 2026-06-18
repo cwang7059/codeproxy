@@ -1819,7 +1819,22 @@
     "last_12h": "最近 12 小时",
     "last_24h": "最近 24 小时",
     "n_days": "{{count}} 天",
-    "last_nh": "最近 {{count}} 小时"
+    "last_nh": "最近 {{count}} 小时",
+    "section_overview": "业务概览",
+    "section_distribution": "结构与趋势",
+    "section_realtime": "实时细度",
+    "failed_requests": "失败请求",
+    "failed_hint": "点击下钻查看失败明细",
+    "token_io_hint": "输入 {{input}} · 输出 {{output}}",
+    "filter_active": "已筛选",
+    "clear_filter": "清除筛选",
+    "updated_at": "数据更新于 {{time}}",
+    "updated_fallback": "尚未刷新",
+    "distribution_center_total": "合计",
+    "daily_empty_title": "暂无每日趋势数据",
+    "daily_empty_desc": "所选时间范围内没有请求或 Token 用量记录。",
+    "hourly_empty_title": "暂无小时级数据",
+    "hourly_empty_desc": "新的请求经过代理后，小时图表会逐步出现。"
   },
   "shell": {
     "console": "控制台",

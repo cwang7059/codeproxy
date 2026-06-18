@@ -1804,7 +1804,22 @@
     "last_12h": "Last 12h",
     "last_24h": "Last 24h",
     "n_days": "{{count}} days",
-    "last_nh": "Last {{count}}h"
+    "last_nh": "Last {{count}}h",
+    "section_overview": "Business overview",
+    "section_distribution": "Structure & trends",
+    "section_realtime": "Real-time detail",
+    "failed_requests": "Failed requests",
+    "failed_hint": "Click to drill down into failures",
+    "token_io_hint": "Input {{input}} · Output {{output}}",
+    "filter_active": "Filtered",
+    "clear_filter": "Clear filter",
+    "updated_at": "Updated at {{time}}",
+    "updated_fallback": "Not refreshed yet",
+    "distribution_center_total": "Total",
+    "daily_empty_title": "No daily trend data",
+    "daily_empty_desc": "No requests or token usage in the selected range.",
+    "hourly_empty_title": "No hourly data yet",
+    "hourly_empty_desc": "Hourly charts appear once new proxied requests flow in."
   },
   "shell": {
     "console": "Console",

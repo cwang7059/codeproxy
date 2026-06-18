@@ -39,12 +39,27 @@ describe("MonitorPage distribution legends", () => {
             colorClass: "bg-sky-500",
             enabled: true,
           },
+          {
+            name: "gpt-4.2",
+            valueLabel: "3",
+            percentLabel: "21.4%",
+            colorClass: "bg-emerald-400",
+            enabled: true,
+          },
+          {
+            name: "gpt-4.3",
+            valueLabel: "1",
+            percentLabel: "7.1%",
+            colorClass: "bg-violet-400",
+            enabled: true,
+          },
         ]}
         toggleModelDistributionLegend={toggleModelDistributionLegend}
         dailyTrendOption={{}}
         dailyLegendAvailability={{ hasInput: true, hasOutput: true, hasRequests: true }}
         dailyLegendSelected={{ daily_input: true, daily_output: true, daily_requests: true }}
         toggleDailyLegend={() => undefined}
+        hasDailyTrend
         apikeyDistributionData={[]}
         apikeyMetric="requests"
         setApikeyMetric={() => undefined}

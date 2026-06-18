@@ -32,9 +32,21 @@ export function useMonitorDashboardState() {
   const [modelMetric, setModelMetric] = useState<MonitorMetric>("requests");
   const [apikeyMetric, setApikeyMetric] = useState<MonitorMetric>("requests");
 
-  const applyFilter = useCallback(() => {
-    setApiFilter(apiFilterInput);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setApiFilter(apiFilterInput.trim());
+    }, 400);
+    return () => window.clearTimeout(timer);
   }, [apiFilterInput]);
+
+  const applyFilter = useCallback(() => {
+    setApiFilter(apiFilterInput.trim());
+  }, [apiFilterInput]);
+
+  const clearFilter = useCallback(() => {
+    setApiFilterInput("");
+    setApiFilter("");
+  }, []);
 
   return {
     compact,
@@ -44,6 +56,7 @@ export function useMonitorDashboardState() {
     setApiFilterInput,
     apiFilter,
     applyFilter,
+    clearFilter,
     modelHourWindow,
     setModelHourWindow,
     tokenHourWindow,
