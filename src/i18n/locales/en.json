@@ -2378,7 +2378,18 @@
     "prev_page": "Previous page",
     "next_page": "Next page",
     "last_page": "Last page",
-    "rows_per_page": "Rows per page"
+    "rows_per_page": "Rows per page",
+    "section_overview": "Overview",
+    "section_filters": "Filters",
+    "section_table": "Request details",
+    "clear_filters": "Clear all filters",
+    "clear_filter": "Clear filter",
+    "filters_active": "{{count}} filters active",
+    "stats_scope_time": "Scoped to selected time range",
+    "stats_scope_filtered": "Scoped to active filters",
+    "stats_success_hint": "Success vs failure share",
+    "stats_tokens_hint": "Input + output combined",
+    "stats_cost_hint": "Estimated from model pricing"
   },
   "ccswitch": {
     "import_to_ccswitch": "Import to CC Switch",

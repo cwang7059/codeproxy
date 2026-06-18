@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import type { UsageLogItem } from "@/lib/http/apis/usage";
 import { parseUsageTimestampMs } from "@/modules/monitor/monitor-utils";
+import { formatCompact } from "@/modules/monitor/monitor-format";
 import { Tabs, TabsList, TabsTrigger } from "@/modules/ui/Tabs";
 import { OverflowTooltip } from "@/modules/ui/Tooltip";
 import { Select } from "@/modules/ui/Select";
@@ -199,11 +200,12 @@ export function buildRequestLogsColumns(
       key: "id",
       label: t("request_logs.col_id"),
       width: "w-20",
+      headerClassName: "text-right",
       cellClassName:
         "font-mono text-xs font-medium tabular-nums text-slate-600 dark:text-white/72",
       render: (row) => (
-        <OverflowTooltip content={`#${row.id}`} className="block min-w-0">
-          <span className="block min-w-0 truncate">#{row.id}</span>
+        <OverflowTooltip content={`#${row.id}`} className={NUMERIC_CELL_ALIGN}>
+          <span className={NUMERIC_TEXT}>#{row.id}</span>
         </OverflowTooltip>
       ),
     },
@@ -238,7 +240,7 @@ export function buildRequestLogsColumns(
           className="block min-w-0"
         >
           <span
-            className={`block min-w-0 truncate text-xs font-medium ${row.apiKeyName || row.isSystemCall ? "text-indigo-600 dark:text-indigo-300" : "text-slate-500 dark:text-white/35"}`}
+            className={`block min-w-0 truncate text-xs font-medium ${row.apiKeyName || row.isSystemCall ? "text-slate-800 dark:text-white/85" : "text-slate-500 dark:text-white/35"}`}
           >
             {row.isSystemCall
               ? t("request_logs.system_call")
@@ -269,7 +271,7 @@ export function buildRequestLogsColumns(
           className="block min-w-0"
         >
           <span
-            className={`block min-w-0 truncate text-xs font-medium ${row.channelName ? "text-violet-600 dark:text-violet-300" : "text-slate-500 dark:text-white/35"}`}
+            className={`block min-w-0 truncate text-xs font-medium ${row.channelName ? "text-slate-700 dark:text-white/78" : "text-slate-500 dark:text-white/35"}`}
           >
             {row.channelName || "--"}
           </span>
@@ -420,7 +422,7 @@ export function buildRequestLogsColumns(
           className={NUMERIC_CELL_ALIGN}
         >
           <span className={`${NUMERIC_TEXT} font-medium text-slate-900 dark:text-white`}>
-            {row.totalTokens.toLocaleString()}
+            {formatCompact(row.totalTokens)}
           </span>
         </OverflowTooltip>
       ),

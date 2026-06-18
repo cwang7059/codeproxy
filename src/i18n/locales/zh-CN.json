@@ -2613,7 +2613,18 @@
     "rows_per_page": "每页行数",
     "records_short": "记录数",
     "more_actions": "更多操作",
-    "high_risk_action_hint": "高风险操作，删除前仍需二次确认。"
+    "high_risk_action_hint": "高风险操作，删除前仍需二次确认。",
+    "section_overview": "数据概览",
+    "section_filters": "筛选条件",
+    "section_table": "请求明细",
+    "clear_filters": "清除全部筛选",
+    "clear_filter": "清除筛选",
+    "filters_active": "已启用 {{count}} 项筛选",
+    "stats_scope_time": "按时间范围统计",
+    "stats_scope_filtered": "按当前筛选统计",
+    "stats_success_hint": "成功与失败占比",
+    "stats_tokens_hint": "输入 + 输出合计",
+    "stats_cost_hint": "基于模型费用配置估算"
   },
   "ccswitch": {
     "import_to_ccswitch": "导入到 CC Switch",

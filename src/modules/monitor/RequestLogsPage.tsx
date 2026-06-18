@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { LoaderCircle, MoreHorizontal, RefreshCw, ScrollText } from "lucide-react";
+import { LoaderCircle, MoreHorizontal, RefreshCw, ScrollText, ShieldCheck, Sigma, DollarSign } from "lucide-react";
 import { formatCompact } from "@/modules/monitor/monitor-format";
 import { usageApi } from "@/lib/http/apis";
 import type { ClearUsageLogsPayload, UsageLogItem, UsageLogsResponse } from "@/lib/http/apis/usage";
@@ -24,6 +24,7 @@ import {
   type RequestLogsRow as LogRow,
   type TimeRange,
 } from "@/modules/monitor/requestLogsShared";
+import { MonitorSectionHeader } from "@/modules/monitor/MonitorPagePieces";
 type StatusFilter = "" | "success" | "failed";
 const DEFAULT_LOG_STATS = { total: 0, success_rate: 0, total_tokens: 0, total_cost: 0 };
 const DEFAULT_CLEAR_OPTIONS: ClearUsageLogsPayload = {
@@ -234,12 +235,16 @@ export function RequestLogsPage() {
         key: "records",
         label: t("request_logs.records_short"),
         value: stats.total.toLocaleString(),
+        hint: t("request_logs.stats_scope_time"),
+        icon: ScrollText,
         valueClass: "text-slate-900 dark:text-white",
       },
       {
         key: "success-rate",
         label: t("common.success_rate"),
         value: `${stats.success_rate.toFixed(1)}%`,
+        hint: t("request_logs.stats_success_hint"),
+        icon: ShieldCheck,
         valueClass: "text-emerald-600 dark:text-emerald-400",
       },
       {
@@ -247,17 +252,69 @@ export function RequestLogsPage() {
         label: t("request_logs.col_total_token"),
         value: formatCompact(stats.total_tokens),
         valueTitle: stats.total_tokens.toLocaleString(),
+        hint: t("request_logs.stats_tokens_hint"),
+        icon: Sigma,
         valueClass: "text-sky-600 dark:text-sky-400",
       },
       {
         key: "cost",
         label: t("request_logs.col_cost"),
         value: `$${stats.total_cost >= 100 ? stats.total_cost.toFixed(2) : stats.total_cost.toFixed(4)}`,
+        hint: t("request_logs.stats_cost_hint"),
+        icon: DollarSign,
         valueClass: "text-violet-600 dark:text-violet-400",
       },
     ],
     [stats.success_rate, stats.total, stats.total_cost, stats.total_tokens, t],
   );
+
+  const hasActiveFilters = Boolean(apiQuery || modelQuery || channelQuery || statusFilter);
+
+  const activeFilterChips = useMemo(() => {
+    const chips: Array<{ key: string; label: string; onClear: () => void }> = [];
+    if (apiQuery) {
+      const keyLabel =
+        keyOptions.find((option) => option.value === apiQuery)?.label ?? apiQuery;
+      chips.push({
+        key: "api",
+        label: `${t("request_logs.filter_key")}: ${keyLabel}`,
+        onClear: () => setApiQuery(""),
+      });
+    }
+    if (modelQuery) {
+      chips.push({
+        key: "model",
+        label: `${t("request_logs.filter_model")}: ${modelQuery}`,
+        onClear: () => setModelQuery(""),
+      });
+    }
+    if (channelQuery) {
+      chips.push({
+        key: "channel",
+        label: `${t("request_logs.filter_channel")}: ${channelQuery}`,
+        onClear: () => setChannelQuery(""),
+      });
+    }
+    if (statusFilter) {
+      chips.push({
+        key: "status",
+        label: `${t("request_logs.filter_status")}: ${
+          statusFilter === "failed"
+            ? t("request_logs.status_failed")
+            : t("request_logs.status_success")
+        }`,
+        onClear: () => setStatusFilter(""),
+      });
+    }
+    return chips;
+  }, [apiQuery, channelQuery, keyOptions, modelQuery, statusFilter, t]);
+
+  const clearAllFilters = useCallback(() => {
+    setApiQuery("");
+    setModelQuery("");
+    setChannelQuery("");
+    setStatusFilter("");
+  }, []);
 
   useEffect(() => {
     if (!actionsOpen) return;
@@ -369,9 +426,9 @@ export function RequestLogsPage() {
           <div className="flex flex-wrap items-center gap-2">
             <RequestLogsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
             <Button
-              variant="ghost"
+              variant="primary"
               size="sm"
-              onClick={() => fetchLogs(1, pageSize)}
+              onClick={() => fetchLogs(currentPage, pageSize)}
               disabled={loading}
               aria-busy={loading}
               title={t("request_logs.refresh")}
@@ -422,25 +479,77 @@ export function RequestLogsPage() {
           </div>
         </div>
 
-        <div className="grid gap-3 px-5 pb-4 sm:grid-cols-2 xl:grid-cols-4">
-          {statCards.map((card) => (
-            <div
-              key={card.key}
-              className="rounded-xl border border-slate-200/80 bg-slate-50/50 px-4 py-3.5 dark:border-white/[0.08] dark:bg-white/[0.02]"
-            >
-              <p className="text-xs font-medium text-slate-500 dark:text-white/58">{card.label}</p>
-              <p
-                className={`mt-1.5 font-mono text-2xl font-semibold tabular-nums tracking-tight ${card.valueClass}`}
-                title={"valueTitle" in card ? card.valueTitle : undefined}
-              >
-                {card.value}
-              </p>
-            </div>
-          ))}
+        <div className="px-5 pb-4">
+          <MonitorSectionHeader title={t("request_logs.section_overview")} />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {statCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={card.key}
+                  className="rounded-xl border border-slate-200/80 bg-slate-50/50 px-4 py-3.5 dark:border-white/[0.08] dark:bg-white/[0.02]"
+                >
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-white/55">
+                    <Icon size={14} className="text-slate-700 dark:text-white/75" aria-hidden="true" />
+                    <span>{card.label}</span>
+                  </p>
+                  <p
+                    className={`mt-2 text-right font-mono text-2xl font-semibold tabular-nums tracking-tight ${card.valueClass}`}
+                    title={"valueTitle" in card ? card.valueTitle : undefined}
+                  >
+                    {card.value}
+                  </p>
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-white/45">
+                    {hasActiveFilters ? t("request_logs.stats_scope_filtered") : card.hint}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* 筛选 */}
-        <div className="border-t border-slate-100 px-5 py-3 dark:border-neutral-800/60">
+        <div className="border-t border-slate-100 px-5 pt-4 pb-3 dark:border-neutral-800/60">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-white/50">
+                {t("request_logs.section_filters")}
+              </h3>
+              {hasActiveFilters ? (
+                <p className="mt-1 text-xs text-slate-500 dark:text-white/45">
+                  {t("request_logs.filters_active", { count: activeFilterChips.length })}
+                </p>
+              ) : null}
+            </div>
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="shrink-0 rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-white/65 dark:hover:bg-white/5"
+              >
+                {t("request_logs.clear_filters")}
+              </button>
+            ) : null}
+          </div>
+          {activeFilterChips.length > 0 ? (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {activeFilterChips.map((chip) => (
+                <span
+                  key={chip.key}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-blue-200/80 bg-blue-50/80 px-2.5 py-1 text-xs font-medium text-blue-700 dark:border-blue-500/25 dark:bg-blue-500/10 dark:text-blue-300"
+                >
+                  <span className="max-w-[240px] truncate">{chip.label}</span>
+                  <button
+                    type="button"
+                    onClick={chip.onClear}
+                    className="rounded-full px-1 text-blue-600/80 transition hover:text-blue-900 dark:text-blue-200/80 dark:hover:text-blue-100"
+                    aria-label={t("request_logs.clear_filter")}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : null}
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
               <SearchableSelect
                 value={apiQuery}
@@ -482,6 +591,12 @@ export function RequestLogsPage() {
                 className="w-full sm:w-auto"
               />
           </div>
+        </div>
+
+        <div className="border-t border-slate-100 px-5 pt-3 pb-1 dark:border-neutral-800/60">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-white/50">
+            {t("request_logs.section_table")}
+          </h3>
         </div>
 
         {/* 表格区域 — 自适应视口高度，内部滚动 */}
