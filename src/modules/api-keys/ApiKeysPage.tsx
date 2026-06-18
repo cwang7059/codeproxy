@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Plus, KeyRound, RefreshCw } from "lucide-react";
+import { KeyRound, Plus, RefreshCw, ShieldCheck, ShieldOff, Sigma } from "lucide-react";
 import { apiKeyEntriesApi, apiKeysApi, type ApiKeyEntry } from "@/lib/http/apis/api-keys";
 import {
   applyApiKeyPermissionProfile,
@@ -19,7 +19,6 @@ import {
 } from "@/modules/api-keys/apiKeyPageUtils";
 import { createApiKeyColumns } from "@/modules/api-keys/components/ApiKeyColumns";
 import { DeleteApiKeyModal } from "@/modules/api-keys/components/DeleteApiKeyModal";
-import { Card } from "@/modules/ui/Card";
 import { Button } from "@/modules/ui/Button";
 import { EmptyState } from "@/modules/ui/EmptyState";
 import { useToast } from "@/modules/ui/ToastProvider";
@@ -38,8 +37,15 @@ import {
   deriveCcSwitchImportSettingsFromConfigList,
   type CcSwitchImportConfigListItem,
 } from "@/modules/ccswitch/ccswitchImportConfigList";
+import {
+  computeApiKeyPageStats,
+  filterApiKeyEntries,
+  type ApiKeyStatusFilter,
+} from "@/modules/api-keys/api-keys-page-utils";
 import { LogContentModal } from "@/modules/monitor/LogContentModal";
 import { ErrorDetailModal } from "@/modules/monitor/ErrorDetailModal";
+import { MonitorSectionHeader } from "@/modules/monitor/MonitorPagePieces";
+import { TextInput } from "@/modules/ui/Input";
 import type { ApiKeyFormValues } from "@/modules/api-keys/types";
 
 function normalizeRoutePath(path: string): string {
@@ -99,6 +105,8 @@ export function ApiKeysPage() {
   >([]);
   const [saving, setSaving] = useState(false);
   const [permissionProfiles, setPermissionProfiles] = useState<ApiKeyPermissionProfile[]>([]);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ApiKeyStatusFilter>("");
   const [form, setForm] = useState<ApiKeyFormValues>(() => makeEmptyApiKeyForm());
   const { channelGroupItems, channelGroupByName, refreshPermissionOptions } =
     useApiKeyPermissionOptions();
@@ -502,8 +510,6 @@ export function ApiKeysPage() {
     [ccSwitchImportEntry, ccSwitchImportConfigs, channelGroupItems, auth, notify, t],
   );
 
-  /* ─── column definitions ─── */
-
   const apiKeyColumns = useMemo(
     () =>
       createApiKeyColumns({
@@ -526,53 +532,208 @@ export function ApiKeysPage() {
     ],
   );
 
+  const stats = useMemo(() => computeApiKeyPageStats(entries), [entries]);
+  const filteredEntries = useMemo(
+    () => filterApiKeyEntries(entries, search, statusFilter),
+    [entries, search, statusFilter],
+  );
+  const hasActiveFilters = Boolean(search.trim() || statusFilter);
+  const useCompactTable = filteredEntries.length <= 15;
+
+  const statCards = useMemo(
+    () => [
+      {
+        key: "total",
+        label: t("api_keys_page.kpi_total"),
+        value: stats.total.toLocaleString(),
+        hint: t("api_keys_page.kpi_total_hint"),
+        icon: KeyRound,
+        valueClass: "text-slate-900 dark:text-white",
+      },
+      {
+        key: "active",
+        label: t("api_keys_page.kpi_active"),
+        value: stats.active.toLocaleString(),
+        hint: t("api_keys_page.kpi_active_hint"),
+        icon: ShieldCheck,
+        valueClass: "text-emerald-700 dark:text-emerald-300",
+      },
+      {
+        key: "disabled",
+        label: t("api_keys_page.kpi_disabled"),
+        value: stats.disabled.toLocaleString(),
+        hint: t("api_keys_page.kpi_disabled_hint"),
+        icon: ShieldOff,
+        valueClass: "text-rose-700 dark:text-rose-300",
+      },
+      {
+        key: "restricted",
+        label: t("api_keys_page.kpi_restricted"),
+        value: stats.restricted.toLocaleString(),
+        hint: t("api_keys_page.kpi_restricted_hint"),
+        icon: Sigma,
+        valueClass: "text-amber-700 dark:text-amber-300",
+      },
+    ],
+    [stats, t],
+  );
+
   /* ─── main render ─── */
 
   return (
-    <div className="space-y-6">
-      <Card
-        title={t("api_keys_page.title")}
-        description={t("api_keys_page.description")}
-        actions={
-          <div className="flex gap-2">
+    <section className="space-y-6">
+      <div className="rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgb(15_23_42_/_0.035)] dark:border-white/[0.06] dark:bg-neutral-950/70 dark:shadow-[0_1px_2px_rgb(0_0_0_/_0.22)]">
+        <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5 pb-4">
+          <div className="min-w-0">
+            <h1 className="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white">
+              <KeyRound size={18} aria-hidden="true" />
+              {t("api_keys_page.title")}
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-white/45">
+              {t("api_keys_page.description")}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="secondary"
               size="sm"
               onClick={() => void loadEntries()}
               disabled={loading}
+              className="gap-1.5"
             >
-              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} aria-hidden="true" />
               {t("api_keys_page.refresh")}
             </Button>
-            <Button variant="primary" size="sm" onClick={handleOpenCreate}>
-              <Plus size={14} />
+            <Button variant="primary" size="sm" onClick={handleOpenCreate} className="gap-1.5">
+              <Plus size={14} aria-hidden="true" />
               {t("api_keys_page.create_key")}
             </Button>
           </div>
-        }
-        loading={loading}
-      >
-        {entries.length === 0 ? (
-          <EmptyState
-            title={t("api_keys_page.no_keys")}
-            description={t("api_keys_page.no_keys_desc")}
-            icon={<KeyRound size={32} className="text-slate-400" />}
+        </div>
+
+        <div className="border-t border-slate-100 px-5 pb-4 pt-4 dark:border-neutral-800/60">
+          <MonitorSectionHeader title={t("api_keys_page.section_overview")} />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {statCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={card.key}
+                  className="rounded-xl border border-slate-200/80 bg-slate-50/50 px-4 py-3.5 dark:border-white/[0.08] dark:bg-white/[0.02]"
+                >
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-white/55">
+                    <Icon size={14} className="text-slate-700 dark:text-white/75" aria-hidden="true" />
+                    <span>{card.label}</span>
+                  </p>
+                  <p
+                    className={`mt-2 text-right font-mono text-2xl font-semibold tabular-nums tracking-tight ${card.valueClass}`}
+                  >
+                    {card.value}
+                  </p>
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-white/45">
+                    {hasActiveFilters ? t("api_keys_page.stats_scope_filtered") : card.hint}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="border-t border-slate-100 px-5 pt-4 pb-3 dark:border-neutral-800/60">
+          <MonitorSectionHeader
+            title={t("api_keys_page.section_filters")}
+            description={t("api_keys_page.section_filters_desc")}
           />
-        ) : (
-          <VirtualTable<ApiKeyEntry>
-            rows={entries}
-            columns={apiKeyColumns}
-            rowKey={(row) => row.key}
-            rowHeight={44}
-            height="h-[calc(100dvh-260px)] max-h-[70vh]"
-            minHeight="min-h-[320px]"
-            minWidth="min-w-[1820px]"
-            caption={t("api_keys_page.table_caption")}
-            emptyText={t("api_keys_page.no_api_keys")}
-            rowClassName={(row) => (row.disabled ? "opacity-50" : "")}
-          />
-        )}
-      </Card>
+          <div className="space-y-3">
+            <TextInput
+              value={search}
+              onChange={(event) => setSearch(event.currentTarget.value)}
+              placeholder={t("api_keys_page.search_placeholder")}
+              type="search"
+              name="api_key_search"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <div className="flex flex-wrap gap-2">
+              {([
+                ["", t("api_keys_page.filter_all")],
+                ["active", t("api_keys_page.filter_active")],
+                ["disabled", t("api_keys_page.filter_disabled")],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value || "all"}
+                  type="button"
+                  onClick={() => setStatusFilter(value)}
+                  className={[
+                    "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition",
+                    statusFilter === value
+                      ? "border-blue-200/80 bg-blue-50/80 text-blue-700 dark:border-blue-500/25 dark:bg-blue-500/10 dark:text-blue-300"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-neutral-950/60 dark:text-white/65 dark:hover:bg-white/5",
+                  ].join(" ")}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-100 px-5 pt-3 pb-1 dark:border-neutral-800/60">
+          <MonitorSectionHeader title={t("api_keys_page.section_table")} />
+        </div>
+
+        <div
+          className={[
+            "relative px-5 pb-4",
+            useCompactTable ? "min-h-0" : "h-[calc(100dvh-380px)] min-h-[320px] overflow-hidden",
+          ].join(" ")}
+        >
+          {entries.length === 0 && !loading ? (
+            <EmptyState
+              title={t("api_keys_page.no_keys")}
+              description={t("api_keys_page.no_keys_desc")}
+              icon={<KeyRound size={32} className="text-slate-400" />}
+            />
+          ) : (
+            <VirtualTable<ApiKeyEntry>
+              rows={filteredEntries}
+              columns={apiKeyColumns}
+              rowKey={(row) => row.key}
+              rowHeight={44}
+              naturalFlow={useCompactTable}
+              height={useCompactTable ? "h-auto" : "h-full"}
+              minHeight={useCompactTable ? "min-h-0" : "min-h-full"}
+              minWidth="min-w-[1720px]"
+              stretch={false}
+              caption={t("api_keys_page.table_caption")}
+              emptyText={t("api_keys_page.no_results")}
+              rowClassName={(row) => (row.disabled ? "opacity-50" : "")}
+              showAllLoadedMessage={false}
+            />
+          )}
+
+          {loading ? (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-b-2xl bg-white/70 backdrop-blur-sm dark:bg-neutral-950/55">
+              <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/70 dark:text-white/75">
+                <span
+                  className="h-4 w-4 rounded-full border-2 border-slate-300 border-t-slate-900 motion-reduce:animate-none motion-safe:animate-spin dark:border-white/20 dark:border-t-white/80"
+                  aria-hidden="true"
+                />
+                <span role="status">{t("api_keys_page.loading")}</span>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {entries.length > 0 ? (
+          <div className="border-t border-slate-100 px-5 py-3 text-xs text-slate-500 dark:border-neutral-800/60 dark:text-white/45">
+            {t("api_keys_page.showing_keys", {
+              visible: filteredEntries.length.toLocaleString(),
+              total: entries.length.toLocaleString(),
+            })}
+          </div>
+        ) : null}
+      </div>
 
       <ApiKeyFormModal
         t={t}
@@ -664,6 +825,6 @@ export function ApiKeysPage() {
         model={usageErrorModalModel}
         onClose={() => setUsageErrorModalOpen(false)}
       />
-    </div>
+    </section>
   );
 }
