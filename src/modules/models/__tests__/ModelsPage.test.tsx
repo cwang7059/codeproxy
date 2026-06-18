@@ -137,7 +137,6 @@ describe("ModelsPage", () => {
     renderPage();
 
     expect(await screen.findByText("gpt-image-2")).toBeInTheDocument();
-    expect(screen.getByText("Image generation model billed per invocation")).toBeInTheDocument();
     expect(screen.getByText("$0.04 / call")).toBeInTheDocument();
     expect(mocks.apiGet).toHaveBeenCalledWith("/model-configs?scope=active");
     expect(screen.queryByText("seed-only-model")).not.toBeInTheDocument();
@@ -296,7 +295,6 @@ describe("ModelsPage", () => {
     await userEvent.click(screen.getByRole("tab", { name: /model library/i }));
 
     expect(await screen.findByText("seed-only-model")).toBeInTheDocument();
-    expect(screen.getByText("Seeded model library entry")).toBeInTheDocument();
     expect(await screen.findByTestId("owner-library-layout")).toBeInTheDocument();
     expect(screen.getByTestId("owner-sidebar-card")).toHaveTextContent(/model owners/i);
     expect(screen.getByTestId("model-library-card")).toHaveTextContent(/seed-only-model/i);

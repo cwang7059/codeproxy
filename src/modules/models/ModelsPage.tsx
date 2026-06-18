@@ -596,7 +596,14 @@ export function ModelsPage() {
 
   const pageStats = useMemo(() => computeModelPageStats(models), [models]);
   const hasActiveFilters = Boolean(searchFilter.trim() || statusFilter || ownerFilter);
-  const useCompactTable = filteredModels.length <= 15;
+  const tableViewportHeight = useMemo(() => {
+    const headerHeight = 48;
+    const rowHeight = 44;
+    const contentHeight = filteredModels.length * rowHeight + headerHeight;
+    const maxHeight =
+      typeof window !== "undefined" ? Math.round(window.innerHeight * 0.58) : 720;
+    return Math.min(Math.max(contentHeight, 200), maxHeight);
+  }, [filteredModels.length]);
 
   const filteredModelIds = useMemo(() => filteredModels.map((model) => model.id), [filteredModels]);
 
@@ -1043,22 +1050,21 @@ export function ModelsPage() {
       {
         key: "model",
         label: t("models_page.col_model"),
-        width: "w-[22rem]",
+        width: "w-[240px] min-w-[240px]",
+        cellClassName: "min-w-0",
         render: (row) => (
           <div className="flex min-w-0 items-center gap-2">
             <VendorIcon modelId={row.id} size={16} />
-            <div className="min-w-0">
-              <OverflowTooltip content={row.id} className="block min-w-0">
-                <span className="block min-w-0 truncate font-medium">{row.id}</span>
-              </OverflowTooltip>
-              {row.description ? (
-                <OverflowTooltip content={row.description} className="block min-w-0">
-                  <span className="block min-w-0 truncate text-[11px] text-slate-500 dark:text-white/45">
-                    {row.description}
-                  </span>
-                </OverflowTooltip>
-              ) : null}
-            </div>
+            <OverflowTooltip
+              content={
+                row.description
+                  ? `${row.id}\n${row.description}`
+                  : row.id
+              }
+              className="block min-w-0"
+            >
+              <span className="block min-w-0 truncate font-medium">{row.id}</span>
+            </OverflowTooltip>
           </div>
         ),
       },
@@ -1239,10 +1245,8 @@ export function ModelsPage() {
 
   const modelTable = (
     <div
-      className={[
-        "relative",
-        useCompactTable ? "min-h-0" : "h-[calc(100dvh-460px)] min-h-[320px] overflow-hidden",
-      ].join(" ")}
+      className="relative overflow-x-auto rounded-xl"
+      style={{ height: tableViewportHeight }}
     >
       {!loading && models.length === 0 ? (
         <EmptyState
@@ -1268,16 +1272,15 @@ export function ModelsPage() {
           rowKey={(row) => row.id}
           loading={loading}
           rowHeight={44}
-          naturalFlow={useCompactTable}
-          height={useCompactTable ? "h-auto" : "h-full"}
-          minHeight={useCompactTable ? "min-h-0" : "min-h-full"}
+          height="h-full"
+          minHeight="min-h-full"
           caption={t("models_page.table_caption")}
           emptyText={
             hasActiveFilters
               ? t("models_page.empty_models_filtered")
               : t("models_page.no_model_data")
           }
-          minWidth="min-w-[1080px]"
+          minWidth="min-w-[980px]"
           stretch={false}
           showAllLoadedMessage={false}
         />
