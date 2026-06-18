@@ -13,7 +13,7 @@ import { PageBackground } from "@/modules/ui/PageBackground";
 import { Reveal } from "@/modules/ui/Reveal";
 import { ThemeToggleButton } from "@/modules/ui/ThemeProvider";
 import { useToast } from "@/modules/ui/ToastProvider";
-import { isDesktopFrameless } from "@/lib/desktop";
+import { isDesktopFrameless, desktopWindowRegion } from "@/lib/desktop";
 import { OpenAILogo, GeminiLogo, ClaudeLogo, VertexLogo } from "@/modules/dashboard/ProviderLogos";
 import { copyToClipboard } from "@/utils/clipboard";
 
@@ -217,17 +217,28 @@ export function LoginPage() {
   const topBarButtonClass =
     "inline-flex h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white/70 px-3 text-slate-700 shadow-sm backdrop-blur transition hover:bg-white dark:border-neutral-800 dark:bg-neutral-950/60 dark:text-slate-200 dark:hover:bg-neutral-950/80";
 
-  return (
-    <PageBackground variant="login" fill={isDesktopFrameless()}>
-      {!isDesktopFrameless() ? (
-        <div className="absolute right-6 top-6 z-20 flex items-center gap-2">
-          <LanguageSelector className={topBarButtonClass} />
-          <ThemeToggleButton className={`${topBarButtonClass} w-10 px-0`} />
-        </div>
-      ) : null}
+  const frameless = isDesktopFrameless();
 
-      <div className="relative flex w-full flex-1 items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
-        <Reveal className="w-full max-w-5xl">
+  return (
+    <PageBackground variant="login" fill={frameless}>
+      <div
+        className={[
+          "relative flex min-h-0 flex-1 flex-col",
+          frameless ? "overflow-y-auto overscroll-contain" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        style={frameless ? desktopWindowRegion("no-drag") : undefined}
+      >
+        {!frameless ? (
+          <div className="absolute right-6 top-6 z-20 flex items-center gap-2">
+            <LanguageSelector className={topBarButtonClass} />
+            <ThemeToggleButton className={`${topBarButtonClass} w-10 px-0`} />
+          </div>
+        ) : null}
+
+        <div className="flex w-full min-h-full flex-1 flex-col justify-center px-4 py-8 sm:px-6 sm:py-10">
+          <Reveal className="mx-auto w-full max-w-5xl">
           <div className="grid w-full items-center gap-8 lg:grid-cols-2 lg:gap-10 xl:gap-12">
             <section className="order-1 w-full lg:order-2">
               <div className="rounded-2xl border border-slate-200/90 bg-white/92 p-6 text-slate-900 shadow-[0_24px_60px_-48px_rgba(15,23,42,0.55)] backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/78 dark:text-slate-50 dark:shadow-[0_24px_60px_-48px_rgba(0,0,0,0.85)] sm:p-8">
@@ -440,7 +451,8 @@ export function LoginPage() {
               </div>
             </aside>
           </div>
-        </Reveal>
+          </Reveal>
+        </div>
       </div>
     </PageBackground>
   );

@@ -6,6 +6,7 @@ import { DashboardLayout } from "@/modules/layout/DashboardLayout";
 import { ThemeProvider } from "@/modules/ui/ThemeProvider";
 import { ToastProvider } from "@/modules/ui/ToastProvider";
 import { DesktopFrame } from "@/modules/ui/DesktopFrame";
+import { RouteViewport } from "@/modules/ui/RouteViewport";
 import { AutoUpdatePrompt } from "@/modules/update/AutoUpdatePrompt";
 
 // Lazy-loaded page components for route-level code splitting
@@ -83,17 +84,18 @@ export function AppRouter() {
           <Suspense>
             <Routes>
               {/* Public page – outside AuthProvider to avoid triggering /management/config */}
-              <Route path="/apikey-lookup" element={<ApiKeyLookupPage />} />
+              <Route path="/apikey-lookup" element={<RouteViewport><ApiKeyLookupPage /></RouteViewport>} />
 
               {/* Everything else requires AuthProvider for session management */}
               <Route
                 path="*"
                 element={
                   <AuthProvider>
-                    <AutoUpdatePrompt />
-                    <Suspense>
-                      <Routes>
-                        <Route path="/login" element={<LoginPage />} />
+                    <RouteViewport>
+                      <AutoUpdatePrompt />
+                      <Suspense>
+                        <Routes>
+                          <Route path="/login" element={<LoginPage />} />
                         <Route element={<ProtectedRoute />}>
                           <Route element={<DashboardLayout />}>
                             <Route path="/dashboard" element={<DashboardPage />} />
@@ -156,8 +158,9 @@ export function AppRouter() {
                           </Route>
                         </Route>
                         <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                      </Routes>
-                    </Suspense>
+                        </Routes>
+                      </Suspense>
+                    </RouteViewport>
                   </AuthProvider>
                 }
               />
