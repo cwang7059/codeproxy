@@ -401,7 +401,7 @@ function ShellMain({ children }: PropsWithChildren) {
       tabIndex={-1}
       className="flex min-h-0 flex-col p-4 focus-visible:outline-none sm:p-6"
     >
-      <div className="min-h-full">{children}</div>
+      {children}
     </main>
   );
 }
@@ -504,6 +504,7 @@ export function AppShell({ children }: PropsWithChildren) {
           {t("shell.skip_to_content")}
         </a>
 
+        <div className="flex min-h-0 flex-1 flex-col">
         {isMobile ? (
           <>
             {mobileSidebarOpen ? (
@@ -523,7 +524,7 @@ export function AppShell({ children }: PropsWithChildren) {
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                 <ShellHeader sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} />
                 <div
-                  className="flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] min-h-0"
+                  className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-gutter:stable] min-h-0"
                   style={isDesktopFrameless() ? desktopWindowRegion("no-drag") : undefined}
                 >
                   <ShellMain>{children}</ShellMain>
@@ -537,7 +538,7 @@ export function AppShell({ children }: PropsWithChildren) {
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
               <ShellHeader sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} />
               <div
-                className="flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] min-h-0"
+                className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-gutter:stable] min-h-0"
                 style={isDesktopFrameless() ? desktopWindowRegion("no-drag") : undefined}
               >
                 <ShellMain>{children}</ShellMain>
@@ -545,6 +546,7 @@ export function AppShell({ children }: PropsWithChildren) {
             </div>
           </div>
         )}
+        </div>
       </ShellFrame>
     </ShellContext>
   );

@@ -79,7 +79,7 @@ export function AppRouter() {
     <ThemeProvider>
       <ToastProvider>
         <DesktopFrame>
-          <div className="font-sans antialiased">
+          <div className="flex h-full min-h-0 flex-1 flex-col font-sans antialiased">
           <Suspense>
             <Routes>
               {/* Public page – outside AuthProvider to avoid triggering /management/config */}

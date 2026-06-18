@@ -9,12 +9,14 @@ const LazyAppShell = lazy(() =>
 export function DashboardLayout() {
   const location = useLocation();
   return (
-    <Suspense>
-      <LazyAppShell>
-        <Reveal key={location.pathname}>
-          <Outlet />
-        </Reveal>
-      </LazyAppShell>
-    </Suspense>
+    <div className="flex h-full min-h-0 flex-1 flex-col">
+      <Suspense>
+        <LazyAppShell>
+          <Reveal key={location.pathname}>
+            <Outlet />
+          </Reveal>
+        </LazyAppShell>
+      </Suspense>
+    </div>
   );
 }
