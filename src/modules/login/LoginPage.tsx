@@ -225,7 +225,6 @@ export function LoginPage() {
       <div
         className={[
           "relative flex min-h-0 flex-1 flex-col",
-          frameless ? "overflow-y-auto overscroll-contain" : "",
         ]
           .filter(Boolean)
           .join(" ")}
@@ -252,7 +251,12 @@ export function LoginPage() {
           </div>
         )}
 
-        <div className="flex w-full min-h-full flex-1 flex-col justify-center px-4 py-4 sm:px-6 sm:py-8">
+        <div
+          className={[
+            "flex w-full min-h-0 flex-1 flex-col justify-center px-4 py-4 sm:px-6 sm:py-8",
+            frameless ? "overflow-y-auto overscroll-contain" : "",
+          ].join(" ")}
+        >
           <Reveal className="mx-auto w-full max-w-5xl">
           <div className="grid w-full items-center gap-8 lg:grid-cols-2 lg:gap-10 xl:gap-12">
             <section className="order-1 w-full lg:order-2">
