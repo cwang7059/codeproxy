@@ -8,6 +8,10 @@ const tls = require("node:tls");
 const { isFramelessWindowEnabled } = require("./frameless.cjs");
 
 const DEFAULT_BACKEND_BASE = "http://127.0.0.1:8317";
+const DEFAULT_WINDOW_WIDTH = 1080;
+const DEFAULT_WINDOW_HEIGHT = 700;
+const MIN_WINDOW_WIDTH = 1024;
+const MIN_WINDOW_HEIGHT = 640;
 const API_PREFIXES = ["/v0", "/v1", "/v1beta"];
 const MANAGE_PREFIX = "/manage";
 const HTTP_HOP_BY_HOP_HEADERS = [
@@ -357,10 +361,11 @@ async function createMainWindow() {
   const rendererUrl = await resolveRendererUrl();
   const frameless = isFramelessWindowEnabled();
   const windowOptions = {
-    width: 1440,
-    height: 900,
-    minWidth: 1180,
-    minHeight: 720,
+    width: DEFAULT_WINDOW_WIDTH,
+    height: DEFAULT_WINDOW_HEIGHT,
+    minWidth: MIN_WINDOW_WIDTH,
+    minHeight: MIN_WINDOW_HEIGHT,
+    center: true,
     title: "CliRelay",
     backgroundColor: "#f4f4f5",
     show: false,
