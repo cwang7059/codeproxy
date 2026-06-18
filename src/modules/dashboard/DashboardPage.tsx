@@ -10,6 +10,7 @@ import {
   type DashboardTrendPoint,
 } from "@/lib/http/apis/usage";
 import { SystemMonitorSection } from "@/modules/dashboard/SystemMonitorSection";
+import { SetupChecklistSection } from "@/modules/dashboard/SetupChecklistSection";
 import { useSystemStats } from "@/modules/dashboard/useSystemStats";
 import { AnimatedNumber } from "@/modules/ui/AnimatedNumber";
 import { Button } from "@/modules/ui/Button";
@@ -525,6 +526,8 @@ export function DashboardPage() {
           }
         />
       ) : null}
+
+      <SetupChecklistSection />
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-2">

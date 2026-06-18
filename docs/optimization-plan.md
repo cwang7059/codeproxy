@@ -57,7 +57,8 @@
 完整条目见 [ui-ux-optimization-review.md](./ui-ux-optimization-review.md)。
 
 - **目标**：统一空状态/工具栏、合入 worktree 优化、补 i18n、降低巨型页面维护成本。
-- **首批（1–2 天）**：EmptyState 三页、Identity Fingerprint cherry-pick、Providers i18n、Dashboard 配置清单。
+- **已完成**：§2.1 空状态、§2.2 身份指纹、§2.3 i18n、§4.3 Dashboard 配置清单。
+- **下一步**：§2.4 `PageToolbar` 统一 Monitor / Providers / Models。
 - **验证**：相关页面测试 + `bun run build` + 中英文/暗色模式抽查。
 
 <!-- PROJECT-OVERRIDES:END -->

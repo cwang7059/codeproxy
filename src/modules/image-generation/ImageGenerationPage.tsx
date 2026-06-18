@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
-import { ArrowUp, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
+import { ArrowUp, ChevronLeft, ChevronRight, ImageIcon, Plus, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { authFilesApi, imageGenerationApi } from "@/lib/http/apis";
 import type { AuthFileItem } from "@/lib/http/types";
 import { Button } from "@/modules/ui/Button";
 import { Card } from "@/modules/ui/Card";
+import { EmptyState } from "@/modules/ui/EmptyState";
 import { ImagePreviewOverlay } from "@/modules/ui/ImagePreviewOverlay";
 import { Modal } from "@/modules/ui/Modal";
 import { Select } from "@/modules/ui/Select";
@@ -54,7 +55,7 @@ type EndpointDoc = {
   contentType: string;
   requestRows: SpecRow[];
   responseRows: SpecRow[];
-  curl: string;
+  curlMode: ImageMode;
 };
 type GeneratedImage = { src: string; revisedPrompt?: string };
 type UploadedImage = { id: string; file: File; previewUrl: string };
@@ -69,29 +70,33 @@ const isCodexOauthFile = (file: AuthFileItem): boolean => {
   return accountType === "oauth" && provider === "codex";
 };
 
-const textToImageCurl = [
-  "curl http://127.0.0.1:8317/v1/images/generations \\",
-  '  -H "Authorization: Bearer $API_KEY" \\',
-  '  -H "Content-Type: application/json" \\',
-  "  -d '{",
-  '    "model": "gpt-image-2",',
-  '    "prompt": "你的中文描述",',
-  '    "size": "1024x1024",',
-  '    "quality": "high",',
-  '    "n": 1',
-  "  }'",
-].join("\n");
+const buildCurlExample = (mode: ImageMode, promptExample: string): string => {
+  if (mode === "edits") {
+    return [
+      "curl http://127.0.0.1:8317/v1/images/edits \\",
+      '  -H "Authorization: Bearer $API_KEY" \\',
+      '  -F "model=gpt-image-2" \\',
+      `  -F "prompt=${promptExample}" \\`,
+      '  -F "size=1024x1024" \\',
+      '  -F "quality=high" \\',
+      '  -F "n=1" \\',
+      '  -F "image=@/path/to/image.png"',
+    ].join("\n");
+  }
 
-const imageToImageCurl = [
-  "curl http://127.0.0.1:8317/v1/images/edits \\",
-  '  -H "Authorization: Bearer $API_KEY" \\',
-  '  -F "model=gpt-image-2" \\',
-  '  -F "prompt=把这张图改成蓝色图标风格" \\',
-  '  -F "size=1024x1024" \\',
-  '  -F "quality=high" \\',
-  '  -F "n=1" \\',
-  '  -F "image=@/path/to/image.png"',
-].join("\n");
+  return [
+    "curl http://127.0.0.1:8317/v1/images/generations \\",
+    '  -H "Authorization: Bearer $API_KEY" \\',
+    '  -H "Content-Type: application/json" \\',
+    "  -d '{",
+    '    "model": "gpt-image-2",',
+    `    "prompt": "${promptExample}",`,
+    '    "size": "1024x1024",',
+    '    "quality": "high",',
+    '    "n": 1',
+    "  }'",
+  ].join("\n");
+};
 
 const RESPONSE_ROWS: SpecRow[] = [
   {
@@ -155,7 +160,7 @@ const ENDPOINT_DOCS: EndpointDoc[] = [
       },
     ],
     responseRows: RESPONSE_ROWS,
-    curl: textToImageCurl,
+    curlMode: "generations",
   },
   {
     mode: "edits",
@@ -203,7 +208,7 @@ const ENDPOINT_DOCS: EndpointDoc[] = [
       },
     ],
     responseRows: RESPONSE_ROWS,
-    curl: imageToImageCurl,
+    curlMode: "edits",
   },
 ];
 const VISIBLE_ENDPOINT_DOCS = IMAGE_EDITS_ENABLED
@@ -344,6 +349,13 @@ export function ImageGenerationPage() {
 
 function EndpointCallDoc({ doc }: { doc: EndpointDoc }) {
   const { t } = useTranslation();
+  const curl = useMemo(() => {
+    const promptExample =
+      doc.curlMode === "edits"
+        ? t("image_generation.curl_edit_prompt_example")
+        : t("image_generation.curl_prompt_example");
+    return buildCurlExample(doc.curlMode, promptExample);
+  }, [doc.curlMode, t]);
 
   return (
     <div className="space-y-4">
@@ -379,7 +391,7 @@ function EndpointCallDoc({ doc }: { doc: EndpointDoc }) {
           curl
         </div>
         <pre className="overflow-x-auto px-4 py-3 text-[13px] leading-6 text-slate-100">
-          <code>{doc.curl}</code>
+          <code>{curl}</code>
         </pre>
       </div>
     </div>
@@ -925,14 +937,27 @@ function ImageGenerationTestModal({ open, onClose }: { open: boolean; onClose: (
                   ) : null}
 
                   {showIdleCanvas ? (
-                    <div className="max-w-md">
-                      <p className="text-lg font-medium text-slate-600 dark:text-white/72">
-                        {t(
+                    <div className="flex h-full w-full items-center justify-center p-4">
+                      <EmptyState
+                        title={t("image_generation.gallery_empty_title")}
+                        description={t(
                           requestMode === "edits"
-                            ? "image_generation.idle_hint_edits"
-                            : "image_generation.idle_hint",
+                            ? "image_generation.gallery_empty_desc_edits"
+                            : "image_generation.gallery_empty_desc",
                         )}
-                      </p>
+                        icon={<ImageIcon size={32} className="text-slate-400" />}
+                        action={
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              document.getElementById("image-generation-prompt")?.focus();
+                            }}
+                          >
+                            {t("image_generation.gallery_empty_action")}
+                          </Button>
+                        }
+                      />
                     </div>
                   ) : null}
 

@@ -104,6 +104,7 @@
     "config_table_description": "{{count}} saved preset(s) for CC Switch imports.",
     "config_table_caption": "CC Switch config list",
     "config_list_empty": "No CC Switch configs yet. Create one to reuse provider presets.",
+    "config_empty_desc": "After creating a preset, import it into CC Switch from the API Keys page.",
     "config_table_client": "Client",
     "config_table_provider": "Provider",
     "config_table_model": "Model",
@@ -271,7 +272,21 @@
     "more_ranges": "Длинный период",
     "sparkline_empty": "Нет данных тренда",
     "throughput_empty_title": "Пока нет живого трафика",
-    "throughput_empty_desc": "Графики RPM и TPM появятся после начала запросов."
+    "throughput_empty_desc": "Графики RPM и TPM появятся после начала запросов.",
+    "setup_checklist_title": "First-time setup checklist",
+    "setup_checklist_desc": "Complete these steps so CliRelay can serve Codex, Claude, and other clients.",
+    "setup_api_keys": "Create API keys",
+    "setup_api_keys_hint": "{{count}} key(s) configured",
+    "setup_auth_files": "Import auth files",
+    "setup_auth_files_hint": "{{count}} auth file(s) available",
+    "setup_codex_config": "Connect Codex",
+    "setup_codex_config_hint": "Copy the ~/.codex/config.toml snippet; use local-dev-key as Bearer token",
+    "setup_codex_copy": "Copy config",
+    "setup_codex_copied": "Codex config snippet copied",
+    "setup_codex_copy_failed": "Copy failed; please copy manually",
+    "setup_go_configure": "Configure",
+    "setup_manage": "Manage",
+    "setup_dismiss": "Dismiss checklist"
   },
   "basic_settings": {
     "title": "Основные настройки",
@@ -1663,6 +1678,12 @@
     "preview_alt": "Предпросмотр {{model}}",
     "idle_hint": "Введите prompt, чтобы начать генерацию изображения",
     "idle_hint_edits": "Загрузите изображения и введите prompt, чтобы начать генерацию",
+    "gallery_empty_title": "No images generated yet",
+    "gallery_empty_desc": "Enter a prompt below and send to start text-to-image generation.",
+    "gallery_empty_desc_edits": "Upload a reference image and enter a prompt to start image-to-image.",
+    "gallery_empty_action": "Start typing a prompt",
+    "curl_prompt_example": "An orange cat drinking coffee on the moon",
+    "curl_edit_prompt_example": "Turn this image into a blue icon style",
     "preview_placeholder": "Готово к созданию изображения",
     "generating_subtitle": "Оставьте модальное окно открытым. Новое изображение появится здесь автоматически.",
     "generation_status_creating": "Генерируем изображение",
@@ -1722,7 +1743,15 @@
     "hide_advanced": "Hide advanced",
     "preview_disabled_notice": "Fingerprint off — client headers pass through unchanged",
     "tab_status_enabled": "enabled",
-    "tab_status_disabled": "disabled"
+    "tab_status_disabled": "disabled",
+    "tab_codex": "Codex",
+    "tab_claude": "Claude",
+    "tab_gemini": "Gemini",
+    "tab_kimi": "Kimi"
+  },
+  "theme": {
+    "switch_to_light": "Switch to light mode",
+    "switch_to_dark": "Switch to dark mode"
   },
   "channel_groups_page": {
     "title": "Channel Groups Management",

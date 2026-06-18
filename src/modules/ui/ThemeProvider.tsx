@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { flushSync } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { Moon, Sun } from "lucide-react";
 import { THEME_STORAGE_KEY } from "@/lib/constants";
 
@@ -107,13 +108,15 @@ export const useTheme = (): ThemeContextState => {
 };
 
 export function ThemeToggleButton({ className, label }: { className?: string; label?: string }) {
+  const { t } = useTranslation();
   const {
     state: { mode },
     actions: { toggle },
   } = useTheme();
 
   const Icon = mode === "dark" ? Sun : Moon;
-  const text = label ?? (mode === "dark" ? "Switch to light" : "Switch to dark");
+  const text =
+    label ?? (mode === "dark" ? t("theme.switch_to_light") : t("theme.switch_to_dark"));
 
   return (
     <button type="button" onClick={toggle} className={className} aria-label={text} title={text}>

@@ -754,29 +754,29 @@ export function ProvidersPage() {
             <TabsList>
               <TabsTrigger value="gemini">
                 <img src={iconGemini} alt="" className="size-4" />
-                Gemini
+                {t("providers.tab_gemini")}
               </TabsTrigger>
               <TabsTrigger value="claude">
                 <img src={iconClaude} alt="" className="size-4" />
-                Claude
+                {t("providers.tab_claude")}
               </TabsTrigger>
               <TabsTrigger value="codex">
                 <img src={iconCodex} alt="" className="size-4 dark:hidden" />
                 <img src={iconCodex} alt="" className="hidden size-4 dark:block" />
-                Codex
+                {t("providers.tab_codex")}
               </TabsTrigger>
               <TabsTrigger value="opencode-go">
                 <img src={iconOpenCodeLight} alt="" className="size-4 dark:hidden" />
                 <img src={iconOpenCodeDark} alt="" className="hidden size-4 dark:block" />
-                OpenCode Go
+                {t("providers.tab_opencode_go")}
               </TabsTrigger>
               <TabsTrigger value="vertex">
                 <img src={iconVertex} alt="" className="size-4" />
-                Vertex
+                {t("providers.tab_vertex")}
               </TabsTrigger>
               <TabsTrigger value="bedrock">
                 <Cloud size={16} />
-                Bedrock
+                {t("providers.tab_bedrock")}
               </TabsTrigger>
               <TabsTrigger value="openai">
                 <img src={iconOpenai} alt="" className="size-4 dark:hidden" />
@@ -785,7 +785,7 @@ export function ProvidersPage() {
               </TabsTrigger>
               <TabsTrigger value="ampcode">
                 <img src={iconAmp} alt="" className="size-4" />
-                Ampcode
+                {t("providers.tab_ampcode")}
               </TabsTrigger>
             </TabsList>
           </div>

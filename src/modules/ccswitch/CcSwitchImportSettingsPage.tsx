@@ -1,4 +1,4 @@
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDownToLine, Pencil, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import iconClaude from "@/assets/icons/claude.svg";
@@ -15,6 +15,7 @@ import { ccSwitchImportConfigsApi } from "@/lib/http/apis/ccswitch-import-config
 import { Button } from "@/modules/ui/Button";
 import { Card } from "@/modules/ui/Card";
 import { ConfirmModal } from "@/modules/ui/ConfirmModal";
+import { EmptyState } from "@/modules/ui/EmptyState";
 import { ToggleSwitch } from "@/modules/ui/ToggleSwitch";
 import { useToast } from "@/modules/ui/ToastProvider";
 import { VirtualTable, type VirtualTableColumn } from "@/modules/ui/VirtualTable";
@@ -342,18 +343,20 @@ export function CcSwitchImportSettingsPage() {
             {t("ccswitch.settings_description")}
           </p>
         </div>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => {
-            setModalMode("create");
-            setDraft(createDraft());
-            setModalOpen(true);
-          }}
-        >
-          <Plus size={14} />
-          {t("ccswitch.config_new")}
-        </Button>
+        {configs.length > 0 ? (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              setModalMode("create");
+              setDraft(createDraft());
+              setModalOpen(true);
+            }}
+          >
+            <Plus size={14} />
+            {t("ccswitch.config_new")}
+          </Button>
+        ) : null}
       </div>
 
       <Card
@@ -362,18 +365,40 @@ export function CcSwitchImportSettingsPage() {
         padding="compact"
         className="rounded-2xl"
       >
-        <VirtualTable<CcSwitchImportConfigListItem>
-          rows={configs}
-          columns={columns}
-          rowKey={(row) => row.id}
-          virtualize={false}
-          minWidth="min-w-[1220px]"
-          height="h-[420px]"
-          minHeight="min-h-[280px]"
-          caption={t("ccswitch.config_table_caption")}
-          emptyText={t("ccswitch.config_list_empty")}
-          showAllLoadedMessage={false}
-        />
+        {configs.length === 0 ? (
+          <EmptyState
+            title={t("ccswitch.config_list_empty")}
+            description={t("ccswitch.config_empty_desc")}
+            icon={<ArrowDownToLine size={32} className="text-slate-400" />}
+            action={
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setModalMode("create");
+                  setDraft(createDraft());
+                  setModalOpen(true);
+                }}
+              >
+                <Plus size={14} />
+                {t("ccswitch.config_new")}
+              </Button>
+            }
+          />
+        ) : (
+          <VirtualTable<CcSwitchImportConfigListItem>
+            rows={configs}
+            columns={columns}
+            rowKey={(row) => row.id}
+            virtualize={false}
+            minWidth="min-w-[1220px]"
+            height="h-[420px]"
+            minHeight="min-h-[280px]"
+            caption={t("ccswitch.config_table_caption")}
+            emptyText={t("ccswitch.config_list_empty")}
+            showAllLoadedMessage={false}
+          />
+        )}
       </Card>
 
       <CcSwitchImportConfigModal

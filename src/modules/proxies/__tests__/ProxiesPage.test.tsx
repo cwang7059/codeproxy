@@ -160,18 +160,14 @@ describe("ProxiesPage", () => {
     expect(await screen.findByText(/44 ms/i)).toBeInTheDocument();
   });
 
-  test("keeps the proxy table chrome minimal when empty", async () => {
+  test("shows empty state guidance when no proxies are configured", async () => {
     mocks.apiGet.mockResolvedValue({ items: [] });
 
     renderPage();
 
-    const table = await screen.findByRole("table", { name: /proxy pool table/i });
-    expect(table).toBeInTheDocument();
-    expect(table.closest("section")).toHaveClass("p-5");
-    expect(screen.queryByText("Proxy Pool")).not.toBeInTheDocument();
-    expect(screen.queryByText(/Manage proxy entries in a compact table/i)).not.toBeInTheDocument();
-    expect(screen.getByText("No proxies yet")).toBeInTheDocument();
-    expect(screen.queryByText(/Add HTTP, HTTPS, or SOCKS5 proxies/i)).not.toBeInTheDocument();
+    expect(await screen.findByTestId("proxies-empty-state")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add proxy/i })).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: /proxy pool table/i })).not.toBeInTheDocument();
   });
 
   test("adds a proxy and persists through the proxy pool API", async () => {

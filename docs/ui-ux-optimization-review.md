@@ -6,6 +6,22 @@
 
 ---
 
+## 0. 执行进度
+
+| 编号 | 项 | 状态 | 备注 |
+|------|----|------|------|
+| §2.1 | 统一空状态 + 引导操作 | ✅ 已完成 | Proxies / CC Switch / 图片生成 |
+| §2.2 | 合入 Identity Fingerprint 优化 | ✅ 已完成 | 提交 `0f61f99` |
+| §2.3 | i18n 补漏 | ✅ 已完成 | Providers Tab、主题切换、指纹 Tab、curl 示例；`ru` 仅同步 key |
+| §2.4 | 统一页面顶部工具栏 | ⏳ 待做 | 下一步 |
+| §2.5 | 请求日志筛选区拆分 | ⏳ 待做 | worktree 已有 `RequestLogsFilters.tsx` |
+| §4.3 | 首次部署引导（精简版） | ✅ 已完成 | `SetupChecklistSection` 于 Dashboard |
+| §3.x / §4.x 其他 | 中等/较大改动 | ⏳ 待做 | 见下文各节 |
+
+**当前下一步：** §2.4 抽取 `PageToolbar`，先统一 Monitor / Providers / Models。
+
+---
+
 ## 1. 总体判断
 
 界面基础已经不错：分组侧边栏、暗色模式、懒加载路由、`VirtualTable` + `EmptyState` 等组件齐全。
@@ -38,6 +54,8 @@
 
 ### 2.1 统一空状态 + 引导操作
 
+**状态：✅ 已完成（2026-06-18）**
+
 **现状：** Api Keys、Models、Channel Groups 已使用 `EmptyState`（说明 + 主操作按钮）；以下页面仅有表格 `emptyText`：
 
 | 页面 | 文件 | 现状 |
@@ -58,6 +76,8 @@
 
 ### 2.2 合入 Identity Fingerprint 优化
 
+**状态：✅ 已完成（2026-06-18，提交 `0f61f99`）**
+
 **来源：** `_worktrees/codeProxy-add-external-relay`（已提交至 `feature/add-external-relay-ccswitch`）
 
 **worktree 相对主线的改进：**
@@ -75,6 +95,8 @@
 
 ### 2.3 i18n 补漏
 
+**状态：✅ 已完成（2026-06-18）**
+
 **仍硬编码或未接入 `t()` 的位置：**
 
 | 位置 | 文件 | 示例 |
@@ -89,6 +111,7 @@
 - `src/i18n/locales/ru.json` 存在且可被加载
 - `LanguageSelector` 仅暴露 `zh-CN` / `en`
 - **二选一：** 开放俄语选项，或从 loader 移除 `ru.json` 避免双轨维护
+- **当前决策：** 语言选择器仍仅 `zh-CN` / `en`；`ru.json` 随 en/zh 同步新增 key，避免漂移
 
 **验收：** 切换中英文后上述位置无残留硬编码；俄语策略有明确文档说明。
 
@@ -220,6 +243,8 @@ rounded-2xl border border-black/[0.06] dark:border-white/[0.08] ...
 ---
 
 ### 4.3 首次部署引导（Onboarding）
+
+**状态：✅ 精简版已完成（2026-06-18）** — `src/modules/dashboard/SetupChecklistSection.tsx`
 
 结合部署场景常见问题（如 `your-api-key-1` 与 Codex `local-dev-key` 不一致）：
 

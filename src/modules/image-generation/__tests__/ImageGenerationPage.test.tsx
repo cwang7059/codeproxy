@@ -147,7 +147,7 @@ describe("ImageGenerationPage", () => {
     expect(within(dialog).getByTestId("image-generation-composer")).toBeInTheDocument();
     expect(within(dialog).queryByText("准备创建图片")).not.toBeInTheDocument();
     expect(within(dialog).queryByText("正在生成图片")).not.toBeInTheDocument();
-    expect(within(dialog).getByText("输入提示词后开始生成图片")).toBeInTheDocument();
+    expect(within(dialog).getByText("还没有生成图片")).toBeInTheDocument();
     expect(within(dialog).getByRole("textbox", { name: "提示词" })).toBeInTheDocument();
     expect(within(dialog).queryByRole("tab", { name: "文生图" })).not.toBeInTheDocument();
     expect(within(dialog).queryByRole("tab", { name: "图生图" })).not.toBeInTheDocument();

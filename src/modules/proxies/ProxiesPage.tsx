@@ -1,9 +1,10 @@
+import { CheckCircle2, Pencil, Plus, RefreshCw, Trash2, Network } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CheckCircle2, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { proxiesApi, type ProxyCheckResult, type ProxyPoolEntry } from "@/lib/http/apis/proxies";
 import { Button } from "@/modules/ui/Button";
 import { Card } from "@/modules/ui/Card";
+import { EmptyState } from "@/modules/ui/EmptyState";
 import { TextInput } from "@/modules/ui/Input";
 import { Modal } from "@/modules/ui/Modal";
 import { ToggleSwitch } from "@/modules/ui/ToggleSwitch";
@@ -335,26 +336,44 @@ export function ProxiesPage() {
             <RefreshCw size={15} />
             {t("common.refresh")}
           </Button>
-          <Button onClick={openCreate} variant="primary" size="sm">
-            <Plus size={15} />
-            {t("proxies.add")}
-          </Button>
+          {sortedEntries.length > 0 ? (
+            <Button onClick={openCreate} variant="primary" size="sm">
+              <Plus size={15} />
+              {t("proxies.add")}
+            </Button>
+          ) : null}
         </div>
       </div>
 
       <Card className="overflow-hidden" loading={loading && entries.length === 0}>
-        <VirtualTable<ProxyPoolEntry>
-          rows={sortedEntries}
-          columns={columns}
-          rowKey={(entry) => entry.id}
-          rowHeight={56}
-          height="h-auto max-h-[70vh]"
-          minHeight="min-h-[240px]"
-          minWidth="min-w-[960px]"
-          caption={t("proxies.table_caption")}
-          emptyText={t("proxies.empty_title")}
-          showAllLoadedMessage={false}
-        />
+        {sortedEntries.length === 0 && !loading ? (
+          <div data-testid="proxies-empty-state">
+            <EmptyState
+              title={t("proxies.empty_title")}
+              description={t("proxies.empty_desc")}
+              icon={<Network size={32} className="text-slate-400" />}
+              action={
+                <Button onClick={openCreate} variant="primary" size="sm">
+                  <Plus size={15} />
+                  {t("proxies.add")}
+                </Button>
+              }
+            />
+          </div>
+        ) : (
+          <VirtualTable<ProxyPoolEntry>
+            rows={sortedEntries}
+            columns={columns}
+            rowKey={(entry) => entry.id}
+            rowHeight={56}
+            height="h-auto max-h-[70vh]"
+            minHeight="min-h-[240px]"
+            minWidth="min-w-[960px]"
+            caption={t("proxies.table_caption")}
+            emptyText={t("proxies.empty_title")}
+            showAllLoadedMessage={false}
+          />
+        )}
       </Card>
 
       <Modal

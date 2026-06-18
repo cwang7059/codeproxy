@@ -20,11 +20,11 @@ import { useToast } from "@/modules/ui/ToastProvider";
 
 type ProviderTab = "codex" | "claude" | "gemini" | "kimi";
 
-const PROVIDERS: Array<{ id: ProviderTab; label: string }> = [
-  { id: "codex", label: "Codex" },
-  { id: "claude", label: "Claude" },
-  { id: "gemini", label: "Gemini" },
-  { id: "kimi", label: "Kimi" },
+const PROVIDERS: Array<{ id: ProviderTab; labelKey: string }> = [
+  { id: "codex", labelKey: "identity_fingerprint.tab_codex" },
+  { id: "claude", labelKey: "identity_fingerprint.tab_claude" },
+  { id: "gemini", labelKey: "identity_fingerprint.tab_gemini" },
+  { id: "kimi", labelKey: "identity_fingerprint.tab_kimi" },
 ];
 
 const SESSION_MODE_OPTIONS = [
@@ -505,7 +505,7 @@ export function IdentityFingerprintPage() {
                       aria-hidden="true"
                     />
                   ) : null}
-                  {provider.label}
+                  {t(provider.labelKey)}
                 </span>
               </TabsTrigger>
             ))}
