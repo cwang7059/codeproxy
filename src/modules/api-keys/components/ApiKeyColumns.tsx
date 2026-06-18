@@ -83,7 +83,7 @@ export const createApiKeyColumns = ({
   {
     key: "key",
     label: t("api_keys_page.col_key"),
-    width: "w-[220px] min-w-[220px]",
+    width: "w-[200px] min-w-[200px]",
     cellClassName: "whitespace-nowrap",
     render: (row) => (
       <code className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700 dark:bg-neutral-800 dark:text-white/70">
@@ -238,7 +238,7 @@ export const createApiKeyColumns = ({
   {
     key: "allowedChannelGroups",
     label: t("api_keys_page.col_channel_groups"),
-    width: "w-[172px] min-w-[172px]",
+    width: "w-[140px] min-w-[140px]",
     cellClassName: "min-w-0 overflow-hidden text-slate-700 dark:text-white/70",
     render: (row) =>
       row["allowed-channel-groups"]?.length ? (
@@ -275,7 +275,7 @@ export const createApiKeyColumns = ({
   {
     key: "allowedChannels",
     label: t("api_keys_page.col_channels"),
-    width: "w-[172px] min-w-[172px]",
+    width: "w-[140px] min-w-[140px]",
     cellClassName: "min-w-0 overflow-hidden text-slate-700 dark:text-white/70",
     render: (row) =>
       row["allowed-channels"]?.length ? (
@@ -312,14 +312,14 @@ export const createApiKeyColumns = ({
   {
     key: "createdAt",
     label: t("api_keys_page.col_created"),
-    width: "w-[168px] min-w-[168px]",
+    width: "w-[150px] min-w-[150px]",
     cellClassName: "whitespace-nowrap text-slate-500 dark:text-white/50",
     render: (row) => <>{formatApiKeyDate(row["created-at"])}</>,
   },
   {
     key: "actions",
     label: t("api_keys_page.col_actions"),
-    width: "w-[188px] min-w-[188px]",
+    width: "w-[176px] min-w-[176px]",
     render: (row, idx) => {
       const viewUsageLabel = t("api_keys_page.view_usage");
       const copyKeyLabel = t("api_keys_page.copy_key");

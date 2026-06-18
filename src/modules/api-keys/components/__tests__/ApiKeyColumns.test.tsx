@@ -98,7 +98,7 @@ describe("ApiKeyColumns", () => {
     });
     const keyColumn = columns.find((column) => column.key === "key");
 
-    expect(keyColumn?.width).toBe("w-[320px] min-w-[320px]");
+    expect(keyColumn?.width).toBe("w-[200px] min-w-[200px]");
   });
 
   test("shows API key spending limits as a dedicated cost column", async () => {

@@ -538,7 +538,14 @@ export function ApiKeysPage() {
     [entries, search, statusFilter],
   );
   const hasActiveFilters = Boolean(search.trim() || statusFilter);
-  const useCompactTable = filteredEntries.length <= 15;
+  const tableViewportHeight = useMemo(() => {
+    const headerHeight = 48;
+    const rowHeight = 44;
+    const contentHeight = filteredEntries.length * rowHeight + headerHeight;
+    const maxHeight =
+      typeof window !== "undefined" ? Math.round(window.innerHeight * 0.58) : 720;
+    return Math.min(Math.max(contentHeight, 200), maxHeight);
+  }, [filteredEntries.length]);
 
   const statCards = useMemo(
     () => [
@@ -653,6 +660,7 @@ export function ApiKeysPage() {
               name="api_key_search"
               autoComplete="off"
               spellCheck={false}
+              size="sm"
             />
             <div className="flex flex-wrap gap-2">
               {([
@@ -682,12 +690,7 @@ export function ApiKeysPage() {
           <MonitorSectionHeader title={t("api_keys_page.section_table")} />
         </div>
 
-        <div
-          className={[
-            "relative px-5 pb-4",
-            useCompactTable ? "min-h-0" : "h-[calc(100dvh-380px)] min-h-[320px] overflow-hidden",
-          ].join(" ")}
-        >
+        <div className="relative px-5 pb-4">
           {entries.length === 0 && !loading ? (
             <EmptyState
               title={t("api_keys_page.no_keys")}
@@ -695,34 +698,38 @@ export function ApiKeysPage() {
               icon={<KeyRound size={32} className="text-slate-400" />}
             />
           ) : (
-            <VirtualTable<ApiKeyEntry>
-              rows={filteredEntries}
-              columns={apiKeyColumns}
-              rowKey={(row) => row.key}
-              rowHeight={44}
-              naturalFlow={useCompactTable}
-              height={useCompactTable ? "h-auto" : "h-full"}
-              minHeight={useCompactTable ? "min-h-0" : "min-h-full"}
-              minWidth="min-w-[1720px]"
-              stretch={false}
-              caption={t("api_keys_page.table_caption")}
-              emptyText={t("api_keys_page.no_results")}
-              rowClassName={(row) => (row.disabled ? "opacity-50" : "")}
-              showAllLoadedMessage={false}
-            />
-          )}
+            <div
+              className="relative overflow-x-auto rounded-xl"
+              style={{ height: tableViewportHeight }}
+            >
+              <VirtualTable<ApiKeyEntry>
+                rows={filteredEntries}
+                columns={apiKeyColumns}
+                rowKey={(row) => row.key}
+                rowHeight={44}
+                height="h-full"
+                minHeight="min-h-full"
+                minWidth="min-w-[1792px]"
+                stretch={false}
+                caption={t("api_keys_page.table_caption")}
+                emptyText={t("api_keys_page.no_results")}
+                rowClassName={(row) => (row.disabled ? "opacity-50" : "")}
+                showAllLoadedMessage={false}
+              />
 
-          {loading ? (
-            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-b-2xl bg-white/70 backdrop-blur-sm dark:bg-neutral-950/55">
-              <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/70 dark:text-white/75">
-                <span
-                  className="h-4 w-4 rounded-full border-2 border-slate-300 border-t-slate-900 motion-reduce:animate-none motion-safe:animate-spin dark:border-white/20 dark:border-t-white/80"
-                  aria-hidden="true"
-                />
-                <span role="status">{t("api_keys_page.loading")}</span>
-              </div>
+              {loading ? (
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/70 backdrop-blur-sm dark:bg-neutral-950/55">
+                  <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/70 dark:text-white/75">
+                    <span
+                      className="h-4 w-4 rounded-full border-2 border-slate-300 border-t-slate-900 motion-reduce:animate-none motion-safe:animate-spin dark:border-white/20 dark:border-t-white/80"
+                      aria-hidden="true"
+                    />
+                    <span role="status">{t("api_keys_page.loading")}</span>
+                  </div>
+                </div>
+              ) : null}
             </div>
-          ) : null}
+          )}
         </div>
 
         {entries.length > 0 ? (
