@@ -29,7 +29,13 @@ function useDesktopWindow() {
   return { desktop, maximized };
 }
 
-export function DesktopWindowControls({ compact = false }: { compact?: boolean }) {
+export function DesktopWindowControls({
+  compact = false,
+  variant = "shell",
+}: {
+  compact?: boolean;
+  variant?: "shell" | "login";
+}) {
   const { t } = useTranslation();
   const { desktop, maximized } = useDesktopWindow();
 
@@ -37,12 +43,20 @@ export function DesktopWindowControls({ compact = false }: { compact?: boolean }
     return null;
   }
 
-  const buttonClass = compact
-    ? "inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-neutral-800"
-    : "inline-flex h-10 w-10 items-center justify-center text-slate-500 transition-colors hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/10";
-  const closeClass = compact
-    ? "inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-red-500 hover:text-white dark:text-slate-400"
-    : "inline-flex h-10 w-10 items-center justify-center text-slate-500 transition-colors hover:bg-red-500 hover:text-white dark:text-slate-300";
+  const loginButtonClass =
+    "inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white/70 text-slate-700 shadow-sm backdrop-blur transition hover:bg-white dark:border-neutral-800 dark:bg-neutral-950/60 dark:text-slate-200 dark:hover:bg-neutral-950/80";
+  const buttonClass =
+    variant === "login"
+      ? loginButtonClass
+      : compact
+        ? "inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-neutral-800"
+        : "inline-flex h-10 w-10 items-center justify-center text-slate-500 transition-colors hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/10";
+  const closeClass =
+    variant === "login"
+      ? `${loginButtonClass} hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 dark:hover:border-rose-500/25 dark:hover:bg-rose-500/10 dark:hover:text-rose-300`
+      : compact
+        ? "inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-red-500 hover:text-white dark:text-slate-400"
+        : "inline-flex h-10 w-10 items-center justify-center text-slate-500 transition-colors hover:bg-red-500 hover:text-white dark:text-slate-300";
 
   return (
     <div className="flex shrink-0 items-center gap-1" style={desktopWindowRegion("no-drag")}>

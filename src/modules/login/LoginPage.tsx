@@ -15,6 +15,7 @@ import { ThemeToggleButton } from "@/modules/ui/ThemeProvider";
 import { useToast } from "@/modules/ui/ToastProvider";
 import { isDesktopFrameless, desktopWindowRegion } from "@/lib/desktop";
 import { OpenAILogo, GeminiLogo, ClaudeLogo, VertexLogo } from "@/modules/dashboard/ProviderLogos";
+import { DesktopWindowControls } from "@/modules/ui/DesktopWindowControls";
 import { copyToClipboard } from "@/utils/clipboard";
 
 interface RedirectState {
@@ -230,14 +231,28 @@ export function LoginPage() {
           .join(" ")}
         style={frameless ? desktopWindowRegion("no-drag") : undefined}
       >
-        {!frameless ? (
+        {frameless ? (
+          <header
+            className="sticky top-0 z-20 flex items-center gap-2 px-4 py-3 sm:px-6"
+            onDoubleClick={() => void window.codeProxyDesktop?.toggleWindowMaximize?.()}
+          >
+            <div className="min-w-0 flex-1" style={desktopWindowRegion("drag")} aria-hidden="true" />
+            <div className="flex shrink-0 items-center gap-2" style={desktopWindowRegion("no-drag")}>
+              <LanguageSelector
+                className={`${topBarButtonClass} min-w-[58px] gap-0.5 px-2.5`}
+              />
+              <ThemeToggleButton className={`${topBarButtonClass} w-10 px-0`} />
+              <DesktopWindowControls variant="login" />
+            </div>
+          </header>
+        ) : (
           <div className="absolute right-6 top-6 z-20 flex items-center gap-2">
             <LanguageSelector className={topBarButtonClass} />
             <ThemeToggleButton className={`${topBarButtonClass} w-10 px-0`} />
           </div>
-        ) : null}
+        )}
 
-        <div className="flex w-full min-h-full flex-1 flex-col justify-center px-4 py-8 sm:px-6 sm:py-10">
+        <div className="flex w-full min-h-full flex-1 flex-col justify-center px-4 py-4 sm:px-6 sm:py-8">
           <Reveal className="mx-auto w-full max-w-5xl">
           <div className="grid w-full items-center gap-8 lg:grid-cols-2 lg:gap-10 xl:gap-12">
             <section className="order-1 w-full lg:order-2">
