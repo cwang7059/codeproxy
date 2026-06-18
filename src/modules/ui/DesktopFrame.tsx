@@ -17,7 +17,7 @@ export function DesktopFrame({ children }: PropsWithChildren) {
   }
 
   return (
-    <div className="relative flex h-[100dvh] flex-col overflow-hidden">
+    <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-zinc-50 dark:bg-neutral-950">
       {showLoginChrome ? <DesktopWindowChrome /> : null}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
     </div>

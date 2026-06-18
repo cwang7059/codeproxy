@@ -5,6 +5,7 @@ const https = require("node:https");
 const net = require("node:net");
 const path = require("node:path");
 const tls = require("node:tls");
+const { isFramelessWindowEnabled } = require("./frameless.cjs");
 
 const DEFAULT_BACKEND_BASE = "http://127.0.0.1:8317";
 const API_PREFIXES = ["/v0", "/v1", "/v1beta"];
@@ -24,10 +25,6 @@ const HTTP_HOP_BY_HOP_HEADERS = [
 let localServer = null;
 let localServerOrigin = null;
 let mainWindow = null;
-
-function isFramelessWindowEnabled() {
-  return process.env.CODE_PROXY_FRAMELESS === "1";
-}
 
 const mimeTypes = new Map([
   [".css", "text/css; charset=utf-8"],
@@ -381,6 +378,13 @@ async function createMainWindow() {
     Object.assign(windowOptions, {
       thickFrame: false,
       roundedCorners: true,
+    });
+  }
+
+  if (frameless && process.platform === "darwin") {
+    Object.assign(windowOptions, {
+      titleBarStyle: "hiddenInset",
+      trafficLightPosition: { x: 14, y: 16 },
     });
   }
 

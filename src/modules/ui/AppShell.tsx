@@ -344,11 +344,11 @@ function ShellHeader({
   return (
     <header className="z-20 shrink-0 border-b border-slate-200 bg-white/75 backdrop-blur-xl motion-reduce:transition-none motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-out dark:border-neutral-800 dark:bg-neutral-950/60">
       <h1 className="sr-only">{t(titleKey)}</h1>
-      <div className="flex h-16 items-center gap-3 px-3 pr-2 sm:px-6 sm:pr-3">
-        <div
-          className="flex min-w-0 flex-1 items-center gap-2 pr-2 sm:gap-3 sm:pr-6"
-          style={frameless ? desktopWindowRegion("drag") : undefined}
-        >
+      <div
+        className="flex h-16 items-center gap-3 px-3 pr-2 sm:px-6 sm:pr-3"
+        style={frameless ? desktopWindowRegion("drag") : undefined}
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-2 pr-2 sm:gap-3 sm:pr-6">
           <button
             type="button"
             onClick={onToggleSidebar}

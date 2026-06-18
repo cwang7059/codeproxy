@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
+const { isFramelessWindowEnabled } = require("./frameless.cjs");
 
-const frameless = process.env.CODE_PROXY_FRAMELESS === "1";
+const frameless = isFramelessWindowEnabled();
 
 contextBridge.exposeInMainWorld("codeProxyDesktop", {
   isDesktop: true,
