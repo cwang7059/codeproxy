@@ -5,6 +5,7 @@ import i18n from "@/i18n";
 import { LogsPage } from "@/modules/logs/LogsPage";
 import { ThemeProvider } from "@/modules/ui/ThemeProvider";
 import { ToastProvider } from "@/modules/ui/ToastProvider";
+import { MemoryRouter } from "react-router-dom";
 
 const mocks = vi.hoisted(() => ({
   fetchLogs: vi.fn(),
@@ -12,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   clearLogs: vi.fn(),
   downloadErrorLog: vi.fn(),
   downloadRequestLogById: vi.fn(),
+  getConfig: vi.fn(),
 }));
 
 vi.mock("@/lib/http/apis", async (importOriginal) => {
@@ -26,16 +28,22 @@ vi.mock("@/lib/http/apis", async (importOriginal) => {
       downloadErrorLog: mocks.downloadErrorLog,
       downloadRequestLogById: mocks.downloadRequestLogById,
     },
+    configApi: {
+      ...mod.configApi,
+      getConfig: mocks.getConfig,
+    },
   };
 });
 
 function renderLogsPage() {
   return render(
-    <ThemeProvider>
-      <ToastProvider>
-        <LogsPage />
-      </ToastProvider>
-    </ThemeProvider>,
+    <MemoryRouter>
+      <ThemeProvider>
+        <ToastProvider>
+          <LogsPage />
+        </ToastProvider>
+      </ThemeProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -43,6 +51,33 @@ describe("LogsPage", () => {
   afterEach(async () => {
     await i18n.changeLanguage("zh-CN");
     vi.clearAllMocks();
+  });
+
+  test("shows file logging disabled guidance when config disables file logs", async () => {
+    await i18n.changeLanguage("zh-CN");
+    mocks.fetchLogs.mockResolvedValue({
+      lines: [],
+      "latest-timestamp": null,
+    });
+    mocks.getConfig.mockResolvedValue({ "logging-to-file": false });
+
+    renderLogsPage();
+
+    expect(await screen.findByText("文件日志未启用")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "打开配置页" })).toHaveAttribute("href", "/config");
+  });
+
+  test("defaults auto refresh to on", async () => {
+    await i18n.changeLanguage("zh-CN");
+    mocks.fetchLogs.mockResolvedValue({
+      lines: [],
+      "latest-timestamp": null,
+    });
+    mocks.getConfig.mockResolvedValue({ "logging-to-file": true });
+
+    renderLogsPage();
+
+    expect(await screen.findByRole("button", { name: "自动刷新：开" })).toBeInTheDocument();
   });
 
   test("treats an empty error log list as loaded instead of retrying", async () => {
@@ -53,6 +88,7 @@ describe("LogsPage", () => {
       lines: [],
       "latest-timestamp": null,
     });
+    mocks.getConfig.mockResolvedValue({ "logging-to-file": true });
     mocks.fetchErrorLogs
       .mockResolvedValueOnce({ files: [] })
       .mockImplementation(() => new Promise(() => undefined));

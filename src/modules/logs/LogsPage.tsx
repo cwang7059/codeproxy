@@ -1,11 +1,16 @@
 import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { logsApi } from "@/lib/http/apis";
+import { configApi, logsApi } from "@/lib/http/apis";
 import { ConfirmModal } from "@/modules/ui/ConfirmModal";
 import { useToast } from "@/modules/ui/ToastProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/modules/ui/Tabs";
 import { ErrorLogsTab } from "@/modules/logs/components/ErrorLogsTab";
 import { LiveLogsTab } from "@/modules/logs/components/LiveLogsTab";
+import {
+  computeLogLevelStats,
+  readLoggingToFile,
+  resolveLiveLogsEmptyKind,
+} from "@/modules/logs/logs-page-utils";
 import {
   downloadBlob,
   type ErrorLogItem,
@@ -27,14 +32,14 @@ export function LogsPage() {
   const { notify } = useToast();
 
   const [tab, setTab] = useState<"content" | "errors">("content");
-  const [optionsOpen, setOptionsOpen] = useState(false);
   const [showRawLogs, setShowRawLogs] = useState(false);
+  const [loggingToFile, setLoggingToFile] = useState<boolean | null>(null);
 
   const [buffer, setBuffer] = useState<string[]>([]);
   const [latestTimestamp, setLatestTimestamp] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
   const [hideManagement, setHideManagement] = useState(false);
   const [search, setSearch] = useState("");
   const [displayCount, setDisplayCount] = useState(INITIAL_DISPLAY_LINES);
@@ -54,7 +59,9 @@ export function LogsPage() {
   const pendingScrollToBottomRef = useRef(false);
   const stickToBottomRef = useRef(true);
   const notifyRef = useRef(notify);
+  const prevBufferLengthRef = useRef(0);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [hasPendingLogs, setHasPendingLogs] = useState(false);
 
   useEffect(() => {
     notifyRef.current = notify;
@@ -78,6 +85,19 @@ export function LogsPage() {
   const parsedVisibleLines = useMemo(
     () => (showRawLogs ? [] : visibleLines.map((line) => parseLogLine(line))),
     [showRawLogs, visibleLines],
+  );
+
+  const levelStats = useMemo(() => computeLogLevelStats(buffer), [buffer]);
+
+  const emptyStateKind = useMemo(
+    () =>
+      resolveLiveLogsEmptyKind({
+        loading,
+        loggingToFile,
+        bufferCount: buffer.length,
+        filteredCount: filteredLines.length,
+      }),
+    [buffer.length, filteredLines.length, loading, loggingToFile],
   );
 
   const trimAndAppend = useCallback((current: string[], next: string[]) => {
@@ -144,6 +164,31 @@ export function LogsPage() {
   }, [fetchLogs]);
 
   useEffect(() => {
+    let cancelled = false;
+    void configApi
+      .getConfig()
+      .then((config) => {
+        if (cancelled) return;
+        setLoggingToFile(readLoggingToFile(config));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoggingToFile(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const prevLength = prevBufferLengthRef.current;
+    if (buffer.length > prevLength && !stickToBottomRef.current) {
+      setHasPendingLogs(true);
+    }
+    prevBufferLengthRef.current = buffer.length;
+  }, [buffer.length]);
+
+  useEffect(() => {
     if (!autoRefresh) return;
     const timer = window.setInterval(() => {
       void fetchLogs({ mode: "incremental" });
@@ -179,6 +224,7 @@ export function LogsPage() {
     el.scrollTop = el.scrollHeight;
     stickToBottomRef.current = true;
     setIsAtBottom(true);
+    setHasPendingLogs(false);
   }, []);
 
   useLayoutEffect(() => {
@@ -314,32 +360,23 @@ export function LogsPage() {
             parsedVisibleLines={parsedVisibleLines}
             canLoadMore={canLoadMore}
             latestLabel={latestLabel}
+            levelStats={levelStats}
+            loggingToFile={loggingToFile}
+            emptyStateKind={emptyStateKind}
             handleRefresh={handleRefresh}
             handleDownloadLogs={handleDownloadLogs}
             setConfirmClearOpen={setConfirmClearOpen}
             search={search}
             setSearch={setSearch}
-            optionsOpen={optionsOpen}
-            setOptionsOpen={setOptionsOpen}
             autoRefresh={autoRefresh}
             setAutoRefresh={setAutoRefresh}
             hideManagement={hideManagement}
             setHideManagement={setHideManagement}
             showRawLogs={showRawLogs}
             setShowRawLogs={setShowRawLogs}
-            quotaSummary={t("logs_page.status_summary", {
-              autoRefresh: autoRefresh
-                ? t("logs_page.auto_refresh_on")
-                : t("logs_page.auto_refresh_off"),
-              hideManagement: hideManagement
-                ? t("logs_page.auto_refresh_on")
-                : t("logs_page.auto_refresh_off"),
-              rawLogs: showRawLogs
-                ? t("logs_page.auto_refresh_on")
-                : t("logs_page.auto_refresh_off"),
-            })}
             scrollToBottom={scrollToBottom}
             isAtBottom={isAtBottom}
+            hasPendingLogs={hasPendingLogs}
             containerRef={containerRef}
             onScroll={onScroll}
           />
