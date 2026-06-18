@@ -16,6 +16,7 @@ import { channelGroupsApi, type ChannelGroupItem } from "@/lib/http/apis/channel
 import { proxiesApi, type ProxyPoolEntry } from "@/lib/http/apis/proxies";
 import type { BedrockProviderConfig, OpenAIProvider, ProviderSimpleConfig } from "@/lib/http/types";
 import { Button } from "@/modules/ui/Button";
+import { PageToolbar } from "@/modules/ui/PageToolbar";
 import { ConfirmModal } from "@/modules/ui/ConfirmModal";
 import { Modal } from "@/modules/ui/Modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/modules/ui/Tabs";
@@ -645,99 +646,94 @@ export function ProvidersPage() {
       data-testid="providers-page-shell"
       className="flex h-[calc(100dvh-112px)] min-h-0 flex-col gap-6 overflow-hidden"
     >
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="space-y-0.5">
-          <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-            {t("providers.config_overview")}
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-white/55">
-            {t("providers.config_overview_desc")}
-          </p>
-        </div>
-      </div>
-
-      <div
-        data-testid="providers-batch-actions"
-        className="flex flex-wrap items-center gap-1.5 rounded-2xl bg-slate-50/80 px-2 py-1.5 transition-colors duration-200 ease-out dark:bg-white/3"
-      >
-        {currentImportKind ? (
-          <>
-            <input
-              ref={importInputRef}
-              type="file"
-              accept="application/json,.json"
-              aria-label={t("providers.import_json")}
-              className="sr-only"
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0] ?? null;
-                void handleImportFile(file);
-                event.currentTarget.value = "";
-              }}
-            />
+      <PageToolbar
+        title={t("providers.config_overview")}
+        description={t("providers.config_overview_desc")}
+        filters={
+          <div
+            data-testid="providers-batch-actions"
+            className="flex flex-wrap items-center gap-1.5 rounded-2xl bg-slate-50/80 px-2 py-1.5 transition-colors duration-200 ease-out dark:bg-white/3"
+          >
+            {currentImportKind ? (
+              <>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  aria-label={t("providers.import_json")}
+                  className="sr-only"
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0] ?? null;
+                    void handleImportFile(file);
+                    event.currentTarget.value = "";
+                  }}
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-8! px-2 text-xs"
+                  onClick={() => importInputRef.current?.click()}
+                >
+                  <Upload size={14} />
+                  {t("providers.import_json")}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-8! px-2 text-xs"
+                  onClick={handleExport}
+                  disabled={currentTabItems.length === 0}
+                >
+                  <Download size={14} />
+                  {t("providers.export_json")}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-8! px-2 text-xs"
+                  onClick={() => selectAllCurrentItems(!allCurrentSelected)}
+                  disabled={currentSelectableKeys.length === 0}
+                >
+                  {allCurrentSelected
+                    ? t("providers.batch_deselect_all")
+                    : t("providers.batch_select_all")}
+                </Button>
+                <span className="ml-1 text-xs font-medium text-slate-600 dark:text-white/65">
+                  {t("providers.batch_selected", { count: selectedExportCount })}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8! px-2 text-xs"
+                  onClick={() => setSelectedExportKeys([])}
+                  disabled={selectedExportCount === 0}
+                >
+                  {t("providers.batch_clear")}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-8! px-2 text-xs"
+                  onClick={handleExportSelected}
+                  disabled={selectedExportCount === 0}
+                >
+                  {t("providers.export_selected_json")}
+                </Button>
+              </>
+            ) : null}
             <Button
               variant="secondary"
               size="sm"
               className="h-8! px-2 text-xs"
-              onClick={() => importInputRef.current?.click()}
+              onClick={() => void refreshTab(tab)}
+              disabled={loading}
             >
-              <Upload size={14} />
-              {t("providers.import_json")}
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              {t("providers.refresh")}
             </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="h-8! px-2 text-xs"
-              onClick={handleExport}
-              disabled={currentTabItems.length === 0}
-            >
-              <Download size={14} />
-              {t("providers.export_json")}
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="h-8! px-2 text-xs"
-              onClick={() => selectAllCurrentItems(!allCurrentSelected)}
-              disabled={currentSelectableKeys.length === 0}
-            >
-              {allCurrentSelected
-                ? t("providers.batch_deselect_all")
-                : t("providers.batch_select_all")}
-            </Button>
-            <span className="ml-1 text-xs font-medium text-slate-600 dark:text-white/65">
-              {t("providers.batch_selected", { count: selectedExportCount })}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8! px-2 text-xs"
-              onClick={() => setSelectedExportKeys([])}
-              disabled={selectedExportCount === 0}
-            >
-              {t("providers.batch_clear")}
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="h-8! px-2 text-xs"
-              onClick={handleExportSelected}
-              disabled={selectedExportCount === 0}
-            >
-              {t("providers.export_selected_json")}
-            </Button>
-          </>
-        ) : null}
-        <Button
-          variant="secondary"
-          size="sm"
-          className="h-8! px-2 text-xs"
-          onClick={() => void refreshTab(tab)}
-          disabled={loading}
-        >
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-          {t("providers.refresh")}
-        </Button>
-      </div>
+          </div>
+        }
+      />
 
       <Tabs
         value={tab}

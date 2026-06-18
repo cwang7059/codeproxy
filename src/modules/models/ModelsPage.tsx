@@ -48,6 +48,7 @@ import {
   type ModelStatusFilter,
 } from "@/modules/models/models-page-utils";
 import { MonitorSectionHeader } from "@/modules/monitor/MonitorPagePieces";
+import { PageToolbar } from "@/modules/ui/PageToolbar";
 import iconVertex from "@/assets/icons/vertex.svg";
 
 type ModelScope = "active" | "library";
@@ -1301,25 +1302,24 @@ export function ModelsPage() {
   return (
     <section className="space-y-6">
       <div className="rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgb(15_23_42_/_0.035)] dark:border-white/[0.06] dark:bg-neutral-950/70 dark:shadow-[0_1px_2px_rgb(0_0_0_/_0.22)]">
-        <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5 pb-4">
-          <div className="min-w-0">
-            <h1 className="text-base font-semibold text-slate-900 dark:text-white">
-              {t("models_page.title")}
-            </h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-white/45">
-              {t("models_page.description")}
-            </p>
-          </div>
-          <Tabs
-            value={activeTab}
-            onValueChange={(next) => setActiveTab(next as ModelPageTab)}
-            size="sm"
-          >
-            <TabsList>
-              <TabsTrigger value="active">{t("models_page.tab_active_models")}</TabsTrigger>
-              <TabsTrigger value="library">{t("models_page.tab_model_library")}</TabsTrigger>
-            </TabsList>
-          </Tabs>
+        <div className="px-5 pt-5 pb-4">
+          <PageToolbar
+            title={t("models_page.title")}
+            description={t("models_page.description")}
+            titleAs="h1"
+            actions={
+              <Tabs
+                value={activeTab}
+                onValueChange={(next) => setActiveTab(next as ModelPageTab)}
+                size="sm"
+              >
+                <TabsList>
+                  <TabsTrigger value="active">{t("models_page.tab_active_models")}</TabsTrigger>
+                  <TabsTrigger value="library">{t("models_page.tab_model_library")}</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            }
+          />
         </div>
 
         <div className="border-t border-slate-100 px-5 pb-4 pt-4 dark:border-neutral-800/60">

@@ -13,12 +13,12 @@
 | §2.1 | 统一空状态 + 引导操作 | ✅ 已完成 | Proxies / CC Switch / 图片生成 |
 | §2.2 | 合入 Identity Fingerprint 优化 | ✅ 已完成 | 提交 `0f61f99` |
 | §2.3 | i18n 补漏 | ✅ 已完成 | Providers Tab、主题切换、指纹 Tab、curl 示例；`ru` 仅同步 key |
-| §2.4 | 统一页面顶部工具栏 | ⏳ 待做 | 下一步 |
-| §2.5 | 请求日志筛选区拆分 | ⏳ 待做 | worktree 已有 `RequestLogsFilters.tsx` |
+| §2.4 | 统一页面顶部工具栏 | ✅ 已完成 | `PageToolbar`；Monitor / Providers / Models |
+| §2.5 | 请求日志筛选区拆分 | ⏳ 待做 | worktree 已有 `RequestLogsFilters.tsx`；**下一步** |
 | §4.3 | 首次部署引导（精简版） | ✅ 已完成 | `SetupChecklistSection` 于 Dashboard |
 | §3.x / §4.x 其他 | 中等/较大改动 | ⏳ 待做 | 见下文各节 |
 
-**当前下一步：** §2.4 抽取 `PageToolbar`，先统一 Monitor / Providers / Models。
+**当前下一步：** §2.5 合入 `RequestLogsFilters`，拆分请求日志筛选区。
 
 ---
 
@@ -117,7 +117,7 @@
 
 ---
 
-### 2.4 统一页面顶部工具栏
+### 2.4 统一页面顶部工具栏 ✅
 
 **现状各页风格：**
 
@@ -141,6 +141,8 @@
 **首批统一页面：** Monitor、Providers、Models
 
 **验收：** 三页顶部结构一致，主操作按钮位置固定于右侧。
+
+**已完成（2026-06-18）：** 新增 `src/modules/ui/PageToolbar.tsx`；Monitor 工具栏、Providers 概览区、Models 页顶已接入。
 
 ---
 
