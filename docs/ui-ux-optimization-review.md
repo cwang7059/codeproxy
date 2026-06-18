@@ -14,11 +14,11 @@
 | §2.2 | 合入 Identity Fingerprint 优化 | ✅ 已完成 | 提交 `0f61f99` |
 | §2.3 | i18n 补漏 | ✅ 已完成 | Providers Tab、主题切换、指纹 Tab、curl 示例；`ru` 仅同步 key |
 | §2.4 | 统一页面顶部工具栏 | ✅ 已完成 | `PageToolbar`；Monitor / Providers / Models |
-| §2.5 | 请求日志筛选区拆分 | ⏳ 待做 | worktree 已有 `RequestLogsFilters.tsx`；**下一步** |
+| §2.5 | 请求日志筛选区拆分 | ✅ 已完成 | `RequestLogsFilters.tsx`；`RequestLogsPage` 约 688 行 |
 | §4.3 | 首次部署引导（精简版） | ✅ 已完成 | `SetupChecklistSection` 于 Dashboard |
-| §3.x / §4.x 其他 | 中等/较大改动 | ⏳ 待做 | 见下文各节 |
+| §3.x / §4.x 其他 | 中等/较大改动 | ⏳ 待做 | 见下文各节；**下一步 §3.1** |
 
-**当前下一步：** §2.5 合入 `RequestLogsFilters`，拆分请求日志筛选区。
+**当前下一步：** §3.1 拆分巨型页面（Models / RoutingConfigEditor / Providers / Auth Files）。
 
 ---
 
@@ -146,14 +146,16 @@
 
 ---
 
-### 2.5 请求日志筛选区拆分
+### 2.5 请求日志筛选区拆分 ✅
 
 **现状：** 主线 `RequestLogsPage.tsx` 内联筛选逻辑约 700 行。  
-**worktree 已有：** `src/modules/monitor/RequestLogsFilters.tsx`（已提取）
+**worktree 参考：** `RequestLogsFilters.tsx`（多选版）；主线合入时保留现有单选筛选与统计卡片布局。
 
-**建议：** 将 worktree 中的 `RequestLogsFilters.tsx` 合入主线，页面只保留数据加载与表格。
+**建议：** 将筛选 UI 提取为 `RequestLogsFilters`，页面只保留数据加载与表格。
 
 **验收：** `RequestLogsPage.tsx` 行数显著下降；`RequestLogsPage.test.tsx` 通过。
+
+**已完成（2026-06-18）：** 新增 `src/modules/monitor/RequestLogsFilters.tsx`（单选 + 活跃筛选 chips）；`RequestLogsPage` 由约 755 行降至约 688 行；测试 5/5 通过。
 
 ---
 

@@ -9,11 +9,13 @@ import { Button } from "@/modules/ui/Button";
 import { Checkbox } from "@/modules/ui/Checkbox";
 import { Modal } from "@/modules/ui/Modal";
 import { useToast } from "@/modules/ui/ToastProvider";
-import { Select } from "@/modules/ui/Select";
-import { SearchableSelect } from "@/modules/ui/SearchableSelect";
 import { VirtualTable } from "@/modules/ui/VirtualTable";
 import { LogContentModal } from "@/modules/monitor/LogContentModal";
 import { ErrorDetailModal } from "@/modules/monitor/ErrorDetailModal";
+import {
+  RequestLogsFilters,
+  type RequestLogsStatusFilter,
+} from "@/modules/monitor/RequestLogsFilters";
 import {
   buildRequestLogKeyOptions,
   buildRequestLogsColumns,
@@ -25,7 +27,7 @@ import {
   type TimeRange,
 } from "@/modules/monitor/requestLogsShared";
 import { MonitorSectionHeader } from "@/modules/monitor/MonitorPagePieces";
-type StatusFilter = "" | "success" | "failed";
+
 const DEFAULT_LOG_STATS = { total: 0, success_rate: 0, total_tokens: 0, total_cost: 0 };
 const DEFAULT_CLEAR_OPTIONS: ClearUsageLogsPayload = {
   clear_body_content: true,
@@ -104,7 +106,7 @@ export function RequestLogsPage() {
   const [apiQuery, setApiQuery] = useState("");
   const [modelQuery, setModelQuery] = useState("");
   const [channelQuery, setChannelQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
+  const [statusFilter, setStatusFilter] = useState<RequestLogsStatusFilter>("");
   const requestedStatus = searchParams.get("status");
 
   useEffect(() => {
@@ -508,90 +510,22 @@ export function RequestLogsPage() {
           </div>
         </div>
 
-        <div className="border-t border-slate-100 px-5 pt-4 pb-3 dark:border-neutral-800/60">
-          <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-            <div className="min-w-0">
-              <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-white/50">
-                {t("request_logs.section_filters")}
-              </h3>
-              {hasActiveFilters ? (
-                <p className="mt-1 text-xs text-slate-500 dark:text-white/45">
-                  {t("request_logs.filters_active", { count: activeFilterChips.length })}
-                </p>
-              ) : null}
-            </div>
-            {hasActiveFilters ? (
-              <button
-                type="button"
-                onClick={clearAllFilters}
-                className="shrink-0 rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-white/65 dark:hover:bg-white/5"
-              >
-                {t("request_logs.clear_filters")}
-              </button>
-            ) : null}
-          </div>
-          {activeFilterChips.length > 0 ? (
-            <div className="mb-3 flex flex-wrap gap-2">
-              {activeFilterChips.map((chip) => (
-                <span
-                  key={chip.key}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-blue-200/80 bg-blue-50/80 px-2.5 py-1 text-xs font-medium text-blue-700 dark:border-blue-500/25 dark:bg-blue-500/10 dark:text-blue-300"
-                >
-                  <span className="max-w-[240px] truncate">{chip.label}</span>
-                  <button
-                    type="button"
-                    onClick={chip.onClear}
-                    className="rounded-full px-1 text-blue-600/80 transition hover:text-blue-900 dark:text-blue-200/80 dark:hover:text-blue-100"
-                    aria-label={t("request_logs.clear_filter")}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          ) : null}
-          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
-              <SearchableSelect
-                value={apiQuery}
-                onChange={setApiQuery}
-                options={keyOptions}
-                placeholder={t("request_logs.all_keys_placeholder")}
-                searchPlaceholder={t("request_logs.search_keys")}
-                aria-label={t("request_logs.filter_key")}
-                className="w-full sm:w-auto"
-              />
-              <SearchableSelect
-                value={modelQuery}
-                onChange={setModelQuery}
-                options={modelOptions}
-                placeholder={t("request_logs.all_models_placeholder")}
-                searchPlaceholder={t("request_logs.search_models")}
-                aria-label={t("request_logs.filter_model")}
-                className="w-full sm:w-auto"
-              />
-              <SearchableSelect
-                value={channelQuery}
-                onChange={setChannelQuery}
-                options={channelOptions}
-                placeholder={t("request_logs.all_channels_placeholder")}
-                searchPlaceholder={t("request_logs.search_channels")}
-                aria-label={t("request_logs.filter_channel")}
-                className="w-full sm:w-auto"
-              />
-              <Select
-                value={statusFilter}
-                onChange={(v) => setStatusFilter(v as StatusFilter)}
-                options={[
-                  { value: "", label: t("request_logs.all_status") },
-                  { value: "success", label: t("request_logs.status_success") },
-                  { value: "failed", label: t("request_logs.status_failed") },
-                ]}
-                aria-label={t("request_logs.filter_status")}
-                name="statusFilter"
-                className="w-full sm:w-auto"
-              />
-          </div>
-        </div>
+        <RequestLogsFilters
+          apiQuery={apiQuery}
+          modelQuery={modelQuery}
+          channelQuery={channelQuery}
+          statusFilter={statusFilter}
+          onApiQueryChange={setApiQuery}
+          onModelQueryChange={setModelQuery}
+          onChannelQueryChange={setChannelQuery}
+          onStatusFilterChange={setStatusFilter}
+          keyOptions={keyOptions}
+          modelOptions={modelOptions}
+          channelOptions={channelOptions}
+          activeFilterChips={activeFilterChips}
+          hasActiveFilters={hasActiveFilters}
+          onClearAllFilters={clearAllFilters}
+        />
 
         <div className="border-t border-slate-100 px-5 pt-3 pb-1 dark:border-neutral-800/60">
           <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-white/50">
