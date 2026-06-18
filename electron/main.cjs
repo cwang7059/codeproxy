@@ -376,7 +376,8 @@ async function createMainWindow() {
 
   if (frameless && process.platform === "win32") {
     Object.assign(windowOptions, {
-      thickFrame: false,
+      // 保留 thickFrame 才能在无边框模式下拖拽边缘调整窗口大小。
+      thickFrame: true,
       roundedCorners: true,
     });
   }

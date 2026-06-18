@@ -11,6 +11,7 @@ import {
 import type { LiveLogsEmptyKind, LogLevelStats } from "@/modules/logs/logs-page-utils";
 import type { ParsedLogLine } from "@/modules/logs/logsHelpers";
 import { getLevelStyles, getStatusStyles } from "@/modules/logs/logsHelpers";
+import { desktopWindowRegion, isDesktopFrameless } from "@/lib/desktop";
 import { MonitorSectionHeader } from "@/modules/monitor/MonitorPagePieces";
 import { Button } from "@/modules/ui/Button";
 import { EmptyState } from "@/modules/ui/EmptyState";
@@ -367,6 +368,7 @@ export function LiveLogsTab({
               ref={containerRef}
               onScroll={onScroll}
               className="max-h-[60vh] overflow-y-auto bg-slate-50 px-4 py-3 text-slate-900 dark:bg-neutral-950/60 dark:text-slate-100"
+              style={isDesktopFrameless() ? desktopWindowRegion("no-drag") : undefined}
             >
               {visibleLines.length === 0 && emptyStateKind ? (
                 <div className="px-1 py-4">

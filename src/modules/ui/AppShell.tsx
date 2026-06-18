@@ -232,7 +232,10 @@ function ShellSidebar({
           collapsed ? "pointer-events-none opacity-0 -translate-x-6" : "opacity-100 translate-x-0",
         ].join(" ")}
       >
-        <div className="flex h-[72px] items-center gap-3 px-5 pt-5 text-slate-900 transition-colors duration-200 ease-out dark:text-white whitespace-nowrap">
+        <div
+          className="flex h-[72px] items-center gap-3 px-5 pt-5 text-slate-900 transition-colors duration-200 ease-out dark:text-white whitespace-nowrap"
+          style={!isMobile && isDesktopFrameless() ? desktopWindowRegion("drag") : undefined}
+        >
           <span className="grid h-9 w-9 place-items-center rounded-[14px] bg-blue-600 text-white shadow-[0_10px_20px_rgba(37,99,235,0.22)]">
             <LayoutDashboard size={18} />
           </span>
@@ -243,7 +246,10 @@ function ShellSidebar({
             </span>
           </span>
         </div>
-        <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-4 pt-4">
+        <nav
+          className="flex-1 space-y-5 overflow-y-auto px-3 pb-4 pt-4"
+          style={!isMobile && isDesktopFrameless() ? desktopWindowRegion("no-drag") : undefined}
+        >
           {NAV_GROUPS.map((group, groupIndex) => (
             <div
               key={group.i18nKey}
@@ -344,34 +350,33 @@ function ShellHeader({
   return (
     <header className="z-20 shrink-0 border-b border-slate-200 bg-white/75 backdrop-blur-xl motion-reduce:transition-none motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-out dark:border-neutral-800 dark:bg-neutral-950/60">
       <h1 className="sr-only">{t(titleKey)}</h1>
-      <div
-        className="flex h-16 items-center gap-3 px-3 pr-2 sm:px-6 sm:pr-3"
-        style={frameless ? desktopWindowRegion("drag") : undefined}
-      >
-        <div className="flex min-w-0 flex-1 items-center gap-2 pr-2 sm:gap-3 sm:pr-6">
+      <div className="flex h-16 items-center gap-3 px-3 pr-2 sm:px-6 sm:pr-3">
+        <div
+          className="flex min-w-0 items-center gap-2 sm:gap-3"
+          style={frameless ? desktopWindowRegion("no-drag") : undefined}
+        >
           <button
             type="button"
             onClick={onToggleSidebar}
             aria-label={sidebarLabel}
             title={sidebarLabel}
-            style={frameless ? desktopWindowRegion("no-drag") : undefined}
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-slate-500 shadow-none transition-[color,transform] duration-150 ease-out hover:-translate-y-0.5 hover:text-slate-900 active:translate-y-0 active:scale-95 dark:text-slate-400 dark:hover:text-white"
           >
             <SidebarIcon size={16} />
           </button>
-          {frameless ? (
-            <div
-              className="flex shrink-0 items-center gap-1 rounded-2xl border border-slate-200/80 bg-white/70 px-1 py-1 dark:border-neutral-800/80 dark:bg-neutral-900/70"
-              style={desktopWindowRegion("no-drag")}
-            >
-              <LanguageSelector className="inline-flex h-9 min-w-[58px] items-center justify-center gap-0.5 rounded-xl px-2 text-slate-500 transition-colors duration-200 ease-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-neutral-800 dark:hover:text-white" />
-              <ThemeToggleButton className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors duration-200 ease-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-neutral-800 dark:hover:text-white" />
-            </div>
-          ) : null}
         </div>
         {frameless ? (
-          <div className="ml-1 shrink-0" style={desktopWindowRegion("no-drag")}>
-            <DesktopWindowControls compact />
+          <div className="min-w-0 flex-1" style={desktopWindowRegion("drag")} aria-hidden="true" />
+        ) : (
+          <div className="min-w-0 flex-1" />
+        )}
+        {frameless ? (
+          <div
+            className="flex shrink-0 items-center gap-1 rounded-2xl border border-slate-200/80 bg-white/70 px-1 py-1 dark:border-neutral-800/80 dark:bg-neutral-900/70"
+            style={desktopWindowRegion("no-drag")}
+          >
+            <LanguageSelector className="inline-flex h-9 min-w-[58px] items-center justify-center gap-0.5 rounded-xl px-2 text-slate-500 transition-colors duration-200 ease-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-neutral-800 dark:hover:text-white" />
+            <ThemeToggleButton className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors duration-200 ease-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-neutral-800 dark:hover:text-white" />
           </div>
         ) : (
           <div className="flex shrink-0 items-center gap-1 sm:gap-2">
@@ -379,6 +384,11 @@ function ShellHeader({
             <ThemeToggleButton className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors duration-200 ease-out hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" />
           </div>
         )}
+        {frameless ? (
+          <div className="ml-1 shrink-0" style={desktopWindowRegion("no-drag")}>
+            <DesktopWindowControls compact />
+          </div>
+        ) : null}
       </div>
     </header>
   );
@@ -512,7 +522,10 @@ export function AppShell({ children }: PropsWithChildren) {
             <div className={`flex ${viewportHeightClass} min-h-0 overflow-hidden`}>
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                 <ShellHeader sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} />
-                <div className="flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] min-h-0">
+                <div
+                  className="flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] min-h-0"
+                  style={isDesktopFrameless() ? desktopWindowRegion("no-drag") : undefined}
+                >
                   <ShellMain>{children}</ShellMain>
                 </div>
               </div>
@@ -523,7 +536,10 @@ export function AppShell({ children }: PropsWithChildren) {
             <ShellSidebar collapsed={sidebarCollapsed} mode="desktop" />
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
               <ShellHeader sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} />
-              <div className="flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] min-h-0">
+              <div
+                className="flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] min-h-0"
+                style={isDesktopFrameless() ? desktopWindowRegion("no-drag") : undefined}
+              >
                 <ShellMain>{children}</ShellMain>
               </div>
             </div>
