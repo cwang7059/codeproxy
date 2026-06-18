@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, CircleAlert, Pencil, Plus, Trash2, TriangleAlert, X } from "lucide-react";
+import { Check, CircleAlert, Layers, Pencil, Plus, Route, ShieldCheck, Trash2, TriangleAlert, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ChannelGroupChannelDetail } from "@/lib/http/apis/channel-groups";
 import type {
@@ -13,6 +13,7 @@ import { makeClientId } from "@/modules/config/visual/types";
 import { Button } from "@/modules/ui/Button";
 import { Checkbox } from "@/modules/ui/Checkbox";
 import { ConfirmModal } from "@/modules/ui/ConfirmModal";
+import { EmptyState } from "@/modules/ui/EmptyState";
 import { TextInput } from "@/modules/ui/Input";
 import { Modal } from "@/modules/ui/Modal";
 import { SearchableCheckboxMultiSelect } from "@/modules/ui/SearchableCheckboxMultiSelect";
@@ -22,6 +23,12 @@ import { useToast } from "@/modules/ui/ToastProvider";
 import { HoverTooltip, OverflowTooltip } from "@/modules/ui/Tooltip";
 import { VirtualTable, type VirtualTableColumn } from "@/modules/ui/VirtualTable";
 import { VendorIcon } from "@/modules/api-keys/apiKeyPageUtils";
+import {
+  computeChannelGroupPageStats,
+  filterChannelGroupEntries,
+  type ChannelGroupStatusFilter,
+} from "@/modules/channel-groups/channel-groups-page-utils";
+import { MonitorSectionHeader } from "@/modules/monitor/MonitorPagePieces";
 import {
   emptyModelPricing,
   formatModelPrice,
@@ -236,6 +243,7 @@ function renderChannelTags(tags: string[]) {
 export function RoutingConfigEditor({
   values,
   disabled,
+  loading = false,
   availableChannels,
   availableChannelDetails = {},
   onRefreshAvailableChannels,
@@ -244,6 +252,7 @@ export function RoutingConfigEditor({
 }: {
   values: VisualConfigValues;
   disabled?: boolean;
+  loading?: boolean;
   availableChannels: string[];
   availableChannelDetails?: Record<string, ChannelGroupChannelDetail>;
   onRefreshAvailableChannels?: () => Promise<void> | void;
@@ -261,6 +270,8 @@ export function RoutingConfigEditor({
   const [modelsLoading, setModelsLoading] = useState(false);
   const [modelsError, setModelsError] = useState("");
   const [modelsSelectionTouched, setModelsSelectionTouched] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ChannelGroupStatusFilter>("");
 
   const update = useCallback(
     (patch: Partial<VisualConfigValues>) => {
@@ -320,6 +331,69 @@ export function RoutingConfigEditor({
     });
     return map;
   }, [getStaleChannels, values.routingChannelGroups]);
+
+  const stats = useMemo(
+    () =>
+      computeChannelGroupPageStats(
+        values.routingChannelGroups,
+        staleChannelsByGroup,
+        values.routingPathRoutes.length,
+      ),
+    [staleChannelsByGroup, values.routingChannelGroups, values.routingPathRoutes.length],
+  );
+
+  const filteredGroups = useMemo(
+    () =>
+      filterChannelGroupEntries(
+        values.routingChannelGroups,
+        search,
+        statusFilter,
+        staleChannelsByGroup,
+      ),
+    [search, staleChannelsByGroup, statusFilter, values.routingChannelGroups],
+  );
+
+  const hasActiveFilters = Boolean(search.trim() || statusFilter);
+  const useCompactTable = filteredGroups.length <= 10;
+  const totalGroups = values.routingChannelGroups.length;
+
+  const statCards = useMemo(
+    () => [
+      {
+        key: "total",
+        label: t("channel_groups_page.kpi_total"),
+        value: stats.total.toLocaleString(),
+        hint: t("channel_groups_page.kpi_total_hint"),
+        icon: Layers,
+        valueClass: "text-slate-900 dark:text-white",
+      },
+      {
+        key: "healthy",
+        label: t("channel_groups_page.kpi_healthy"),
+        value: stats.healthy.toLocaleString(),
+        hint: t("channel_groups_page.kpi_healthy_hint"),
+        icon: ShieldCheck,
+        valueClass: "text-emerald-700 dark:text-emerald-300",
+      },
+      {
+        key: "invalid",
+        label: t("channel_groups_page.kpi_invalid"),
+        value: stats.invalid.toLocaleString(),
+        hint: t("channel_groups_page.kpi_invalid_hint"),
+        icon: TriangleAlert,
+        valueClass: "text-rose-700 dark:text-rose-300",
+      },
+      {
+        key: "routes",
+        label: t("channel_groups_page.kpi_routes"),
+        value: stats.routes.toLocaleString(),
+        hint: t("channel_groups_page.kpi_routes_hint"),
+        icon: Route,
+        valueClass: "text-indigo-700 dark:text-indigo-300",
+      },
+    ],
+    [stats, t],
+  );
 
   const selectedChannelValues = useMemo(
     () => groupDraft.channels.map((channel) => channel.name.trim()).filter(Boolean),
@@ -628,7 +702,7 @@ export function RoutingConfigEditor({
       {
         key: "description",
         label: t("channel_groups_page.description_label"),
-        width: "w-[220px] min-w-[220px]",
+        width: "w-[180px] min-w-[180px]",
         cellClassName: "min-w-0 whitespace-nowrap text-slate-500 dark:text-white/55",
         render: (group) => {
           const description = group.description.trim() || t("channel_groups_page.no_description");
@@ -701,7 +775,7 @@ export function RoutingConfigEditor({
       {
         key: "channels",
         label: t("channel_groups_page.table_channels"),
-        width: "w-[280px] min-w-[280px]",
+        width: "w-[220px] min-w-[220px]",
         cellClassName: "min-w-0 whitespace-nowrap text-slate-700 dark:text-white/75",
         render: (group) => {
           const names = group.channels.map((channel) => channel.name.trim()).filter(Boolean);
@@ -761,7 +835,7 @@ export function RoutingConfigEditor({
       {
         key: "routes",
         label: t("channel_groups_page.table_routes"),
-        width: "w-[220px] min-w-[220px]",
+        width: "w-[180px] min-w-[180px]",
         cellClassName: "min-w-0 whitespace-nowrap text-slate-700 dark:text-white/75",
         render: (group) => {
           const routes = routesByGroup.get(group.name.trim().toLowerCase()) ?? [];
@@ -1063,30 +1137,149 @@ export function RoutingConfigEditor({
 
   return (
     <>
-      <div className="space-y-3">
-        <div className="flex flex-wrap justify-end gap-3">
-          <Button variant="primary" size="sm" onClick={openCreateGroup} disabled={disabled}>
-            <Plus size={14} />
-            {t("channel_groups_page.add_group")}
-          </Button>
+      <div className="space-y-5">
+        <div>
+          <MonitorSectionHeader title={t("channel_groups_page.section_overview")} />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {statCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={card.key}
+                  className="rounded-xl border border-slate-200/80 bg-slate-50/50 px-4 py-3.5 dark:border-white/[0.08] dark:bg-white/[0.02]"
+                >
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-white/55">
+                    <Icon size={14} className="text-slate-700 dark:text-white/75" aria-hidden="true" />
+                    <span>{card.label}</span>
+                  </p>
+                  <p
+                    className={`mt-2 text-right font-mono text-2xl font-semibold tabular-nums tracking-tight ${card.valueClass}`}
+                  >
+                    {card.value}
+                  </p>
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-white/45">
+                    {hasActiveFilters ? t("channel_groups_page.stats_scope_filtered") : card.hint}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        <VirtualTable<RoutingChannelGroupEntry>
-          rows={values.routingChannelGroups}
-          columns={groupColumns}
-          rowKey={(group) => group.id}
-          virtualize={false}
-          rowHeight={44}
-          height="h-auto max-h-[68vh]"
-          minWidth="min-w-[1660px]"
-          caption={t("channel_groups_page.table_group")}
-          emptyText={t("channel_groups_page.empty_groups")}
-          rowClassName={(group) =>
-            (staleChannelsByGroup.get(group.id)?.length ?? 0) > 0
-              ? "bg-rose-50/35 dark:bg-rose-500/5"
-              : ""
-          }
-        />
+        <div>
+          <MonitorSectionHeader
+            title={t("channel_groups_page.section_filters")}
+            description={t("channel_groups_page.section_filters_desc")}
+          />
+          <div className="space-y-3">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="min-w-0 flex-1">
+                <TextInput
+                  value={search}
+                  onChange={(event) => setSearch(event.currentTarget.value)}
+                  placeholder={t("channel_groups_page.search_placeholder")}
+                  type="search"
+                  name="channel_group_search"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={openCreateGroup}
+                disabled={disabled}
+                className="shrink-0 gap-1.5"
+              >
+                <Plus size={14} aria-hidden="true" />
+                {t("channel_groups_page.add_group")}
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {([
+                ["", t("channel_groups_page.filter_all")],
+                ["healthy", t("channel_groups_page.filter_healthy")],
+                ["invalid", t("channel_groups_page.filter_invalid")],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value || "all"}
+                  type="button"
+                  onClick={() => setStatusFilter(value)}
+                  className={[
+                    "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition",
+                    statusFilter === value
+                      ? "border-blue-200/80 bg-blue-50/80 text-blue-700 dark:border-blue-500/25 dark:bg-blue-500/10 dark:text-blue-300"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-neutral-950/60 dark:text-white/65 dark:hover:bg-white/5",
+                  ].join(" ")}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <MonitorSectionHeader
+            title={t("channel_groups_page.section_table")}
+            description={t("channel_groups_page.section_table_desc")}
+          />
+
+          <div
+            className={[
+              "relative",
+              useCompactTable ? "min-h-0" : "h-[calc(100dvh-420px)] min-h-[280px] overflow-hidden",
+            ].join(" ")}
+          >
+            {!loading && totalGroups === 0 ? (
+              <EmptyState
+                title={t("channel_groups_page.empty_groups")}
+                description={t("channel_groups_page.empty_groups_desc")}
+                icon={<Layers size={32} className="text-slate-400" />}
+                action={
+                  <Button variant="primary" size="sm" onClick={openCreateGroup} disabled={disabled}>
+                    <Plus size={14} aria-hidden="true" />
+                    {t("channel_groups_page.empty_cta")}
+                  </Button>
+                }
+              />
+            ) : (
+              <VirtualTable<RoutingChannelGroupEntry>
+                rows={filteredGroups}
+                columns={groupColumns}
+                rowKey={(group) => group.id}
+                virtualize={false}
+                rowHeight={44}
+                naturalFlow={useCompactTable}
+                height={useCompactTable ? "h-auto" : "h-full"}
+                minHeight={useCompactTable ? "min-h-0" : "min-h-full"}
+                minWidth="min-w-[1520px]"
+                stretch={false}
+                caption={t("channel_groups_page.table_group")}
+                emptyText={
+                  hasActiveFilters
+                    ? t("channel_groups_page.empty_groups_filtered")
+                    : t("channel_groups_page.empty_groups")
+                }
+                rowClassName={(group) =>
+                  (staleChannelsByGroup.get(group.id)?.length ?? 0) > 0
+                    ? "bg-rose-50/35 dark:bg-rose-500/5"
+                    : ""
+                }
+                showAllLoadedMessage={false}
+              />
+            )}
+          </div>
+
+          {totalGroups > 0 ? (
+            <div className="mt-3 text-xs text-slate-500 dark:text-white/45">
+              {t("channel_groups_page.showing_groups", {
+                visible: filteredGroups.length.toLocaleString(),
+                total: totalGroups.toLocaleString(),
+              })}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <Modal

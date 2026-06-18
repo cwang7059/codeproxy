@@ -25,7 +25,6 @@ import {
   filterByConfiguredModelAvailability,
   loadConfiguredModelAvailability,
 } from "@/modules/models/modelAvailability";
-import { Card } from "@/modules/ui/Card";
 import { useToast } from "@/modules/ui/ToastProvider";
 
 function createEmptyRoutingValues(): VisualConfigValues {
@@ -343,26 +342,50 @@ export function ChannelGroupsPage() {
   );
 
   return (
-    <div className="space-y-4 overflow-x-hidden">
-      <Card title={t("channel_groups_page.title")} loading={loading}>
+    <section className="space-y-6 overflow-x-hidden">
+      <div className="rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgb(15_23_42_/_0.035)] dark:border-white/[0.06] dark:bg-neutral-950/70 dark:shadow-[0_1px_2px_rgb(0_0_0_/_0.22)]">
+        <div className="px-5 pt-5 pb-4">
+          <h1 className="text-base font-semibold text-slate-900 dark:text-white">
+            {t("channel_groups_page.title")}
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-white/45">
+            {t("channel_groups_page.description")}
+          </p>
+        </div>
+
         {error ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-400/25 dark:bg-rose-500/15 dark:text-white">
-            {error}
+          <div className="px-5 pb-4">
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-400/25 dark:bg-rose-500/15 dark:text-white">
+              {error}
+            </div>
           </div>
         ) : null}
 
-        <div className={error ? "mt-4 space-y-4" : "space-y-4"}>
+        <div className="relative space-y-4 px-5 pb-5">
           <RoutingConfigEditor
             values={visualValues}
             disabled={loading || saving}
+            loading={loading}
             availableChannels={availableChannels}
             availableChannelDetails={availableChannelDetails}
             onRefreshAvailableChannels={refreshAvailableChannels}
             loadModelsForChannels={loadModelsForChannels}
             onChange={handleEditorChange}
           />
+
+          {loading ? (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-b-2xl bg-white/70 backdrop-blur-sm dark:bg-neutral-950/55">
+              <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/70 dark:text-white/75">
+                <span
+                  className="h-4 w-4 rounded-full border-2 border-slate-300 border-t-slate-900 motion-reduce:animate-none motion-safe:animate-spin dark:border-white/20 dark:border-t-white/80"
+                  aria-hidden="true"
+                />
+                <span role="status">{t("channel_groups_page.loading")}</span>
+              </div>
+            </div>
+          ) : null}
         </div>
-      </Card>
-    </div>
+      </div>
+    </section>
   );
 }
