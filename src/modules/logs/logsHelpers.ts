@@ -96,6 +96,7 @@ export const parseLogLine = (raw: string): ParsedLogLine => {
   let method: HttpMethod | undefined;
   let path: string | undefined;
   let message = remaining;
+  let parsedStructuredFields = false;
 
   if (remaining.includes("|")) {
     const segments = remaining
@@ -140,7 +141,11 @@ export const parseLogLine = (raw: string): ParsedLogLine => {
     }
 
     const rest = segments.filter((_, idx) => !consumed.has(idx));
+    parsedStructuredFields = consumed.size > 0;
     message = rest.join(" | ");
+    if (!message && !parsedStructuredFields) {
+      message = remaining;
+    }
   } else {
     const extracted = extractHttpMethodAndPath(remaining);
     method = extracted.method;
@@ -149,9 +154,21 @@ export const parseLogLine = (raw: string): ParsedLogLine => {
     if (ipMatch) ip = ipMatch[0];
     const latencyMatch = extractLatency(remaining);
     if (latencyMatch) latency = latencyMatch;
+    const hasStructuredHttp =
+      statusCode !== undefined ||
+      method !== undefined ||
+      path !== undefined ||
+      ip !== undefined ||
+      latency !== undefined;
+    parsedStructuredFields = hasStructuredHttp;
+    if (hasStructuredHttp) {
+      message = "";
+    }
   }
 
-  if (!message) message = remaining;
+  if (!message && !parsedStructuredFields) {
+    message = remaining;
+  }
 
   return {
     raw,

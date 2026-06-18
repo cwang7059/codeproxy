@@ -384,8 +384,11 @@ export function LiveLogsTab({
                   <div className="min-w-[640px] divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white/70 dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-950/40">
                     {parsedVisibleLines.map((line, index) => {
                       const levelStyles = line.level ? getLevelStyles(line.level) : null;
+                      const message = line.message.trim();
+                      const isCompactAccessLog = !message;
                       const rowClassName = [
-                        "border-l-2 px-3 py-2",
+                        "border-l-2 px-3",
+                        isCompactAccessLog ? "py-1.5" : "py-2",
                         levelBorderClass(line.level),
                         "hover:bg-slate-50 dark:hover:bg-white/5",
                         levelStyles?.row,
@@ -398,12 +401,17 @@ export function LiveLogsTab({
                           key={`${filteredLines.length - visibleLines.length + index}`}
                           className={rowClassName}
                         >
-                          <div className="flex items-start gap-3">
+                          <div
+                            className={[
+                              "flex gap-3",
+                              isCompactAccessLog ? "items-center" : "items-start",
+                            ].join(" ")}
+                          >
                             <div className="w-36 shrink-0 tabular-nums text-[11px] text-slate-500 dark:text-white/55">
                               {line.timestamp ?? ""}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-1.5">
                                 {line.level ? (
                                   <Badge className={levelStyles?.badge ?? ""}>
                                     {line.level.toUpperCase()}
@@ -445,9 +453,11 @@ export function LiveLogsTab({
                                   </Badge>
                                 ) : null}
                               </div>
-                              <div className="mt-1 whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-slate-900 dark:text-slate-100">
-                                {line.message}
-                              </div>
+                              {message ? (
+                                <div className="mt-1 whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-slate-900 dark:text-slate-100">
+                                  {message}
+                                </div>
+                              ) : null}
                             </div>
                           </div>
                         </div>

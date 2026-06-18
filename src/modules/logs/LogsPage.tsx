@@ -40,7 +40,7 @@ export function LogsPage() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [hideManagement, setHideManagement] = useState(false);
+  const [hideManagement, setHideManagement] = useState(true);
   const [search, setSearch] = useState("");
   const [displayCount, setDisplayCount] = useState(INITIAL_DISPLAY_LINES);
 
