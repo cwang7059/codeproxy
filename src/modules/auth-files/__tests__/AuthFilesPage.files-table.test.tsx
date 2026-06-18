@@ -2593,7 +2593,8 @@ describe("AuthFilesPage files table", () => {
 
     expect(await screen.findByTestId("auth-files-cards")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Group overview" }));
+    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Group overview" }));
 
     expect(await screen.findByText("Channel Group Overview")).toBeInTheDocument();
     expect(screen.getAllByText("Current results").length).toBeGreaterThan(0);

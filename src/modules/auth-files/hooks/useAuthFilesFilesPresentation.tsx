@@ -440,14 +440,14 @@ export function useAuthFilesFilesPresentation({
       const resetText = formatQuotaResetTextCompact(item?.resetAtMs) ?? "--";
 
       return (
-        <div key={label} className="space-y-1">
-          <div className="flex items-center justify-between gap-2">
+        <div key={label} className="space-y-1.5">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3">
             <span className="min-w-0 truncate text-[11px] font-semibold text-slate-700 dark:text-white/80">
               {translateQuotaText(label)}
             </span>
             <span
               className={[
-                "shrink-0 text-[11px] font-semibold tabular-nums",
+                "shrink-0 text-right text-[11px] font-semibold font-mono tabular-nums",
                 tone.percentClass,
               ].join(" ")}
             >
@@ -456,14 +456,14 @@ export function useAuthFilesFilesPresentation({
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200/80 dark:bg-white/10">
             <div
-              className={["h-full rounded-full", tone.fillClass].join(" ")}
+              className={["h-full rounded-full transition-[width] duration-300 ease-out", tone.fillClass].join(" ")}
               style={{ width: `${normalized ?? 0}%` }}
               aria-hidden="true"
             />
           </div>
-          <div className="truncate text-[10px] tabular-nums text-slate-500 dark:text-white/45">
+          <p className="text-right text-[10px] font-mono tabular-nums text-slate-500 dark:text-white/50">
             {resetText}
-          </div>
+          </p>
         </div>
       );
     },

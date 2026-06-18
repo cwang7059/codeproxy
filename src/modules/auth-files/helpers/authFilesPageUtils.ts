@@ -1178,3 +1178,48 @@ export const buildAliasRows = (entries: OAuthModelAliasEntry[] | undefined): Ali
     ...entry,
   }));
 };
+
+const AUTH_FILES_QUOTA_ALERT_THRESHOLD = 20;
+
+export type AuthFilesSummaryStats = {
+  total: number;
+  enabled: number;
+  quotaAlerts: number;
+  totalCalls: number;
+};
+
+export const computeAuthFilesSummaryStats = (
+  files: AuthFileItem[],
+  quotaByFileName: Record<string, QuotaState>,
+  usageIndex: UsageIndex,
+): AuthFilesSummaryStats => {
+  let enabled = 0;
+  let quotaAlerts = 0;
+  let totalCalls = 0;
+
+  for (const file of files) {
+    if (!file.disabled) enabled += 1;
+
+    const stats = resolveAuthFileStats(file, usageIndex);
+    totalCalls += stats.success + stats.failure;
+
+    const items = Array.isArray(quotaByFileName[file.name]?.items)
+      ? (quotaByFileName[file.name].items as QuotaItem[])
+      : [];
+    const hasLowQuota = items.some(
+      (item) =>
+        item.percent !== null &&
+        item.percent !== undefined &&
+        Number.isFinite(item.percent) &&
+        item.percent < AUTH_FILES_QUOTA_ALERT_THRESHOLD,
+    );
+    if (hasLowQuota) quotaAlerts += 1;
+  }
+
+  return {
+    total: files.length,
+    enabled,
+    quotaAlerts,
+    totalCalls,
+  };
+};

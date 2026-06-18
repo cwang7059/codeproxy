@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState, type RefObject, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   BarChart3,
   CircleHelp,
   Download,
   Eye,
+  MoreHorizontal,
   Plus,
   RefreshCw,
   Search,
@@ -12,6 +13,7 @@ import {
   Tags,
   Upload,
 } from "lucide-react";
+import { formatCompact } from "@/modules/monitor/monitor-format";
 import type { AuthFileItem } from "@/lib/http/types";
 import { Button } from "@/modules/ui/Button";
 import { Card } from "@/modules/ui/Card";
@@ -34,6 +36,7 @@ import type {
 } from "@/modules/auth-files/helpers/authFilesPageUtils";
 import {
   TYPE_BADGE_CLASSES,
+  computeAuthFilesSummaryStats,
   formatModified,
   isRuntimeOnlyAuthFile,
   normalizeAuthFilesSortMode,
@@ -201,6 +204,8 @@ export function AuthFilesFilesTab({
   const { t } = useTranslation();
   const [modelOwnerDialogOpen, setModelOwnerDialogOpen] = useState(false);
   const [draftModelOwner, setDraftModelOwner] = useState(selectedModelOwner);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const actionsRef = useRef<HTMLDivElement | null>(null);
   const normalizedFilter = normalizeProviderKey(filter);
   const canSetModelOwnerGroup = normalizedFilter !== "all";
   const draftModelOwnerGroup =
@@ -229,6 +234,68 @@ export function AuthFilesFilesTab({
     }
   }, [modelOwnerDialogOpen, selectedModelOwner]);
 
+  useEffect(() => {
+    if (!actionsOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!actionsRef.current?.contains(event.target as Node)) {
+        setActionsOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setActionsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [actionsOpen]);
+
+  const summaryStats = useMemo(
+    () => computeAuthFilesSummaryStats(filteredFiles, quotaByFileName, usageIndex),
+    [filteredFiles, quotaByFileName, usageIndex],
+  );
+
+  const statCards = useMemo(
+    () => [
+      {
+        key: "total",
+        label: t("auth_files.stats_total"),
+        value: summaryStats.total.toLocaleString(),
+        valueClass: "text-slate-900 dark:text-white",
+      },
+      {
+        key: "enabled",
+        label: t("auth_files.stats_enabled"),
+        value: summaryStats.enabled.toLocaleString(),
+        valueClass: "text-emerald-600 dark:text-emerald-400",
+      },
+      {
+        key: "alerts",
+        label: t("auth_files.stats_quota_alerts"),
+        value: summaryStats.quotaAlerts.toLocaleString(),
+        valueClass:
+          summaryStats.quotaAlerts > 0
+            ? "text-amber-600 dark:text-amber-400"
+            : "text-slate-500 dark:text-white/55",
+      },
+      {
+        key: "calls",
+        label: t("auth_files.stats_total_calls"),
+        value: formatCompact(summaryStats.totalCalls),
+        valueTitle: summaryStats.totalCalls.toLocaleString(),
+        valueClass: "text-sky-600 dark:text-sky-400",
+      },
+    ],
+    [summaryStats.enabled, summaryStats.quotaAlerts, summaryStats.total, summaryStats.totalCalls, t],
+  );
+
   return (
     <div className="mt-3 space-y-3">
       <input
@@ -240,10 +307,28 @@ export function AuthFilesFilesTab({
         onChange={(e) => void handleUpload(e.currentTarget.files)}
       />
 
+      {loading && filesLength === 0 ? null : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {statCards.map((card) => (
+            <div
+              key={card.key}
+              className="rounded-xl border border-slate-200/80 bg-slate-50/50 px-4 py-3.5 dark:border-white/[0.08] dark:bg-white/[0.02]"
+            >
+              <p className="text-xs font-medium text-slate-500 dark:text-white/58">{card.label}</p>
+              <p
+                className={`mt-1.5 font-mono text-2xl font-semibold tabular-nums tracking-tight ${card.valueClass}`}
+                title={"valueTitle" in card ? card.valueTitle : undefined}
+              >
+                {card.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
       <Card padding="compact">
         <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex min-w-0 flex-1 flex-col gap-3 lg:flex-row lg:items-end">
+          <div className="flex min-w-0 flex-1 flex-col gap-3 lg:flex-row lg:items-end">
               <div className="w-fit max-w-full space-y-1.5">
                 <div className="flex items-center gap-2">
                   <p className="text-[11px] font-semibold text-slate-600 dark:text-white/65">
@@ -367,7 +452,7 @@ export function AuthFilesFilesTab({
                 </div>
               ) : null}
 
-              <div className="w-full max-w-[560px] space-y-1.5">
+              <div className="w-full max-w-[560px] space-y-1.5 lg:flex-1">
                 <p className="text-[11px] font-semibold text-slate-600 dark:text-white/65">
                   {t("auth_files.search")}
                 </p>
@@ -378,22 +463,17 @@ export function AuthFilesFilesTab({
                   endAdornment={<Search size={16} className="text-slate-400" />}
                 />
               </div>
-            </div>
           </div>
 
-          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-2 text-xs text-slate-500 dark:text-white/45">
-                <span className="font-medium">{t("auth_files.quota_updated_at")}</span>
-                <span className="font-mono tabular-nums">
-                  {loading && filesLength === 0 ? "--" : quotaLastUpdatedText}
-                </span>
-              </div>
+          <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 dark:border-neutral-800/60 sm:flex-row sm:items-center sm:justify-between">
+            <div className="inline-flex items-center gap-2 text-xs text-slate-500 dark:text-white/45">
+              <span className="font-medium">{t("auth_files.quota_updated_at")}</span>
+              <span className="font-mono tabular-nums">
+                {loading && filesLength === 0 ? "--" : quotaLastUpdatedText}
+              </span>
+            </div>
 
-              <div className={loading && filesLength === 0 ? "pointer-events-none opacity-60" : ""}>
-                {renderFilesViewModeTabs}
-              </div>
-
+            <div className="flex flex-wrap items-center gap-1.5">
               <div className="inline-flex items-center gap-1.5">
                 <span className="text-xs font-medium text-slate-500 dark:text-white/45">
                   {t("auth_files.quota_auto_refresh")}
@@ -420,120 +500,95 @@ export function AuthFilesFilesTab({
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-1.5">
+              <HoverTooltip content={t("auth_files.refresh")}>
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="!h-8 px-2 text-xs"
-                  onClick={openGroupOverview}
-                  disabled={loading || groupOverviewLoading || filteredFiles.length === 0}
+                  onClick={() => void refreshFilesAndQuota()}
+                  disabled={loading || usageLoading || refreshingAll}
+                  aria-label={t("auth_files.refresh")}
+                  title={t("auth_files.refresh")}
                 >
-                  <BarChart3 size={14} className={groupOverviewLoading ? "animate-pulse" : ""} />
-                  {t("auth_files.group_overview_button")}
+                  <RefreshCw
+                    size={15}
+                    className={loading || usageLoading || refreshingAll ? "animate-spin" : ""}
+                  />
                 </Button>
-                <HoverTooltip content={t("auth_files.refresh")}>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => void refreshFilesAndQuota()}
-                    disabled={loading || usageLoading || refreshingAll}
-                    aria-label={t("auth_files.refresh")}
-                    title={t("auth_files.refresh")}
-                  >
-                    <RefreshCw
-                      size={15}
-                      className={loading || usageLoading || refreshingAll ? "animate-spin" : ""}
-                    />
-                  </Button>
-                </HoverTooltip>
-                <HoverTooltip content={t("auth_files.upload")}>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    aria-label={t("auth_files.upload")}
-                    title={t("auth_files.upload")}
-                  >
-                    <Upload size={15} />
-                  </Button>
-                </HoverTooltip>
-                <HoverTooltip content={t("auth_files_page.add_oauth")}>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      const normalized = normalizeProviderKey(filter);
-                      const oauthTab =
-                        normalized === "codex" ||
-                        normalized === "anthropic" ||
-                        normalized === "antigravity" ||
-                        normalized === "gemini-cli" ||
-                        normalized === "kimi" ||
-                        normalized === "qwen"
-                          ? (normalized as OAuthDialogTab)
-                          : "codex";
-                      setOauthDialogDefaultTab(oauthTab);
-                      setOauthDialogOpen(true);
-                    }}
-                    aria-label={t("auth_files_page.add_oauth")}
-                    title={t("auth_files_page.add_oauth")}
-                  >
-                    <Plus size={15} />
-                  </Button>
-                </HoverTooltip>
-              </div>
-            </div>
-
-            {selectableFilteredFiles.length > 0 || selectedCount > 0 ? (
-              <div className="flex flex-wrap items-center gap-1.5 rounded-2xl bg-slate-50/80 px-2 py-1.5 transition-colors duration-200 ease-out dark:bg-white/[0.03]">
+              </HoverTooltip>
+              <HoverTooltip content={t("auth_files.upload")}>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  aria-label={t("auth_files.upload")}
+                  title={t("auth_files.upload")}
+                >
+                  <Upload size={15} />
+                </Button>
+              </HoverTooltip>
+              <HoverTooltip content={t("auth_files_page.add_oauth")}>
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="!h-8 px-2 text-xs"
-                  onClick={() => selectCurrentPage(!allPageSelected)}
-                  disabled={selectablePageNames.length === 0}
+                  onClick={() => {
+                    const normalized = normalizeProviderKey(filter);
+                    const oauthTab =
+                      normalized === "codex" ||
+                      normalized === "anthropic" ||
+                      normalized === "antigravity" ||
+                      normalized === "gemini-cli" ||
+                      normalized === "kimi" ||
+                      normalized === "qwen"
+                        ? (normalized as OAuthDialogTab)
+                        : "codex";
+                    setOauthDialogDefaultTab(oauthTab);
+                    setOauthDialogOpen(true);
+                  }}
+                  aria-label={t("auth_files_page.add_oauth")}
+                  title={t("auth_files_page.add_oauth")}
                 >
-                  {allPageSelected
-                    ? t("auth_files.batch_deselect_page")
-                    : t("auth_files.batch_select_page")}
+                  <Plus size={15} />
                 </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="!h-8 px-2 text-xs"
-                  onClick={() => selectFilteredFiles(!allFilteredSelected)}
-                  disabled={selectableFilteredFiles.length === 0}
-                >
-                  {allFilteredSelected
-                    ? t("auth_files.batch_deselect_filtered")
-                    : t("auth_files.batch_select_filtered")}
-                </Button>
-                <span className="ml-1 text-xs font-medium text-slate-600 dark:text-white/65">
-                  {t("auth_files.batch_selected", { count: selectedCount })}
-                </span>
+              </HoverTooltip>
+              <div className="relative" ref={actionsRef}>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="!h-8 px-2 text-xs"
-                  onClick={() => setSelectedFileNames([])}
-                  disabled={selectedCount === 0}
+                  aria-expanded={actionsOpen}
+                  aria-haspopup="menu"
+                  aria-label={t("auth_files.more_actions")}
+                  title={t("auth_files.more_actions")}
+                  onClick={() => setActionsOpen((prev) => !prev)}
                 >
-                  {t("auth_files.batch_clear")}
+                  <MoreHorizontal size={15} aria-hidden="true" />
                 </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  className="!h-8 px-2 text-xs"
-                  onClick={() =>
-                    setConfirm({ type: "deleteSelection", names: [...selectedFileNames] })
-                  }
-                  disabled={selectedCount === 0 || deletingAll}
-                >
-                  {t("auth_files.batch_delete_action", { count: selectedCount })}
-                </Button>
+                {actionsOpen ? (
+                  <div
+                    role="menu"
+                    aria-label={t("auth_files.more_actions")}
+                    className="absolute right-0 top-[calc(100%+0.5rem)] z-20 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_20px_50px_rgba(15,23,42,0.14)] dark:border-neutral-800 dark:bg-neutral-950"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        openGroupOverview();
+                        setActionsOpen(false);
+                      }}
+                      disabled={loading || groupOverviewLoading || filteredFiles.length === 0}
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:text-white/80 dark:hover:bg-white/10"
+                    >
+                      <BarChart3
+                        size={15}
+                        className={groupOverviewLoading ? "animate-pulse" : ""}
+                      />
+                      {t("auth_files.group_overview_button")}
+                    </button>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
+            </div>
           </div>
         </div>
       </Card>
@@ -559,6 +614,37 @@ export function AuthFilesFilesTab({
       ) : (
         <Card padding="none" className="relative overflow-hidden">
           <div className="p-4 sm:p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className={loading && filesLength === 0 ? "pointer-events-none opacity-60" : ""}>
+                {renderFilesViewModeTabs}
+              </div>
+              {selectableFilteredFiles.length > 0 && selectedCount === 0 ? (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="!h-8 px-2 text-xs"
+                    onClick={() => selectCurrentPage(!allPageSelected)}
+                    disabled={selectablePageNames.length === 0}
+                  >
+                    {allPageSelected
+                      ? t("auth_files.batch_deselect_page")
+                      : t("auth_files.batch_select_page")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="!h-8 px-2 text-xs"
+                    onClick={() => selectFilteredFiles(!allFilteredSelected)}
+                    disabled={selectableFilteredFiles.length === 0}
+                  >
+                    {allFilteredSelected
+                      ? t("auth_files.batch_deselect_filtered")
+                      : t("auth_files.batch_select_filtered")}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
             {filesViewMode === "table" ? (
               <VirtualTable<AuthFileItem>
                 rows={pageItems}
@@ -618,7 +704,6 @@ export function AuthFilesFilesTab({
                   const quotaRefreshing = provider
                     ? quotaByFileName[file.name]?.status === "loading"
                     : false;
-                  const showSelectionControl = fileSelected;
 
                   return (
                     <Card
@@ -637,36 +722,27 @@ export function AuthFilesFilesTab({
                         .join(" ")}
                     >
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0 flex items-center gap-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex min-w-0 items-start gap-2">
+                            {!runtimeOnly ? (
+                              <input
+                                type="checkbox"
+                                aria-label={t("auth_files.select_file", {
+                                  name: displayTitle || file.name,
+                                })}
+                                checked={fileSelected}
+                                onChange={(e) =>
+                                  toggleFileSelection(file.name, e.currentTarget.checked)
+                                }
+                                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-slate-900 accent-slate-900 focus-visible:ring-2 focus-visible:ring-slate-400/35 dark:border-neutral-700 dark:bg-neutral-950 dark:text-white dark:accent-white dark:focus-visible:ring-white/15"
+                              />
+                            ) : null}
                             <span className="min-w-0 truncate text-sm font-semibold text-slate-900 dark:text-white">
                               {displayTitle}
                             </span>
                           </div>
 
                           <div className="flex shrink-0 items-center gap-2">
-                            {runtimeOnly ? null : (
-                              <div
-                                className={[
-                                  "flex h-8 items-center justify-center px-1 transition-opacity",
-                                  showSelectionControl
-                                    ? "opacity-100 pointer-events-auto"
-                                    : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto",
-                                ].join(" ")}
-                              >
-                                <input
-                                  type="checkbox"
-                                  aria-label={t("auth_files.select_file", {
-                                    name: displayTitle || file.name,
-                                  })}
-                                  checked={fileSelected}
-                                  onChange={(e) =>
-                                    toggleFileSelection(file.name, e.currentTarget.checked)
-                                  }
-                                  className="h-4 w-4 rounded border-slate-300 text-slate-900 accent-slate-900 focus-visible:ring-2 focus-visible:ring-slate-400/35 dark:border-neutral-700 dark:bg-neutral-950 dark:text-white dark:accent-white dark:focus-visible:ring-white/15"
-                                />
-                              </div>
-                            )}
                             {runtimeOnly ? (
                               <span className="text-xs text-slate-400 dark:text-white/40">--</span>
                             ) : (
@@ -680,7 +756,7 @@ export function AuthFilesFilesTab({
                           </div>
                         </div>
 
-                        <div className="min-w-0 flex flex-wrap items-center gap-2">
+                        <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
                           {showTypeBadge ? (
                             <span
                               className={[
@@ -696,7 +772,7 @@ export function AuthFilesFilesTab({
                               {t("codex_quota.plan_label")} {formatPlanTypeLabel(planType)}
                             </span>
                           ) : null}
-                          <span className="inline-flex shrink-0 items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-white/10 dark:text-white/70">
+                          <span className="text-[11px] tabular-nums text-slate-500 dark:text-white/50">
                             {t("auth_files.calls_count", { count: totalCalls })}
                           </span>
                           {renderRestrictionBadges(file)}
@@ -725,7 +801,7 @@ export function AuthFilesFilesTab({
                       </div>
 
                       <div
-                        className="mt-4 min-w-0 rounded-2xl bg-slate-50/85 px-3 py-3 transition-colors duration-200 ease-out dark:bg-white/[0.03]"
+                        className="mt-4 min-w-0 rounded-2xl border border-slate-200/80 bg-slate-100/80 px-3 py-3 transition-colors duration-200 ease-out dark:border-white/[0.06] dark:bg-white/[0.05]"
                         data-testid="auth-file-card-quota"
                       >
                         {provider && (state.status === "error" || state.error) ? (
@@ -809,6 +885,55 @@ export function AuthFilesFilesTab({
           </div>
         </Card>
       )}
+
+      {selectedCount > 0 ? (
+        <div className="sticky bottom-4 z-30 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-[0_12px_40px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:border-neutral-700 dark:bg-neutral-950/95">
+          <span className="text-sm font-medium text-slate-700 dark:text-white/80">
+            {t("auth_files.batch_selected", { count: selectedCount })}
+          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="!h-8 px-2 text-xs"
+              onClick={() => selectCurrentPage(!allPageSelected)}
+              disabled={selectablePageNames.length === 0}
+            >
+              {allPageSelected
+                ? t("auth_files.batch_deselect_page")
+                : t("auth_files.batch_select_page")}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="!h-8 px-2 text-xs"
+              onClick={() => selectFilteredFiles(!allFilteredSelected)}
+              disabled={selectableFilteredFiles.length === 0}
+            >
+              {allFilteredSelected
+                ? t("auth_files.batch_deselect_filtered")
+                : t("auth_files.batch_select_filtered")}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="!h-8 px-2 text-xs"
+              onClick={() => setSelectedFileNames([])}
+            >
+              {t("auth_files.batch_clear")}
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              className="!h-8 px-2 text-xs"
+              onClick={() => setConfirm({ type: "deleteSelection", names: [...selectedFileNames] })}
+              disabled={deletingAll}
+            >
+              {t("auth_files.batch_delete_action", { count: selectedCount })}
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-slate-600 dark:text-white/65 tabular-nums">
