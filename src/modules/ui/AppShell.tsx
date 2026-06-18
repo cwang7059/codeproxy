@@ -243,13 +243,23 @@ function ShellSidebar({
             </span>
           </span>
         </div>
-        <nav className="flex-1 space-y-4 overflow-y-auto px-3 pb-4 pt-4">
-          {NAV_GROUPS.map((group) => (
-            <div key={group.i18nKey} className="space-y-1.5">
-              <div className="px-3.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-white/28">
+        <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-4 pt-4">
+          {NAV_GROUPS.map((group, groupIndex) => (
+            <div
+              key={group.i18nKey}
+              className={[
+                "space-y-1.5",
+                groupIndex > 0
+                  ? "border-t border-slate-100 pt-4 dark:border-white/[0.06]"
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              <div className="px-3.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-white/38">
                 {t(group.i18nKey)}
               </div>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const active = activeTo === item.to;
@@ -261,14 +271,14 @@ function ShellSidebar({
                       onClick={() => handleNavClick(item.to)}
                       className={
                         active
-                          ? "relative flex min-w-0 items-center gap-3 rounded-[14px] border border-blue-200/80 bg-blue-50/90 px-3.5 py-2.5 text-[13px] font-semibold text-blue-700 transition-colors duration-200 ease-out dark:border-blue-400/15 dark:bg-blue-500/10 dark:text-blue-200 whitespace-nowrap"
-                          : "relative flex min-w-0 items-center gap-3 rounded-[14px] px-3.5 py-2.5 text-[13px] font-medium text-slate-700 transition-colors duration-200 ease-out hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white whitespace-nowrap"
+                          ? "relative flex min-w-0 items-center gap-3 rounded-[12px] bg-blue-50/70 px-3.5 py-2.5 text-[13px] font-semibold text-blue-700 transition-colors duration-200 ease-out dark:bg-blue-500/[0.08] dark:text-blue-300 whitespace-nowrap"
+                          : "relative flex min-w-0 items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[13px] font-medium text-slate-700 transition-colors duration-200 ease-out hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white whitespace-nowrap"
                       }
                     >
                       {active ? (
                         <span
                           aria-hidden="true"
-                          className="absolute bottom-2 left-1.5 top-2 w-1 rounded-full bg-blue-600 dark:bg-blue-300"
+                          className="absolute bottom-2 left-0 top-2 w-0.5 rounded-full bg-blue-600 dark:bg-blue-400"
                         />
                       ) : null}
                       <Icon

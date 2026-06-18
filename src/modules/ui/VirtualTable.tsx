@@ -590,7 +590,7 @@ export function VirtualTable<T>({
 
           {/* ── HeroUI-styled header ── */}
           <thead ref={headerRef} className={naturalFlow ? undefined : "sticky top-0 z-20"}>
-            <tr className="text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-white/55">
+            <tr className="text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-white/72">
               {columns.map((col) => {
                 return (
                   <th

@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Filter, LoaderCircle, RefreshCw, ScrollText } from "lucide-react";
+import { LoaderCircle, MoreHorizontal, RefreshCw, ScrollText } from "lucide-react";
+import { formatCompact } from "@/modules/monitor/monitor-format";
 import { usageApi } from "@/lib/http/apis";
 import type { ClearUsageLogsPayload, UsageLogItem, UsageLogsResponse } from "@/lib/http/apis/usage";
 import { Button } from "@/modules/ui/Button";
@@ -104,8 +105,10 @@ export function RequestLogsPage() {
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [clearingLogs, setClearingLogs] = useState(false);
   const [clearOptions, setClearOptions] = useState<ClearUsageLogsPayload>(DEFAULT_CLEAR_OPTIONS);
+  const [actionsOpen, setActionsOpen] = useState(false);
 
   const fetchInFlightRef = useRef(false);
+  const actionsRef = useRef<HTMLDivElement | null>(null);
 
   // Fetch logs from backend (server-side pagination)
   const fetchLogs = useCallback(
@@ -216,9 +219,64 @@ export function RequestLogsPage() {
     });
   }, [lastUpdatedAt, loading, t]);
 
+  const statCards = useMemo(
+    () => [
+      {
+        key: "records",
+        label: t("request_logs.records_short"),
+        value: stats.total.toLocaleString(),
+        valueClass: "text-slate-900 dark:text-white",
+      },
+      {
+        key: "success-rate",
+        label: t("common.success_rate"),
+        value: `${stats.success_rate.toFixed(1)}%`,
+        valueClass: "text-emerald-600 dark:text-emerald-400",
+      },
+      {
+        key: "tokens",
+        label: t("request_logs.col_total_token"),
+        value: formatCompact(stats.total_tokens),
+        valueTitle: stats.total_tokens.toLocaleString(),
+        valueClass: "text-sky-600 dark:text-sky-400",
+      },
+      {
+        key: "cost",
+        label: t("request_logs.col_cost"),
+        value: `$${stats.total_cost >= 100 ? stats.total_cost.toFixed(2) : stats.total_cost.toFixed(4)}`,
+        valueClass: "text-violet-600 dark:text-violet-400",
+      },
+    ],
+    [stats.success_rate, stats.total, stats.total_cost, stats.total_tokens, t],
+  );
+
+  useEffect(() => {
+    if (!actionsOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!actionsRef.current?.contains(event.target as Node)) {
+        setActionsOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setActionsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [actionsOpen]);
+
   const handleOpenClearDialog = useCallback(() => {
     setClearOptions(DEFAULT_CLEAR_OPTIONS);
     setConfirmClearOpen(true);
+    setActionsOpen(false);
   }, []);
 
   const handleClearBodyContentChange = useCallback((checked: boolean) => {
@@ -287,43 +345,94 @@ export function RequestLogsPage() {
       {/* 单层卡片：标题 + 筛选 + 统计 + 表格 + 分页 */}
       <div className="flex flex-1 flex-col rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgb(15_23_42_/_0.035)] dark:border-white/[0.06] dark:bg-neutral-950/70 dark:shadow-[0_1px_2px_rgb(0_0_0_/_0.22)]">
         {/* 标题栏 */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-3">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white">
-            <ScrollText size={18} className="text-slate-900 dark:text-white" aria-hidden="true" />
-            {t("request_logs.heading")}
-          </h2>
+        <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5 pb-4">
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white">
+              <ScrollText
+                size={18}
+                className="text-slate-900 dark:text-white"
+                aria-hidden="true"
+              />
+              {t("request_logs.heading")}
+            </h2>
+            <p className="mt-1 text-xs text-slate-500 dark:text-white/45">{lastUpdatedText}</p>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <RequestLogsTimeRangeSelector value={timeRange} onChange={setTimeRange} />
             <Button
-              variant="danger"
+              variant="ghost"
               size="sm"
-              onClick={handleOpenClearDialog}
-              disabled={loading || clearingLogs}
-            >
-              {t("request_logs.clear_database_logs")}
-            </Button>
-            <button
-              type="button"
               onClick={() => fetchLogs(1, pageSize)}
               disabled={loading}
               aria-busy={loading}
-              aria-label={t("request_logs.refresh")}
               title={t("request_logs.refresh")}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-900 text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/35 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-white dark:text-neutral-950 dark:hover:bg-slate-200 dark:focus-visible:ring-white/15"
             >
               <RefreshCw
                 size={14}
                 className={loading ? "motion-reduce:animate-none motion-safe:animate-spin" : ""}
                 aria-hidden="true"
               />
-            </button>
+              {t("request_logs.refresh")}
+            </Button>
+            <div className="relative" ref={actionsRef}>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-expanded={actionsOpen}
+                aria-haspopup="menu"
+                aria-label={t("request_logs.more_actions")}
+                title={t("request_logs.more_actions")}
+                onClick={() => setActionsOpen((prev) => !prev)}
+              >
+                <MoreHorizontal size={14} aria-hidden="true" />
+                {t("request_logs.more_actions")}
+              </Button>
+              {actionsOpen ? (
+                <div
+                  role="menu"
+                  aria-label={t("request_logs.more_actions")}
+                  className="absolute right-0 top-[calc(100%+0.5rem)] z-20 w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_20px_50px_rgba(15,23,42,0.14)] dark:border-neutral-800 dark:bg-neutral-950"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={handleOpenClearDialog}
+                    disabled={loading || clearingLogs}
+                    className="flex w-full flex-col items-start rounded-xl px-3 py-2.5 text-left transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-rose-500/10"
+                  >
+                    <span className="text-sm font-semibold text-rose-700 dark:text-rose-300">
+                      {t("request_logs.clear_database_logs")}
+                    </span>
+                    <span className="mt-0.5 text-xs text-slate-500 dark:text-white/45">
+                      {t("request_logs.high_risk_action_hint")}
+                    </span>
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
 
-        {/* 筛选 + 统计 */}
+        <div className="grid gap-3 px-5 pb-4 sm:grid-cols-2 xl:grid-cols-4">
+          {statCards.map((card) => (
+            <div
+              key={card.key}
+              className="rounded-xl border border-slate-200/80 bg-slate-50/50 px-4 py-3.5 dark:border-white/[0.08] dark:bg-white/[0.02]"
+            >
+              <p className="text-xs font-medium text-slate-500 dark:text-white/58">{card.label}</p>
+              <p
+                className={`mt-1.5 font-mono text-2xl font-semibold tabular-nums tracking-tight ${card.valueClass}`}
+                title={"valueTitle" in card ? card.valueTitle : undefined}
+              >
+                {card.value}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* 筛选 */}
         <div className="border-t border-slate-100 px-5 py-3 dark:border-neutral-800/60">
-          <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
-            <div className="grid grid-cols-1 gap-2 sm:flex sm:items-center sm:gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
               <SearchableSelect
                 value={apiQuery}
                 onChange={setApiQuery}
@@ -363,39 +472,6 @@ export function RequestLogsPage() {
                 name="statusFilter"
                 className="w-full sm:w-auto"
               />
-            </div>
-
-            <div className="hidden sm:block sm:flex-1" />
-
-            <div className="grid grid-cols-2 items-center gap-x-3 gap-y-1.5 text-xs text-slate-600 dark:text-white/55 sm:flex sm:items-center sm:gap-1.5">
-              <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                <Filter size={12} aria-hidden="true" />
-                {t("request_logs.records_count", {
-                  count: stats.total.toLocaleString(),
-                } as Record<string, string>)}
-              </span>
-
-              <span className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap sm:justify-start">
-                {t("common.success_rate")}
-                <span className="font-mono tabular-nums">{stats.success_rate.toFixed(1)}%</span>
-              </span>
-
-              <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                {t("request_logs.col_total_token")}
-                <span className="font-mono tabular-nums">
-                  {stats.total_tokens.toLocaleString()}
-                </span>
-              </span>
-
-              <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                {t("request_logs.col_cost")}
-                <span className="font-mono tabular-nums">${stats.total_cost.toFixed(4)}</span>
-              </span>
-
-              <span className="col-span-2 text-[11px] text-slate-400 dark:text-white/40 sm:col-span-1 sm:text-xs">
-                {lastUpdatedText}
-              </span>
-            </div>
           </div>
         </div>
 
@@ -489,6 +565,9 @@ export function RequestLogsPage() {
         }
       >
         <div className="space-y-4">
+          <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm font-medium text-rose-700 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-200">
+            {t("request_logs.high_risk_action_hint")}
+          </div>
           <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-neutral-800 dark:bg-neutral-900/80 dark:text-white/65">
             {t("request_logs.clear_database_logs_keep_records_hint")}
           </div>

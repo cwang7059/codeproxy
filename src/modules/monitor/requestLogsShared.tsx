@@ -186,6 +186,9 @@ export function RequestLogsTimeRangeSelector({
   );
 }
 
+const NUMERIC_CELL_ALIGN = "flex w-full min-w-0 justify-end";
+const NUMERIC_TEXT = "block min-w-0 truncate text-right";
+
 export function buildRequestLogsColumns(
   t: (key: string) => string,
   onContentClick?: (logId: number, tab: "input" | "output") => void,
@@ -197,7 +200,7 @@ export function buildRequestLogsColumns(
       label: t("request_logs.col_id"),
       width: "w-20",
       cellClassName:
-        "font-mono text-xs tabular-nums text-slate-500 dark:text-white/50",
+        "font-mono text-xs font-medium tabular-nums text-slate-600 dark:text-white/72",
       render: (row) => (
         <OverflowTooltip content={`#${row.id}`} className="block min-w-0">
           <span className="block min-w-0 truncate">#{row.id}</span>
@@ -230,16 +233,16 @@ export function buildRequestLogsColumns(
           content={
             row.isSystemCall
               ? t("request_logs.system_call")
-              : row.apiKeyName || "--"
+              : row.apiKeyName || row.maskedApiKey
           }
           className="block min-w-0"
         >
           <span
-            className={`block min-w-0 truncate text-xs font-medium ${row.apiKeyName || row.isSystemCall ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 dark:text-white/30"}`}
+            className={`block min-w-0 truncate text-xs font-medium ${row.apiKeyName || row.isSystemCall ? "text-indigo-600 dark:text-indigo-300" : "text-slate-500 dark:text-white/35"}`}
           >
             {row.isSystemCall
               ? t("request_logs.system_call")
-              : row.apiKeyName || "--"}
+              : row.apiKeyName || row.maskedApiKey}
           </span>
         </OverflowTooltip>
       ),
@@ -250,7 +253,9 @@ export function buildRequestLogsColumns(
       width: "w-56",
       render: (row) => (
         <OverflowTooltip content={row.model} className="block min-w-0">
-          <span className="block min-w-0 truncate">{row.model}</span>
+          <span className="inline-flex max-w-full min-w-0 truncate rounded-md border border-sky-200/80 bg-sky-50/70 px-2.5 py-1 text-xs font-semibold text-sky-800 dark:border-sky-500/25 dark:bg-sky-500/10 dark:text-sky-200">
+            {row.model}
+          </span>
         </OverflowTooltip>
       ),
     },
@@ -264,7 +269,7 @@ export function buildRequestLogsColumns(
           className="block min-w-0"
         >
           <span
-            className={`block min-w-0 truncate text-xs font-medium ${row.channelName ? "text-violet-600 dark:text-violet-400" : "text-slate-400 dark:text-white/30"}`}
+            className={`block min-w-0 truncate text-xs font-medium ${row.channelName ? "text-violet-600 dark:text-violet-300" : "text-slate-500 dark:text-white/35"}`}
           >
             {row.channelName || "--"}
           </span>
@@ -282,13 +287,13 @@ export function buildRequestLogsColumns(
           <button
             type="button"
             onClick={() => onErrorClick?.(Number(row.id), row.model)}
-            className="inline-flex min-w-[52px] cursor-pointer justify-center rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-100 hover:shadow-sm dark:bg-rose-500/15 dark:text-rose-300 dark:hover:bg-rose-500/25"
+            className="inline-flex min-w-[52px] cursor-pointer justify-center rounded-full border border-rose-200/70 bg-rose-50/40 px-2.5 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-100/70 hover:shadow-sm dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/18"
             title={t("request_logs.view_error")}
           >
             {t("request_logs.status_failed")}
           </button>
         ) : (
-          <span className="inline-flex min-w-[52px] justify-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">
+          <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
             {t("request_logs.status_success")}
           </span>
         ),
@@ -301,8 +306,8 @@ export function buildRequestLogsColumns(
       cellClassName:
         "text-right font-mono text-xs tabular-nums text-slate-700 dark:text-slate-200",
       render: (row) => (
-        <OverflowTooltip content={row.latencyText} className="block min-w-0">
-          <span className="block min-w-0 truncate">{row.latencyText}</span>
+        <OverflowTooltip content={row.latencyText} className={NUMERIC_CELL_ALIGN}>
+          <span className={NUMERIC_TEXT}>{row.latencyText}</span>
         </OverflowTooltip>
       ),
     },
@@ -314,8 +319,8 @@ export function buildRequestLogsColumns(
       cellClassName:
         "text-right font-mono text-xs tabular-nums text-slate-700 dark:text-slate-200",
       render: (row) => (
-        <OverflowTooltip content={row.firstTokenText} className="block min-w-0">
-          <span className="block min-w-0 truncate">{row.firstTokenText}</span>
+        <OverflowTooltip content={row.firstTokenText} className={NUMERIC_CELL_ALIGN}>
+          <span className={NUMERIC_TEXT}>{row.firstTokenText}</span>
         </OverflowTooltip>
       ),
     },
@@ -328,22 +333,24 @@ export function buildRequestLogsColumns(
         "text-right font-mono text-xs tabular-nums text-slate-700 dark:text-slate-200",
       render: (row) =>
         row.hasContent && onContentClick ? (
-          <button
-            type="button"
-            onClick={() => onContentClick(Number(row.id), "input")}
-            className="inline-block ml-auto cursor-pointer rounded px-1.5 py-0.5 transition hover:bg-sky-50 dark:hover:bg-sky-950/30"
-            title={t("request_logs.view_input")}
-          >
-            <span className="truncate text-sky-600 dark:text-sky-400 underline decoration-sky-300/50 dark:decoration-sky-500/40 underline-offset-2">
-              {row.inputTokens.toLocaleString()}
-            </span>
-          </button>
+          <div className={NUMERIC_CELL_ALIGN}>
+            <button
+              type="button"
+              onClick={() => onContentClick(Number(row.id), "input")}
+              className="cursor-pointer rounded px-1.5 py-0.5 transition hover:bg-sky-50 dark:hover:bg-sky-950/30"
+              title={t("request_logs.view_input")}
+            >
+              <span className="block truncate text-right font-mono tabular-nums text-sky-600 dark:text-sky-400 underline decoration-sky-300/50 dark:decoration-sky-500/40 underline-offset-2">
+                {row.inputTokens.toLocaleString()}
+              </span>
+            </button>
+          </div>
         ) : (
           <OverflowTooltip
             content={row.inputTokens.toLocaleString()}
-            className="block min-w-0"
+            className={NUMERIC_CELL_ALIGN}
           >
-            <span className="block min-w-0 truncate">
+            <span className={`${NUMERIC_TEXT} text-sky-700 dark:text-sky-400`}>
               {row.inputTokens.toLocaleString()}
             </span>
           </OverflowTooltip>
@@ -358,10 +365,10 @@ export function buildRequestLogsColumns(
       render: (row) => (
         <OverflowTooltip
           content={row.cachedTokens.toLocaleString()}
-          className="block min-w-0"
+          className={NUMERIC_CELL_ALIGN}
         >
           <span
-            className={`block min-w-0 truncate ${row.cachedTokens > 0 ? "font-semibold text-amber-600 dark:text-amber-400" : "text-slate-400 dark:text-white/30"}`}
+            className={`${NUMERIC_TEXT} ${row.cachedTokens > 0 ? "font-semibold text-amber-600 dark:text-amber-400" : "text-slate-400 dark:text-white/35"}`}
           >
             {row.cachedTokens > 0 ? row.cachedTokens.toLocaleString() : "0"}
           </span>
@@ -377,22 +384,24 @@ export function buildRequestLogsColumns(
         "text-right font-mono text-xs tabular-nums text-slate-700 dark:text-slate-200",
       render: (row) =>
         row.hasContent && onContentClick ? (
-          <button
-            type="button"
-            onClick={() => onContentClick(Number(row.id), "output")}
-            className="inline-block ml-auto cursor-pointer rounded px-1.5 py-0.5 transition hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-            title={t("request_logs.view_output")}
-          >
-            <span className="truncate text-emerald-600 dark:text-emerald-400 underline decoration-emerald-300/50 dark:decoration-emerald-500/40 underline-offset-2">
-              {row.outputTokens.toLocaleString()}
-            </span>
-          </button>
+          <div className={NUMERIC_CELL_ALIGN}>
+            <button
+              type="button"
+              onClick={() => onContentClick(Number(row.id), "output")}
+              className="cursor-pointer rounded px-1.5 py-0.5 transition hover:bg-violet-50 dark:hover:bg-violet-950/30"
+              title={t("request_logs.view_output")}
+            >
+              <span className="block truncate text-right font-mono tabular-nums text-violet-600 dark:text-violet-400 underline decoration-violet-300/50 dark:decoration-violet-500/40 underline-offset-2">
+                {row.outputTokens.toLocaleString()}
+              </span>
+            </button>
+          </div>
         ) : (
           <OverflowTooltip
             content={row.outputTokens.toLocaleString()}
-            className="block min-w-0"
+            className={NUMERIC_CELL_ALIGN}
           >
-            <span className="block min-w-0 truncate">
+            <span className={`${NUMERIC_TEXT} text-violet-700 dark:text-violet-400`}>
               {row.outputTokens.toLocaleString()}
             </span>
           </OverflowTooltip>
@@ -408,9 +417,9 @@ export function buildRequestLogsColumns(
       render: (row) => (
         <OverflowTooltip
           content={row.totalTokens.toLocaleString()}
-          className="block min-w-0"
+          className={NUMERIC_CELL_ALIGN}
         >
-          <span className="block min-w-0 truncate">
+          <span className={`${NUMERIC_TEXT} font-medium text-slate-900 dark:text-white`}>
             {row.totalTokens.toLocaleString()}
           </span>
         </OverflowTooltip>
@@ -424,11 +433,10 @@ export function buildRequestLogsColumns(
       cellClassName:
         "text-right font-mono text-xs tabular-nums text-emerald-700 dark:text-emerald-400",
       render: (row) => (
-        <OverflowTooltip
-          content={`$${row.cost.toFixed(6)}`}
-          className="block min-w-0"
-        >
-          <span className="block min-w-0 truncate">${row.cost.toFixed(4)}</span>
+        <OverflowTooltip content={`$${row.cost.toFixed(6)}`} className={NUMERIC_CELL_ALIGN}>
+          <span className={`${NUMERIC_TEXT} text-emerald-700 dark:text-emerald-400`}>
+            ${row.cost.toFixed(4)}
+          </span>
         </OverflowTooltip>
       ),
     },

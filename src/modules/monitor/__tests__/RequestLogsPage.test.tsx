@@ -298,7 +298,8 @@ describe("RequestLogsPage", () => {
       </ThemeProvider>,
     );
 
-    await user.click(await screen.findByRole("button", { name: "Clear Database Logs" }));
+    await user.click(await screen.findByRole("button", { name: "More Actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: /Clear Database Logs/i }));
     await user.click(await screen.findByRole("button", { name: "Clear Selected Data" }));
 
     await waitFor(() => expect(mocks.clearUsageLogs).toHaveBeenCalledTimes(1));
@@ -329,7 +330,8 @@ describe("RequestLogsPage", () => {
       </ThemeProvider>,
     );
 
-    await user.click(await screen.findByRole("button", { name: "Clear Database Logs" }));
+    await user.click(await screen.findByRole("button", { name: "More Actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: /Clear Database Logs/i }));
     await user.click(await screen.findByRole("button", { name: "Clear Selected Data" }));
 
     cleanup.resolve({ deleted_logs: 0, deleted_contents: 1 });
