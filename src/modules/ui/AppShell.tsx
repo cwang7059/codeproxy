@@ -36,6 +36,10 @@ import { ThemeToggleButton } from "@/modules/ui/ThemeProvider";
 import { LanguageSelector } from "@/modules/ui/LanguageSelector";
 import { isDesktopFrameless, desktopWindowRegion } from "@/lib/desktop";
 import { DesktopWindowControls } from "@/modules/ui/DesktopWindowControls";
+import {
+  DesktopWindowDragBar,
+  DesktopWindowDragPassThrough,
+} from "@/modules/ui/DesktopWindowDragBar";
 
 interface ShellContextState {
   state: {
@@ -232,20 +236,21 @@ function ShellSidebar({
           collapsed ? "pointer-events-none opacity-0 -translate-x-6" : "opacity-100 translate-x-0",
         ].join(" ")}
       >
-        <div
-          className="flex h-[72px] items-center gap-3 px-5 pt-5 text-slate-900 transition-colors duration-200 ease-out dark:text-white whitespace-nowrap"
-          style={!isMobile && isDesktopFrameless() ? desktopWindowRegion("drag") : undefined}
-        >
-          <span className="grid h-9 w-9 place-items-center rounded-[14px] bg-blue-600 text-white shadow-[0_10px_20px_rgba(37,99,235,0.22)]">
-            <LayoutDashboard size={18} />
-          </span>
-          <span className="leading-tight">
-            <span className="block text-lg font-semibold tracking-tight">{t("shell.console")}</span>
-            <span className="block text-[10px] font-medium tracking-normal text-slate-400">
-              CLI Proxy
-            </span>
-          </span>
-        </div>
+        <DesktopWindowDragBar className="h-16">
+          <DesktopWindowDragPassThrough>
+            <div className="flex h-full items-center gap-3 px-5 text-slate-900 dark:text-white whitespace-nowrap">
+              <span className="grid h-9 w-9 place-items-center rounded-[14px] bg-blue-600 text-white shadow-[0_10px_20px_rgba(37,99,235,0.22)]">
+                <LayoutDashboard size={18} />
+              </span>
+              <span className="leading-tight">
+                <span className="block text-lg font-semibold tracking-tight">{t("shell.console")}</span>
+                <span className="block text-[10px] font-medium tracking-normal text-slate-400">
+                  CLI Proxy
+                </span>
+              </span>
+            </div>
+          </DesktopWindowDragPassThrough>
+        </DesktopWindowDragBar>
         <nav
           className="flex-1 space-y-5 overflow-y-auto px-3 pb-4 pt-4"
           style={!isMobile && isDesktopFrameless() ? desktopWindowRegion("no-drag") : undefined}
@@ -348,9 +353,9 @@ function ShellHeader({
   const frameless = isDesktopFrameless();
 
   return (
-    <header className="z-20 shrink-0 border-b border-slate-200 bg-white/75 backdrop-blur-xl motion-reduce:transition-none motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-out dark:border-neutral-800 dark:bg-neutral-950/60">
+    <DesktopWindowDragBar className="z-20 border-b border-slate-200 bg-white/75 backdrop-blur-xl motion-reduce:transition-none motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-out dark:border-neutral-800 dark:bg-neutral-950/60">
       <h1 className="sr-only">{t(titleKey)}</h1>
-      <div className="flex h-16 items-center gap-3 px-3 pr-2 sm:px-6 sm:pr-3">
+      <div className="relative z-10 flex h-16 items-center gap-3 px-3 pr-2 sm:px-6 sm:pr-3">
         <div
           className="flex min-w-0 items-center gap-2 sm:gap-3"
           style={frameless ? desktopWindowRegion("no-drag") : undefined}
@@ -365,11 +370,15 @@ function ShellHeader({
             <SidebarIcon size={16} />
           </button>
         </div>
-        {frameless ? (
-          <div className="min-w-0 flex-1" style={desktopWindowRegion("drag")} aria-hidden="true" />
-        ) : (
-          <div className="min-w-0 flex-1" />
-        )}
+        <div
+          className={[
+            "min-w-0 flex-1 self-stretch",
+            frameless ? "pointer-events-none" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          aria-hidden="true"
+        />
         {frameless ? (
           <div
             className="flex shrink-0 items-center gap-1 rounded-2xl border border-slate-200/80 bg-white/70 px-1 py-1 dark:border-neutral-800/80 dark:bg-neutral-900/70"
@@ -390,7 +399,7 @@ function ShellHeader({
           </div>
         ) : null}
       </div>
-    </header>
+    </DesktopWindowDragBar>
   );
 }
 
