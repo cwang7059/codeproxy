@@ -79,6 +79,8 @@ export interface VirtualTableProps<T> {
   allowWheelPropagationAtBoundary?: boolean;
   /** Render the table in normal document flow without any internal table scrollbars. */
   naturalFlow?: boolean;
+  /** Stretch the table to the container width (default true). */
+  stretch?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,6 +128,7 @@ export function VirtualTable<T>({
   rowClassName,
   allowWheelPropagationAtBoundary = false,
   naturalFlow = false,
+  stretch = true,
 }: VirtualTableProps<T>) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -584,9 +587,14 @@ export function VirtualTable<T>({
           />
         )}
         <table
-          className={`w-full ${minWidth} table-fixed border-separate border-spacing-0 text-sm`}
+          className={`${minWidth} ${stretch ? "w-full" : "w-max"} table-fixed border-separate border-spacing-0 text-sm`}
         >
           <caption className="sr-only">{caption}</caption>
+          <colgroup>
+            {columns.map((col) => (
+              <col key={col.key} className={col.width} />
+            ))}
+          </colgroup>
 
           {/* ── HeroUI-styled header ── */}
           <thead ref={headerRef} className={naturalFlow ? undefined : "sticky top-0 z-20"}>

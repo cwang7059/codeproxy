@@ -607,7 +607,8 @@ export function RequestLogsPage() {
             rowKey={(row) => row.id}
             loading={loading}
             virtualize={false}
-            minWidth="min-w-[1320px]"
+            minWidth="min-w-[1280px]"
+            stretch={false}
             height="h-full"
             minHeight="min-h-full"
             caption={t("request_logs.table_caption")}

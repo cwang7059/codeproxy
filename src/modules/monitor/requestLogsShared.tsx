@@ -212,7 +212,7 @@ export function buildRequestLogsColumns(
     {
       key: "timestamp",
       label: t("request_logs.col_time"),
-      width: "w-52",
+      width: "w-44",
       cellClassName:
         "font-mono text-xs tabular-nums text-slate-700 dark:text-slate-200",
       render: (row) => (
@@ -252,9 +252,9 @@ export function buildRequestLogsColumns(
     {
       key: "model",
       label: t("request_logs.col_model"),
-      width: "w-56",
+      width: "w-40",
       render: (row) => (
-        <OverflowTooltip content={row.model} className="block min-w-0">
+        <OverflowTooltip content={row.model} className="block min-w-0 max-w-[10rem]">
           <span className="inline-flex max-w-full min-w-0 truncate rounded-md border border-sky-200/80 bg-sky-50/70 px-2.5 py-1 text-xs font-semibold text-sky-800 dark:border-sky-500/25 dark:bg-sky-500/10 dark:text-sky-200">
             {row.model}
           </span>
