@@ -2044,7 +2044,12 @@
     "saved": "身份指纹已保存",
     "load_failed": "身份指纹加载失败",
     "save_failed": "身份指纹保存失败",
-    "invalid_json": "JSON 格式无效"
+    "invalid_json": "JSON 格式无效",
+    "show_advanced": "展开高级设置",
+    "hide_advanced": "收起高级设置",
+    "preview_disabled_notice": "指纹未启用，透传客户端原始 Header",
+    "tab_status_enabled": "已启用",
+    "tab_status_disabled": "未启用"
   },
   "ui": {
     "loading": "加载中…",

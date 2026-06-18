@@ -37,13 +37,49 @@ const iconByType: Record<CcSwitchClientType, string> = {
   gemini: iconGemini,
 };
 
-const NEW_106_RELAY_SIGNUP_URL = "http://new.106.hair/sign-up?aff=9bxk";
-const NEW_106_RELAY_PROVIDER_NAME = "new.106.hair Codex";
+interface ExternalRelayPreset {
+  id: string;
+  clientType: CcSwitchClientType;
+  icon: string;
+  signupUrl: string;
+  providerName: string;
+  titleKey: string;
+  descriptionKey: string;
+  signupLabelKey: string;
+  createLabelKey: string;
+  noteKey: string;
+}
+
+const EXTERNAL_RELAY_PRESETS: ExternalRelayPreset[] = [
+  {
+    id: "new-106-codex",
+    clientType: "codex",
+    icon: iconCodex,
+    signupUrl: "http://new.106.hair/sign-up?aff=9bxk",
+    providerName: "new.106.hair Codex",
+    titleKey: "ccswitch.external_relay_title",
+    descriptionKey: "ccswitch.external_relay_description",
+    signupLabelKey: "ccswitch.external_relay_signup",
+    createLabelKey: "ccswitch.external_relay_create_codex",
+    noteKey: "ccswitch.external_relay_note",
+  },
+];
 
 function createDraft(clientType: CcSwitchClientType = "codex") {
   return {
     ...createCcSwitchImportConfig({ clientType }),
     providerName: "",
+  };
+}
+
+function createExternalRelayDraft(
+  preset: ExternalRelayPreset,
+  note: string,
+): CcSwitchImportConfigListItem {
+  return {
+    ...createDraft(preset.clientType),
+    providerName: preset.providerName,
+    note,
   };
 }
 
@@ -90,6 +126,51 @@ const getChannelGroupMappedModelOwnerKeys = (
   }
   return Array.from(keys);
 };
+
+function ExternalRelayShortcutCard({
+  preset,
+  onOpenSignup,
+  onCreatePreset,
+}: {
+  preset: ExternalRelayPreset;
+  onOpenSignup: (preset: ExternalRelayPreset) => void;
+  onCreatePreset: (preset: ExternalRelayPreset) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Card padding="compact" className="rounded-2xl">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200/75 bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900">
+            <img src={preset.icon} alt="" className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 space-y-1">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+              {t(preset.titleKey)}
+            </h3>
+            <p className="max-w-3xl text-xs leading-5 text-slate-600 dark:text-white/60">
+              {t(preset.descriptionKey)}
+            </p>
+            <p className="truncate font-mono text-[11px] text-slate-500 dark:text-white/45">
+              {preset.signupUrl}
+            </p>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button variant="secondary" size="sm" onClick={() => onOpenSignup(preset)}>
+            <ExternalLink size={14} />
+            {t(preset.signupLabelKey)}
+          </Button>
+          <Button variant="primary" size="sm" onClick={() => onCreatePreset(preset)}>
+            <Plus size={14} />
+            {t(preset.createLabelKey)}
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 export function CcSwitchImportSettingsPage() {
   const { t } = useTranslation();
@@ -287,16 +368,12 @@ export function CcSwitchImportSettingsPage() {
     setConfigs(normalized);
   };
   const importBaseUrl = auth?.state.apiBase || detectApiBaseFromLocation();
-  const openNew106RelaySignup = () => {
-    window.open(NEW_106_RELAY_SIGNUP_URL, "_blank", "noopener,noreferrer");
+  const openExternalRelaySignup = (preset: ExternalRelayPreset) => {
+    window.open(preset.signupUrl, "_blank", "noopener,noreferrer");
   };
-  const createNew106RelayPreset = () => {
+  const createExternalRelayPreset = (preset: ExternalRelayPreset) => {
     setModalMode("create");
-    setDraft({
-      ...createDraft("codex"),
-      providerName: NEW_106_RELAY_PROVIDER_NAME,
-      note: t("ccswitch.external_relay_note", { url: NEW_106_RELAY_SIGNUP_URL }),
-    });
+    setDraft(createExternalRelayDraft(preset, t(preset.noteKey, { url: preset.signupUrl })));
     setModalOpen(true);
   };
 
@@ -325,36 +402,14 @@ export function CcSwitchImportSettingsPage() {
         </Button>
       </div>
 
-      <Card padding="compact" className="rounded-2xl">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200/75 bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900">
-              <img src={iconCodex} alt="" className="h-5 w-5" />
-            </span>
-            <div className="min-w-0 space-y-1">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-                {t("ccswitch.external_relay_title")}
-              </h3>
-              <p className="max-w-3xl text-xs leading-5 text-slate-600 dark:text-white/60">
-                {t("ccswitch.external_relay_description")}
-              </p>
-              <p className="truncate font-mono text-[11px] text-slate-500 dark:text-white/45">
-                {NEW_106_RELAY_SIGNUP_URL}
-              </p>
-            </div>
-          </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <Button variant="secondary" size="sm" onClick={openNew106RelaySignup}>
-              <ExternalLink size={14} />
-              {t("ccswitch.external_relay_signup")}
-            </Button>
-            <Button variant="primary" size="sm" onClick={createNew106RelayPreset}>
-              <Plus size={14} />
-              {t("ccswitch.external_relay_create_codex")}
-            </Button>
-          </div>
-        </div>
-      </Card>
+      {EXTERNAL_RELAY_PRESETS.map((preset) => (
+        <ExternalRelayShortcutCard
+          key={preset.id}
+          preset={preset}
+          onOpenSignup={openExternalRelaySignup}
+          onCreatePreset={createExternalRelayPreset}
+        />
+      ))}
 
       <Card
         title={t("ccswitch.config_table_title")}

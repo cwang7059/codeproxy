@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { configFileApi } from "@/lib/http/apis/config-file";
 import {
@@ -193,6 +195,38 @@ function upsertGeminiHeaders(
   return { root, count: rawEntries.length };
 }
 
+type HeaderPreviewLine = { name: string; value: string };
+
+function sessionPreviewValue(
+  mode: string,
+  sessionId: string,
+  t: TFunction,
+): string {
+  if (mode === "per-request") return t("identity_fingerprint.session_per_request");
+  if (mode === "fixed") {
+    return sessionId || t("identity_fingerprint.preview_server_generated");
+  }
+  return t("identity_fingerprint.session_server_stable");
+}
+
+function tryParseCustomHeaders(raw: string): Record<string, string> {
+  try {
+    return parseCustomHeaders(raw);
+  } catch {
+    return {};
+  }
+}
+
+function tryParseHeadersJson(raw: string): Record<string, string> {
+  try {
+    return parseHeadersJson(raw);
+  } catch {
+    return {};
+  }
+}
+
+const PREVIEW_GRID_CLASS = "grid gap-3 xl:grid-cols-[minmax(0,1fr)_min(100%,400px)]";
+
 export function IdentityFingerprintPage() {
   const { t } = useTranslation();
   const { notify } = useToast();
@@ -213,6 +247,8 @@ export function IdentityFingerprintPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [codexAdvancedOpen, setCodexAdvancedOpen] = useState(false);
+  const [claudeAdvancedOpen, setClaudeAdvancedOpen] = useState(false);
 
   const loadPage = useCallback(async () => {
     setLoading(true);
@@ -372,52 +408,79 @@ export function IdentityFingerprintPage() {
     }
   }, [kimi, loadPage, notify, saveConfigYaml, t]);
 
-  const previewItems = useMemo(
-    () => [
-      [t("identity_fingerprint.preview_client"), codex["user-agent"]],
-      [t("identity_fingerprint.preview_version"), codex.version],
-      [
-        t("identity_fingerprint.preview_session"),
-        codex["session-mode"] === "per-request"
-          ? t("identity_fingerprint.session_per_request")
-          : codex["session-mode"] === "fixed"
-            ? codex["session-id"] || t("identity_fingerprint.preview_server_generated")
-            : t("identity_fingerprint.session_server_stable"),
-      ],
-      [t("identity_fingerprint.preview_transport"), codex["websocket-beta"]],
-    ],
-    [codex, t],
-  );
+  const codexPreviewHeaders = useMemo((): HeaderPreviewLine[] => {
+    const lines: HeaderPreviewLine[] = [];
+    if (codex["user-agent"]) lines.push({ name: "User-Agent", value: codex["user-agent"] });
+    if (codex.version) lines.push({ name: "Version", value: codex.version });
+    if (codex.originator) lines.push({ name: "Originator", value: codex.originator });
+    if (codex["websocket-beta"]) {
+      lines.push({ name: "OpenAI-Beta", value: codex["websocket-beta"] });
+    }
+    lines.push({
+      name: "Session-Id",
+      value: sessionPreviewValue(codex["session-mode"], codex["session-id"], t),
+    });
+    for (const [name, value] of Object.entries(tryParseCustomHeaders(customHeadersText))) {
+      lines.push({ name, value });
+    }
+    return lines;
+  }, [codex, customHeadersText, t]);
 
-  const claudePreviewItems = useMemo(
-    () => [
-      [t("identity_fingerprint.preview_client"), claude["user-agent"]],
-      [t("identity_fingerprint.preview_version"), claude["cli-version"]],
-      [t("identity_fingerprint.claude_entrypoint"), claude.entrypoint],
-      [
-        t("identity_fingerprint.preview_session"),
-        claude["session-mode"] === "per-request"
-          ? t("identity_fingerprint.session_per_request")
-          : claude["session-mode"] === "fixed"
-            ? claude["session-id"] || t("identity_fingerprint.preview_server_generated")
-            : t("identity_fingerprint.session_server_stable"),
-      ],
-      [
-        t("identity_fingerprint.claude_stainless_package_version"),
-        claude["stainless-package-version"],
-      ],
-    ],
-    [claude, t],
-  );
+  const claudePreviewHeaders = useMemo((): HeaderPreviewLine[] => {
+    const lines: HeaderPreviewLine[] = [];
+    if (claude["user-agent"]) lines.push({ name: "User-Agent", value: claude["user-agent"] });
+    if (claude["cli-version"]) {
+      lines.push({ name: "X-App-Version", value: claude["cli-version"] });
+    }
+    if (claude["anthropic-beta"]) {
+      lines.push({ name: "Anthropic-Beta", value: claude["anthropic-beta"] });
+    }
+    if (claude["stainless-package-version"]) {
+      lines.push({
+        name: "X-Stainless-Package-Version",
+        value: claude["stainless-package-version"],
+      });
+    }
+    if (claude["stainless-runtime-version"]) {
+      lines.push({
+        name: "X-Stainless-Runtime-Version",
+        value: claude["stainless-runtime-version"],
+      });
+    }
+    if (claude["stainless-timeout"]) {
+      lines.push({ name: "X-Stainless-Timeout", value: claude["stainless-timeout"] });
+    }
+    lines.push({
+      name: "Session-Id",
+      value: sessionPreviewValue(claude["session-mode"], claude["session-id"], t),
+    });
+    for (const [name, value] of Object.entries(tryParseCustomHeaders(claudeCustomHeadersText))) {
+      lines.push({ name, value });
+    }
+    return lines;
+  }, [claude, claudeCustomHeadersText, t]);
 
-  const kimiPreviewItems = useMemo(
-    () => [
-      [t("identity_fingerprint.preview_client"), kimi["user-agent"]],
-      [t("identity_fingerprint.kimi_platform"), kimi.platform],
-      [t("identity_fingerprint.preview_version"), kimi.version],
-    ],
-    [kimi, t],
-  );
+  const geminiPreviewHeaders = useMemo((): HeaderPreviewLine[] => {
+    return Object.entries(tryParseHeadersJson(geminiHeadersText)).map(([name, value]) => ({
+      name,
+      value,
+    }));
+  }, [geminiHeadersText]);
+
+  const kimiPreviewHeaders = useMemo((): HeaderPreviewLine[] => {
+    const lines: HeaderPreviewLine[] = [];
+    if (kimi["user-agent"]) lines.push({ name: "User-Agent", value: kimi["user-agent"] });
+    if (kimi.platform) lines.push({ name: "X-Kimi-Platform", value: kimi.platform });
+    if (kimi.version) lines.push({ name: "X-Kimi-Version", value: kimi.version });
+    return lines;
+  }, [kimi]);
+
+  const providerEnabled: Record<ProviderTab, boolean | null> = {
+    codex: codex.enabled,
+    claude: claude.enabled,
+    gemini: null,
+    kimi: null,
+  };
 
   return (
     <div className="space-y-4 overflow-x-hidden">
@@ -430,15 +493,28 @@ export function IdentityFingerprintPage() {
           <TabsList>
             {PROVIDERS.map((provider) => (
               <TabsTrigger key={provider.id} value={provider.id}>
-                {provider.label}
+                <span className="inline-flex items-center gap-1.5">
+                  {providerEnabled[provider.id] !== null ? (
+                    <span
+                      className={[
+                        "h-1.5 w-1.5 shrink-0 rounded-full",
+                        providerEnabled[provider.id]
+                          ? "bg-emerald-500"
+                          : "bg-slate-300 dark:bg-neutral-600",
+                      ].join(" ")}
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                  {provider.label}
+                </span>
               </TabsTrigger>
             ))}
           </TabsList>
 
-          <TabsContent value="codex" className="mt-5">
-            <div className="space-y-4">
-              <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-neutral-800 dark:bg-neutral-900/45">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <TabsContent value="codex" className="mt-4">
+            <div className="space-y-3">
+              <ProviderToolbar
+                toggle={
                   <ToggleSwitch
                     checked={Boolean(codex.enabled)}
                     onCheckedChange={(enabled) => updateCodex({ enabled })}
@@ -446,7 +522,9 @@ export function IdentityFingerprintPage() {
                     description={t("identity_fingerprint.codex_enabled_desc")}
                     disabled={saving}
                   />
-                  <div className="flex shrink-0 flex-wrap gap-2">
+                }
+                actions={
+                  <>
                     <Button
                       variant="secondary"
                       onClick={restoreDefaults}
@@ -457,12 +535,12 @@ export function IdentityFingerprintPage() {
                     <Button onClick={() => void save()} disabled={loading || saving}>
                       {saving ? t("identity_fingerprint.saving") : t("identity_fingerprint.save")}
                     </Button>
-                  </div>
-                </div>
-              </section>
+                  </>
+                }
+              />
 
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-                <div className="space-y-4">
+              <div className={PREVIEW_GRID_CLASS}>
+                <div className="space-y-3">
                   <SimplePanel
                     title={t("identity_fingerprint.basic_title")}
                     description={t("identity_fingerprint.basic_desc")}
@@ -489,51 +567,70 @@ export function IdentityFingerprintPage() {
                         />
                       </Field>
                     </div>
-                  </SimplePanel>
 
-                  <SimplePanel
-                    title={t("identity_fingerprint.session_title")}
-                    description={t("identity_fingerprint.session_desc")}
-                  >
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <Field label={t("identity_fingerprint.session_mode")}>
-                        <Select
-                          value={codex["session-mode"]}
-                          onChange={(value) =>
-                            updateCodex({
-                              "session-mode": value as CodexIdentityFingerprint["session-mode"],
-                            })
-                          }
-                          options={SESSION_MODE_OPTIONS.map((option) => ({
-                            value: option.value,
-                            label: t(option.labelKey),
-                          }))}
-                          aria-label={t("identity_fingerprint.session_mode")}
-                          className={[
-                            "w-full justify-between",
-                            saving ? "pointer-events-none opacity-60" : null,
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                        />
-                      </Field>
-                      <Field
-                        label={t("identity_fingerprint.session_id")}
-                        hint={t("identity_fingerprint.session_id_hint")}
+                    <div className="space-y-3 border-t border-slate-100 pt-3 dark:border-neutral-800">
+                      <div>
+                        <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
+                          {t("identity_fingerprint.session_title")}
+                        </h4>
+                        <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-white/50">
+                          {t("identity_fingerprint.session_desc")}
+                        </p>
+                      </div>
+                      <div
+                        className={[
+                          "grid gap-3",
+                          codex["session-mode"] === "fixed" ? "md:grid-cols-2" : "md:grid-cols-1",
+                        ].join(" ")}
                       >
-                        <TextInput
-                          value={codex["session-id"]}
-                          onChange={(event) => updateCodex({ "session-id": event.target.value })}
-                          disabled={saving || codex["session-mode"] !== "fixed"}
-                          placeholder={t("identity_fingerprint.session_id_placeholder")}
-                        />
-                      </Field>
+                        <Field label={t("identity_fingerprint.session_mode")}>
+                          <Select
+                            value={codex["session-mode"]}
+                            onChange={(value) =>
+                              updateCodex({
+                                "session-mode": value as CodexIdentityFingerprint["session-mode"],
+                              })
+                            }
+                            options={SESSION_MODE_OPTIONS.map((option) => ({
+                              value: option.value,
+                              label: t(option.labelKey),
+                            }))}
+                            aria-label={t("identity_fingerprint.session_mode")}
+                            className={[
+                              "w-full justify-between",
+                              saving ? "pointer-events-none opacity-60" : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                          />
+                        </Field>
+                        {codex["session-mode"] === "fixed" ? (
+                          <Field
+                            label={t("identity_fingerprint.session_id")}
+                            hint={t("identity_fingerprint.session_id_hint")}
+                          >
+                            <TextInput
+                              value={codex["session-id"]}
+                              onChange={(event) => updateCodex({ "session-id": event.target.value })}
+                              disabled={saving}
+                              placeholder={t("identity_fingerprint.session_id_placeholder")}
+                            />
+                          </Field>
+                        ) : null}
+                      </div>
                     </div>
                   </SimplePanel>
 
-                  <SimplePanel
+                  <CollapsiblePanel
                     title={t("identity_fingerprint.advanced_title")}
                     description={t("identity_fingerprint.advanced_desc")}
+                    open={codexAdvancedOpen}
+                    onOpenChange={setCodexAdvancedOpen}
+                    toggleLabel={
+                      codexAdvancedOpen
+                        ? t("identity_fingerprint.hide_advanced")
+                        : t("identity_fingerprint.show_advanced")
+                    }
                   >
                     <div className="grid gap-3 md:grid-cols-2">
                       <Field label={t("identity_fingerprint.originator")}>
@@ -559,36 +656,33 @@ export function IdentityFingerprintPage() {
                         onChange={(event) => setCustomHeadersText(event.target.value)}
                         disabled={saving}
                         spellCheck={false}
-                        className="min-h-24 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-900 shadow-sm outline-none dark:border-neutral-800 dark:bg-neutral-900 dark:text-slate-100"
+                        className="min-h-24 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-900 shadow-sm outline-none dark:border-neutral-800 dark:bg-neutral-900 dark:text-slate-100"
                       />
                       <p className="mt-2 text-xs text-slate-500 dark:text-white/50">
                         {t("identity_fingerprint.custom_headers_hint")}
                       </p>
                     </Field>
-                  </SimplePanel>
+                  </CollapsiblePanel>
                 </div>
 
-                <SimplePanel
+                <PreviewPanel
                   title={t("identity_fingerprint.preview_title")}
                   description={t("identity_fingerprint.preview_desc")}
                 >
-                  <div className="space-y-2">
-                    {previewItems.map(([label, value]) => (
-                      <PreviewRow key={label} label={label} value={value} />
-                    ))}
-                  </div>
-                  <div className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900 dark:bg-amber-400/10 dark:text-amber-100">
-                    {t("identity_fingerprint.notice_desc")}
-                  </div>
-                </SimplePanel>
+                  {!codex.enabled ? (
+                    <PreviewDisabledNotice>{t("identity_fingerprint.preview_disabled_notice")}</PreviewDisabledNotice>
+                  ) : null}
+                  <HeaderPreviewBlock lines={codexPreviewHeaders} />
+                  <ProviderNotice>{t("identity_fingerprint.notice_desc")}</ProviderNotice>
+                </PreviewPanel>
               </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="claude" className="mt-5">
-            <div className="space-y-4">
-              <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-neutral-800 dark:bg-neutral-900/45">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <TabsContent value="claude" className="mt-4">
+            <div className="space-y-3">
+              <ProviderToolbar
+                toggle={
                   <ToggleSwitch
                     checked={Boolean(claude.enabled)}
                     onCheckedChange={(enabled) => updateClaude({ enabled })}
@@ -596,7 +690,9 @@ export function IdentityFingerprintPage() {
                     description={t("identity_fingerprint.claude_enabled_desc")}
                     disabled={saving}
                   />
-                  <div className="flex shrink-0 flex-wrap gap-2">
+                }
+                actions={
+                  <>
                     <Button
                       variant="secondary"
                       onClick={restoreClaudeDefaults}
@@ -609,12 +705,12 @@ export function IdentityFingerprintPage() {
                         ? t("identity_fingerprint.saving")
                         : t("identity_fingerprint.save_claude")}
                     </Button>
-                  </div>
-                </div>
-              </section>
+                  </>
+                }
+              />
 
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-                <div className="space-y-4">
+              <div className={PREVIEW_GRID_CLASS}>
+                <div className="space-y-3">
                   <SimplePanel
                     title={t("identity_fingerprint.claude_title")}
                     description={t("identity_fingerprint.claude_desc")}
@@ -657,11 +753,70 @@ export function IdentityFingerprintPage() {
                         />
                       </Field>
                     </div>
+
+                    <div className="space-y-3 border-t border-slate-100 pt-3 dark:border-neutral-800">
+                      <div>
+                        <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
+                          {t("identity_fingerprint.session_title")}
+                        </h4>
+                        <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-white/50">
+                          {t("identity_fingerprint.claude_session_desc")}
+                        </p>
+                      </div>
+                      <div
+                        className={[
+                          "grid gap-3",
+                          claude["session-mode"] === "fixed" ? "md:grid-cols-2" : "md:grid-cols-1",
+                        ].join(" ")}
+                      >
+                        <Field label={t("identity_fingerprint.session_mode")}>
+                          <Select
+                            value={claude["session-mode"]}
+                            onChange={(value) =>
+                              updateClaude({
+                                "session-mode": value as ClaudeIdentityFingerprint["session-mode"],
+                              })
+                            }
+                            options={SESSION_MODE_OPTIONS.map((option) => ({
+                              value: option.value,
+                              label: t(option.labelKey),
+                            }))}
+                            aria-label={t("identity_fingerprint.session_mode")}
+                            className={[
+                              "w-full justify-between",
+                              saving ? "pointer-events-none opacity-60" : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                          />
+                        </Field>
+                        {claude["session-mode"] === "fixed" ? (
+                          <Field
+                            label={t("identity_fingerprint.session_id")}
+                            hint={t("identity_fingerprint.session_id_hint")}
+                          >
+                            <TextInput
+                              value={claude["session-id"]}
+                              onChange={(event) => updateClaude({ "session-id": event.target.value })}
+                              disabled={saving}
+                              placeholder={t("identity_fingerprint.session_id_placeholder")}
+                            />
+                          </Field>
+                        ) : null}
+                      </div>
+                    </div>
                   </SimplePanel>
 
-                  <SimplePanel
+                  <CollapsiblePanel
                     title={t("identity_fingerprint.claude_stainless_title")}
                     description={t("identity_fingerprint.claude_stainless_desc")}
+                    open={claudeAdvancedOpen}
+                    onOpenChange={setClaudeAdvancedOpen}
+                    toggleLabel={
+                      claudeAdvancedOpen
+                        ? t("identity_fingerprint.hide_advanced")
+                        : t("identity_fingerprint.show_advanced")
+                    }
                   >
                     <div className="grid gap-3 md:grid-cols-3">
                       <Field label={t("identity_fingerprint.claude_stainless_package_version")}>
@@ -695,46 +850,6 @@ export function IdentityFingerprintPage() {
                         />
                       </Field>
                     </div>
-                  </SimplePanel>
-
-                  <SimplePanel
-                    title={t("identity_fingerprint.session_title")}
-                    description={t("identity_fingerprint.claude_session_desc")}
-                  >
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <Field label={t("identity_fingerprint.session_mode")}>
-                        <Select
-                          value={claude["session-mode"]}
-                          onChange={(value) =>
-                            updateClaude({
-                              "session-mode": value as ClaudeIdentityFingerprint["session-mode"],
-                            })
-                          }
-                          options={SESSION_MODE_OPTIONS.map((option) => ({
-                            value: option.value,
-                            label: t(option.labelKey),
-                          }))}
-                          aria-label={t("identity_fingerprint.session_mode")}
-                          className={[
-                            "w-full justify-between",
-                            saving ? "pointer-events-none opacity-60" : null,
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                        />
-                      </Field>
-                      <Field
-                        label={t("identity_fingerprint.session_id")}
-                        hint={t("identity_fingerprint.session_id_hint")}
-                      >
-                        <TextInput
-                          value={claude["session-id"]}
-                          onChange={(event) => updateClaude({ "session-id": event.target.value })}
-                          disabled={saving || claude["session-mode"] !== "fixed"}
-                          placeholder={t("identity_fingerprint.session_id_placeholder")}
-                        />
-                      </Field>
-                    </div>
                     <Field
                       label={t("identity_fingerprint.claude_device_id")}
                       hint={t("identity_fingerprint.claude_device_id_hint")}
@@ -751,140 +866,163 @@ export function IdentityFingerprintPage() {
                         onChange={(event) => setClaudeCustomHeadersText(event.target.value)}
                         disabled={saving}
                         spellCheck={false}
-                        className="min-h-24 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-900 shadow-sm outline-none dark:border-neutral-800 dark:bg-neutral-900 dark:text-slate-100"
+                        className="min-h-24 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-900 shadow-sm outline-none dark:border-neutral-800 dark:bg-neutral-900 dark:text-slate-100"
                       />
                       <p className="mt-2 text-xs text-slate-500 dark:text-white/50">
                         {t("identity_fingerprint.claude_custom_headers_hint")}
                       </p>
                     </Field>
-                  </SimplePanel>
+                  </CollapsiblePanel>
                 </div>
 
-                <SimplePanel
+                <PreviewPanel
                   title={t("identity_fingerprint.preview_title")}
                   description={t("identity_fingerprint.claude_preview_desc")}
                 >
-                  <div className="space-y-2">
-                    {claudePreviewItems.map(([label, value]) => (
-                      <PreviewRow key={label} label={label} value={value} />
-                    ))}
-                  </div>
+                  {!claude.enabled ? (
+                    <PreviewDisabledNotice>{t("identity_fingerprint.preview_disabled_notice")}</PreviewDisabledNotice>
+                  ) : null}
+                  <HeaderPreviewBlock lines={claudePreviewHeaders} />
                   <ProviderNotice>{t("identity_fingerprint.claude_notice")}</ProviderNotice>
-                </SimplePanel>
+                </PreviewPanel>
               </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="gemini" className="mt-5">
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-              <SimplePanel
-                title={t("identity_fingerprint.gemini_title")}
-                description={t("identity_fingerprint.gemini_desc")}
-              >
-                <Field label={t("identity_fingerprint.headers_json")}>
-                  <textarea
-                    value={geminiHeadersText}
-                    onChange={(event) => setGeminiHeadersText(event.target.value)}
-                    disabled={saving}
-                    spellCheck={false}
-                    className="min-h-36 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-900 shadow-sm outline-none dark:border-neutral-800 dark:bg-neutral-900 dark:text-slate-100"
-                  />
-                  <p className="mt-2 text-xs text-slate-500 dark:text-white/50">
-                    {t("identity_fingerprint.gemini_headers_hint")}
-                  </p>
-                </Field>
-                <ProviderActions
-                  restoreLabel={t("identity_fingerprint.restore_defaults")}
-                  saveLabel={
-                    saving
-                      ? t("identity_fingerprint.saving")
-                      : t("identity_fingerprint.save_gemini")
-                  }
-                  onRestore={restoreGeminiDefaults}
-                  onSave={() => void saveGemini()}
-                  disabled={loading || saving || geminiKeyCount === 0}
-                />
-              </SimplePanel>
+          <TabsContent value="gemini" className="mt-4">
+            <div className="space-y-3">
+              <ProviderToolbar
+                actions={
+                  <>
+                    <Button
+                      variant="secondary"
+                      onClick={restoreGeminiDefaults}
+                      disabled={loading || saving || geminiKeyCount === 0}
+                    >
+                      {t("identity_fingerprint.restore_defaults")}
+                    </Button>
+                    <Button
+                      onClick={() => void saveGemini()}
+                      disabled={loading || saving || geminiKeyCount === 0}
+                    >
+                      {saving
+                        ? t("identity_fingerprint.saving")
+                        : t("identity_fingerprint.save_gemini")}
+                    </Button>
+                  </>
+                }
+              />
 
-              <SimplePanel
-                title={t("identity_fingerprint.preview_title")}
-                description={t("identity_fingerprint.gemini_preview_desc")}
-              >
-                <PreviewRow
-                  label={t("identity_fingerprint.gemini_key_count")}
-                  value={t("identity_fingerprint.gemini_key_count_value", {
-                    count: geminiKeyCount,
-                  })}
-                />
-                <ProviderNotice>
-                  {geminiKeyCount > 0
-                    ? t("identity_fingerprint.gemini_notice")
-                    : t("identity_fingerprint.gemini_empty_notice")}
-                </ProviderNotice>
-              </SimplePanel>
+              <div className={PREVIEW_GRID_CLASS}>
+                <SimplePanel
+                  title={t("identity_fingerprint.gemini_title")}
+                  description={t("identity_fingerprint.gemini_desc")}
+                >
+                  <Field label={t("identity_fingerprint.headers_json")}>
+                    <textarea
+                      value={geminiHeadersText}
+                      onChange={(event) => setGeminiHeadersText(event.target.value)}
+                      disabled={saving}
+                      spellCheck={false}
+                      className="min-h-36 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-900 shadow-sm outline-none dark:border-neutral-800 dark:bg-neutral-900 dark:text-slate-100"
+                    />
+                    <p className="mt-2 text-xs text-slate-500 dark:text-white/50">
+                      {t("identity_fingerprint.gemini_headers_hint")}
+                    </p>
+                  </Field>
+                </SimplePanel>
+
+                <PreviewPanel
+                  title={t("identity_fingerprint.preview_title")}
+                  description={t("identity_fingerprint.gemini_preview_desc")}
+                >
+                  <PreviewRow
+                    label={t("identity_fingerprint.gemini_key_count")}
+                    value={t("identity_fingerprint.gemini_key_count_value", {
+                      count: geminiKeyCount,
+                    })}
+                  />
+                  {geminiPreviewHeaders.length > 0 ? (
+                    <HeaderPreviewBlock lines={geminiPreviewHeaders} />
+                  ) : null}
+                  <ProviderNotice>
+                    {geminiKeyCount > 0
+                      ? t("identity_fingerprint.gemini_notice")
+                      : t("identity_fingerprint.gemini_empty_notice")}
+                  </ProviderNotice>
+                </PreviewPanel>
+              </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="kimi" className="mt-5">
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-              <SimplePanel
-                title={t("identity_fingerprint.kimi_title")}
-                description={t("identity_fingerprint.kimi_desc")}
-              >
-                <div className="grid gap-3 md:grid-cols-2">
-                  <Field
-                    label={t("identity_fingerprint.user_agent")}
-                    hint={t("identity_fingerprint.kimi_user_agent_hint")}
-                  >
-                    <TextInput
-                      value={kimi["user-agent"]}
-                      onChange={(event) =>
-                        setKimi((current) => ({ ...current, "user-agent": event.target.value }))
-                      }
-                      disabled={saving}
-                    />
-                  </Field>
-                  <Field label={t("identity_fingerprint.kimi_platform")}>
-                    <TextInput
-                      value={kimi.platform}
-                      onChange={(event) =>
-                        setKimi((current) => ({ ...current, platform: event.target.value }))
-                      }
-                      disabled={saving}
-                    />
-                  </Field>
-                  <Field label={t("identity_fingerprint.version")}>
-                    <TextInput
-                      value={kimi.version}
-                      onChange={(event) =>
-                        setKimi((current) => ({ ...current, version: event.target.value }))
-                      }
-                      disabled={saving}
-                    />
-                  </Field>
-                </div>
-                <ProviderActions
-                  restoreLabel={t("identity_fingerprint.restore_defaults")}
-                  saveLabel={
-                    saving ? t("identity_fingerprint.saving") : t("identity_fingerprint.save_kimi")
-                  }
-                  onRestore={restoreKimiDefaults}
-                  onSave={() => void saveKimi()}
-                  disabled={loading || saving}
-                />
-              </SimplePanel>
+          <TabsContent value="kimi" className="mt-4">
+            <div className="space-y-3">
+              <ProviderToolbar
+                actions={
+                  <>
+                    <Button
+                      variant="secondary"
+                      onClick={restoreKimiDefaults}
+                      disabled={loading || saving}
+                    >
+                      {t("identity_fingerprint.restore_defaults")}
+                    </Button>
+                    <Button onClick={() => void saveKimi()} disabled={loading || saving}>
+                      {saving
+                        ? t("identity_fingerprint.saving")
+                        : t("identity_fingerprint.save_kimi")}
+                    </Button>
+                  </>
+                }
+              />
 
-              <SimplePanel
-                title={t("identity_fingerprint.preview_title")}
-                description={t("identity_fingerprint.kimi_preview_desc")}
-              >
-                <div className="space-y-2">
-                  {kimiPreviewItems.map(([label, value]) => (
-                    <PreviewRow key={label} label={label} value={value} />
-                  ))}
-                </div>
-                <ProviderNotice>{t("identity_fingerprint.kimi_notice")}</ProviderNotice>
-              </SimplePanel>
+              <div className={PREVIEW_GRID_CLASS}>
+                <SimplePanel
+                  title={t("identity_fingerprint.kimi_title")}
+                  description={t("identity_fingerprint.kimi_desc")}
+                >
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Field
+                      label={t("identity_fingerprint.user_agent")}
+                      hint={t("identity_fingerprint.kimi_user_agent_hint")}
+                    >
+                      <TextInput
+                        value={kimi["user-agent"]}
+                        onChange={(event) =>
+                          setKimi((current) => ({ ...current, "user-agent": event.target.value }))
+                        }
+                        disabled={saving}
+                      />
+                    </Field>
+                    <Field label={t("identity_fingerprint.kimi_platform")}>
+                      <TextInput
+                        value={kimi.platform}
+                        onChange={(event) =>
+                          setKimi((current) => ({ ...current, platform: event.target.value }))
+                        }
+                        disabled={saving}
+                      />
+                    </Field>
+                    <Field label={t("identity_fingerprint.version")}>
+                      <TextInput
+                        value={kimi.version}
+                        onChange={(event) =>
+                          setKimi((current) => ({ ...current, version: event.target.value }))
+                        }
+                        disabled={saving}
+                      />
+                    </Field>
+                  </div>
+                </SimplePanel>
+
+                <PreviewPanel
+                  title={t("identity_fingerprint.preview_title")}
+                  description={t("identity_fingerprint.kimi_preview_desc")}
+                >
+                  <HeaderPreviewBlock lines={kimiPreviewHeaders} />
+                  <ProviderNotice>{t("identity_fingerprint.kimi_notice")}</ProviderNotice>
+                </PreviewPanel>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
@@ -899,36 +1037,95 @@ export function IdentityFingerprintPage() {
   );
 }
 
-function ProviderActions({
-  restoreLabel,
-  saveLabel,
-  onRestore,
-  onSave,
-  disabled,
+function ProviderToolbar({
+  toggle,
+  actions,
 }: {
-  restoreLabel: string;
-  saveLabel: string;
-  onRestore: () => void;
-  onSave: () => void;
-  disabled?: boolean;
+  toggle?: ReactNode;
+  actions: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap justify-end gap-2 pt-2">
-      <Button variant="secondary" onClick={onRestore} disabled={disabled}>
-        {restoreLabel}
-      </Button>
-      <Button onClick={onSave} disabled={disabled}>
-        {saveLabel}
-      </Button>
+    <div className="flex flex-col gap-3 border-b border-slate-200 pb-3 dark:border-neutral-800 lg:flex-row lg:items-start lg:justify-between">
+      {toggle ? <div className="min-w-0 flex-1">{toggle}</div> : <div className="flex-1" />}
+      <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>
     </div>
   );
 }
 
 function ProviderNotice({ children }: { children: ReactNode }) {
   return (
-    <div className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900 dark:bg-amber-400/10 dark:text-amber-100">
+    <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900 dark:bg-amber-400/10 dark:text-amber-100">
       {children}
     </div>
+  );
+}
+
+function PreviewDisabledNotice({ children }: { children: ReactNode }) {
+  return (
+    <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600 dark:border-neutral-700 dark:bg-neutral-900/70 dark:text-white/65">
+      {children}
+    </div>
+  );
+}
+
+function PreviewPanel({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="sticky top-4 self-start rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/50">
+      <div className="mb-3">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>
+        {description ? (
+          <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-white/60">{description}</p>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function CollapsiblePanel({
+  title,
+  description,
+  open,
+  onOpenChange,
+  toggleLabel,
+  children,
+}: {
+  title: string;
+  description?: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  toggleLabel: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white dark:border-neutral-800 dark:bg-neutral-950/60">
+      <button
+        type="button"
+        onClick={() => onOpenChange(!open)}
+        className="flex w-full items-start justify-between gap-3 p-4 text-left"
+        aria-expanded={open}
+      >
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>
+          {description ? (
+            <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-white/60">{description}</p>
+          ) : null}
+        </div>
+        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-slate-500 dark:text-white/55">
+          {toggleLabel}
+          {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </span>
+      </button>
+      {open ? <div className="space-y-3 border-t border-slate-100 px-4 pb-4 pt-3 dark:border-neutral-800">{children}</div> : null}
+    </section>
   );
 }
 
@@ -943,7 +1140,7 @@ function SimplePanel({
 }) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950/60">
-      <div className="mb-4">
+      <div className="mb-3">
         <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>
         {description ? (
           <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-white/60">{description}</p>
@@ -956,7 +1153,7 @@ function SimplePanel({
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
-    <label className="block space-y-2">
+    <label className="block space-y-1.5">
       <span className="text-xs font-semibold text-slate-700 dark:text-white/75">{label}</span>
       {children}
       {hint ? (
@@ -966,9 +1163,32 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
+function HeaderPreviewBlock({ lines }: { lines: HeaderPreviewLine[] }) {
+  if (lines.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400 dark:border-neutral-700 dark:text-white/35">
+        —
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-neutral-800 dark:bg-neutral-950/80">
+      <pre className="max-h-80 overflow-auto p-3 font-mono text-[11px] leading-5 text-slate-800 dark:text-slate-200">
+        {lines.map((line) => (
+          <div key={line.name} className="break-all">
+            <span className="text-slate-500 dark:text-white/45">{line.name}: </span>
+            <span>{line.value}</span>
+          </div>
+        ))}
+      </pre>
+    </div>
+  );
+}
+
 function PreviewRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-neutral-900/70">
+    <div className="mb-3 rounded-xl bg-white px-3 py-2 dark:bg-neutral-950/80">
       <div className="text-xs text-slate-500 dark:text-white/45">{label}</div>
       <div className="mt-1 break-all text-sm font-medium text-slate-900 dark:text-white">
         {value || "-"}

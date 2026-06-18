@@ -2029,7 +2029,12 @@
     "saved": "Identity fingerprint saved",
     "load_failed": "Failed to load identity fingerprint",
     "save_failed": "Failed to save identity fingerprint",
-    "invalid_json": "Invalid JSON"
+    "invalid_json": "Invalid JSON",
+    "show_advanced": "Show advanced",
+    "hide_advanced": "Hide advanced",
+    "preview_disabled_notice": "Fingerprint off — client headers pass through unchanged",
+    "tab_status_enabled": "enabled",
+    "tab_status_disabled": "disabled"
   },
   "ui": {
     "loading": "Loading…",
