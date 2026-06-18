@@ -123,12 +123,20 @@
     "hero_title_line1": "面向 Agent 的",
     "hero_title_line2": "统一代理平台",
     "hero_description": "登录管理控制台，查看网关状态、调用监控和关键运行指标。",
-    "trusted_by": "TRUSTED BY",
+    "trusted_by": "兼容平台",
     "continue_with_key": "使用管理密钥继续",
     "endpoint_label": "管理端点",
     "error_management_key_required": "请输入管理密钥",
     "login_success": "登录成功",
-    "signing_in": "登录中..."
+    "signing_in": "登录中...",
+    "remember_password_hint": "仅保存在本机浏览器，不会上传到服务器",
+    "copy_endpoint": "复制",
+    "copy_endpoint_success": "管理端点已复制",
+    "copy_endpoint_failed": "复制失败",
+    "connection_checking": "检测中",
+    "connection_reachable": "可连接",
+    "connection_unreachable": "无法连接",
+    "connection_invalid": "地址无效"
   },
   "header": {
     "check_connection": "检查连接",
