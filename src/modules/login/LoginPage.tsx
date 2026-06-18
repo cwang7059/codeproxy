@@ -226,10 +226,10 @@ export function LoginPage() {
         </div>
       ) : null}
 
-      <div className="relative mx-auto flex min-h-full w-full max-w-6xl items-center px-4 py-8 sm:px-6 sm:py-12">
-        <Reveal className="w-full">
-          <div className="grid w-full items-center gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
-            <section className="order-1 lg:order-2">
+      <div className="relative flex w-full flex-1 items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
+        <Reveal className="w-full max-w-5xl">
+          <div className="grid w-full items-center gap-8 lg:grid-cols-2 lg:gap-10 xl:gap-12">
+            <section className="order-1 w-full lg:order-2">
               <div className="rounded-2xl border border-slate-200/90 bg-white/92 p-6 text-slate-900 shadow-[0_24px_60px_-48px_rgba(15,23,42,0.55)] backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/78 dark:text-slate-50 dark:shadow-[0_24px_60px_-48px_rgba(0,0,0,0.85)] sm:p-8">
                 <div className="space-y-5">
                   <div className="space-y-1">
@@ -389,7 +389,7 @@ export function LoginPage() {
               </div>
             </section>
 
-            <aside className="order-2 space-y-8 lg:order-1 lg:space-y-10">
+            <aside className="order-2 flex w-full flex-col items-center space-y-8 text-center lg:order-1 lg:items-start lg:space-y-10 lg:text-left">
               <div className="flex items-center gap-3">
                 <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/70 ring-1 ring-slate-200 backdrop-blur dark:bg-neutral-950/60 dark:ring-neutral-800">
                   <Lock size={18} className="text-slate-900 dark:text-white" />
@@ -399,7 +399,7 @@ export function LoginPage() {
                 </div>
               </div>
 
-              <div className="hidden space-y-4 sm:block lg:space-y-6">
+              <div className="hidden max-w-md space-y-4 sm:block lg:max-w-none lg:space-y-6">
                 <h1 className="text-4xl font-semibold leading-[1.08] tracking-tight text-slate-900 lg:text-5xl dark:text-white">
                   {t("login.hero_title_line1")}
                   <br />
@@ -410,11 +410,11 @@ export function LoginPage() {
                 </p>
               </div>
 
-              <div className="space-y-3">
+              <div className="w-full space-y-3">
                 <div className="text-xs font-semibold tracking-[0.22em] text-slate-500 dark:text-white/50">
                   {t("login.trusted_by")}
                 </div>
-                <div className="hidden flex-wrap gap-3 sm:flex">
+                <div className="hidden flex-wrap justify-center gap-3 sm:flex lg:justify-start">
                   {PROVIDERS.map(({ key, label, Logo, logoClassName }) => (
                     <span
                       key={key}
@@ -425,7 +425,7 @@ export function LoginPage() {
                     </span>
                   ))}
                 </div>
-                <div className="flex gap-2 sm:hidden">
+                <div className="flex justify-center gap-2 sm:hidden">
                   {PROVIDERS.map(({ key, label, Logo, logoClassName }) => (
                     <span
                       key={key}

@@ -29,7 +29,11 @@ export function PageBackground({
           </>
         ) : null}
       </div>
-      <div className={`relative ${fill ? "flex h-full min-h-0 flex-col" : ""}`}>{children}</div>
+      <div
+        className={`relative ${fill ? "flex h-full min-h-0 flex-col" : variant === "login" ? "flex min-h-[100dvh] flex-col" : ""}`}
+      >
+        {children}
+      </div>
     </div>
   );
 }
