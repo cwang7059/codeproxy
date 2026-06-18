@@ -16,9 +16,9 @@
 | §2.4 | 统一页面顶部工具栏 | ✅ 已完成 | `PageToolbar`；Monitor / Providers / Models |
 | §2.5 | 请求日志筛选区拆分 | ✅ 已完成 | `RequestLogsFilters.tsx`；`RequestLogsPage` 约 688 行 |
 | §4.3 | 首次部署引导（精简版） | ✅ 已完成 | `SetupChecklistSection` 于 Dashboard |
-| §3.x / §4.x 其他 | 中等/较大改动 | ⏳ 待做 | 见下文各节；**下一步 §3.1** |
+| §3.x / §4.x 其他 | 中等/较大改动 | ⏳ 进行中 | §3.1 已拆 Models 工具层 + Providers 页；见下文 |
 
-**当前下一步：** §3.1 拆分巨型页面（Models / RoutingConfigEditor / Providers / Auth Files）。
+**当前下一步：** §3.1 继续拆分 `ModelsPage`（库 Tab / OpenRouter 同步）与 `RoutingConfigEditor`。
 
 ---
 
@@ -161,16 +161,20 @@
 
 ## 3. 中等投入（1–3 天/项）
 
-### 3.1 拆分「巨型页面」
+### 3.1 拆分「巨型页面」 ⏳
 
 不一定改交互，主要是拆文件，降低维护成本与 UI 漂移风险。
 
-| 文件 | 约行数 | 拆分建议 |
-|------|--------|----------|
-| `ModelsPage.tsx` | ~1866 | 模型库 / 归属方 / OpenRouter 同步 |
-| `RoutingConfigEditor.tsx` | ~1492 | 分组列表 + 路由编辑（左右栏） |
-| `ProvidersPage.tsx` | ~1064 | 每个 Provider Tab 独立 panel |
-| `AuthFilesFilesTab.tsx` | ~1044 | 筛选 / 表格 / 详情 modal |
+| 文件 | 约行数 | 拆分建议 | 进度 |
+|------|--------|----------|------|
+| `ModelsPage.tsx` | ~1866 → **~1479** | 模型库 / 归属方 / OpenRouter 同步 | ✅ 工具层 `models-page-helpers.tsx`；Tab 待拆 |
+| `RoutingConfigEditor.tsx` | ~1492 | 分组列表 + 路由编辑（左右栏） | ⏳ |
+| `ProvidersPage.tsx` | ~1061 → **~718** | 每个 Provider Tab 独立 panel | ✅ `ProvidersTabPanels` 等 |
+| `AuthFilesFilesTab.tsx` | ~1044 | 筛选 / 表格 / 详情 modal | ⏳ |
+
+**已完成（2026-06-18）：**
+- `models-page-helpers.tsx`：类型、API、VendorIcon、OpenRouter 归一化等
+- `ProvidersTabPanels` / `ProviderSimpleKeyTabPanel` / `ProvidersBatchActionsBar` / `ProvidersImportPreviewModal` / `providers-page-types.ts`
 
 参考规范：`docs/internal-review/frontend-maintenance-spec.md`（单文件目标 400–600 行，超 800 行须拆分）。
 

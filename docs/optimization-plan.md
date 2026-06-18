@@ -57,8 +57,8 @@
 完整条目见 [ui-ux-optimization-review.md](./ui-ux-optimization-review.md)。
 
 - **目标**：统一空状态/工具栏、合入 worktree 优化、补 i18n、降低巨型页面维护成本。
-- **已完成**：§2.1 空状态、§2.2 身份指纹、§2.3 i18n、§4.3 Dashboard 配置清单、§2.4 `PageToolbar`、§2.5 `RequestLogsFilters`。
-- **下一步**：§3.1 巨型页面拆分（Models / RoutingConfigEditor / Providers / Auth Files）。
+- **已完成**：§2.1–§2.5、§4.3、§3.1 首批（`models-page-helpers`、`ProvidersPage` 拆分）。
+- **下一步**：§3.1 继续拆 `ModelsPage` 库 Tab / `RoutingConfigEditor`。
 - **验证**：相关页面测试 + `bun run build` + 中英文/暗色模式抽查。
 
 <!-- PROJECT-OVERRIDES:END -->
