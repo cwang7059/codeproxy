@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Activity, Check, Cpu, Edit3, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Activity, Check, Cpu, Edit3, Plus, RefreshCw, Search, Sigma, Trash2 } from "lucide-react";
 import { Button } from "@/modules/ui/Button";
 import { Card } from "@/modules/ui/Card";
 import { Checkbox } from "@/modules/ui/Checkbox";
 import { ConfirmModal } from "@/modules/ui/ConfirmModal";
+import { EmptyState } from "@/modules/ui/EmptyState";
 import { TextInput } from "@/modules/ui/Input";
 import { Modal } from "@/modules/ui/Modal";
 import { SearchableSelect, type SearchableSelectOption } from "@/modules/ui/SearchableSelect";
@@ -41,6 +42,12 @@ import {
   type ModelPricingMode,
   normalizeModelConfigMetadataRows,
 } from "@/modules/models/modelAvailability";
+import {
+  computeModelPageStats,
+  filterModelItems,
+  type ModelStatusFilter,
+} from "@/modules/models/models-page-utils";
+import { MonitorSectionHeader } from "@/modules/monitor/MonitorPagePieces";
 import iconVertex from "@/assets/icons/vertex.svg";
 
 type ModelScope = "active" | "library";
@@ -488,6 +495,7 @@ export function ModelsPage() {
   const [models, setModels] = useState<ModelItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchFilter, setSearchFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ModelStatusFilter>("");
   const [totalCost, setTotalCost] = useState(0);
   const [form, setForm] = useState<ModelFormState | null>(null);
   const [saving, setSaving] = useState(false);
@@ -579,15 +587,16 @@ export function ModelsPage() {
   }, [activeTab, loadOpenRouterSyncState]);
 
   const filteredModels = useMemo(() => {
-    const needle = searchFilter.trim().toLowerCase();
     const ownerNeedle = activeTab === "library" ? ownerFilter : "";
-    return models.filter((model) => {
-      if (ownerNeedle && normalizeOwnerValue(model.owned_by) !== ownerNeedle) return false;
-      if (!needle) return true;
-      const haystack = `${model.id} ${model.owned_by} ${model.description}`.toLowerCase();
-      return haystack.includes(needle);
-    });
-  }, [activeTab, models, ownerFilter, searchFilter]);
+    const ownerFiltered = ownerNeedle
+      ? models.filter((model) => normalizeOwnerValue(model.owned_by) === ownerNeedle)
+      : models;
+    return filterModelItems(ownerFiltered, searchFilter, statusFilter);
+  }, [activeTab, models, ownerFilter, searchFilter, statusFilter]);
+
+  const pageStats = useMemo(() => computeModelPageStats(models), [models]);
+  const hasActiveFilters = Boolean(searchFilter.trim() || statusFilter || ownerFilter);
+  const useCompactTable = filteredModels.length <= 15;
 
   const filteredModelIds = useMemo(() => filteredModels.map((model) => model.id), [filteredModels]);
 
@@ -613,13 +622,47 @@ export function ModelsPage() {
     setSelectedModelIds(new Set());
     setBulkDeleteTargetIds(null);
     setOwnerSearchFilter("");
+    setStatusFilter("");
+    setSearchFilter("");
   }, [activeTab]);
 
-  const totalStats = useMemo(() => {
-    const pricedCount = models.filter(hasPricing).length;
-    const enabledCount = models.filter((model) => model.enabled).length;
-    return { modelCount: models.length, pricedCount, enabledCount };
-  }, [models]);
+  const statCards = useMemo(
+    () => [
+      {
+        key: "total",
+        label: t("models_page.kpi_total"),
+        value: pageStats.total.toLocaleString(),
+        hint: t("models_page.kpi_total_hint"),
+        icon: Cpu,
+        valueClass: "text-slate-900 dark:text-white",
+      },
+      {
+        key: "enabled",
+        label: t("models_page.kpi_enabled"),
+        value: pageStats.enabled.toLocaleString(),
+        hint: t("models_page.kpi_enabled_hint"),
+        icon: Check,
+        valueClass: "text-emerald-700 dark:text-emerald-300",
+      },
+      {
+        key: "priced",
+        label: t("models_page.kpi_priced"),
+        value: pageStats.priced.toLocaleString(),
+        hint: t("models_page.kpi_priced_hint"),
+        icon: Sigma,
+        valueClass: "text-violet-700 dark:text-violet-300",
+      },
+      {
+        key: "quota",
+        label: t("models_page.kpi_quota_cost"),
+        value: `$${totalCost.toFixed(4)}`,
+        hint: t("models_page.kpi_quota_cost_hint"),
+        icon: Activity,
+        valueClass: "text-indigo-700 dark:text-indigo-300",
+      },
+    ],
+    [pageStats, t, totalCost],
+  );
 
   const ownerModelCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -1127,58 +1170,187 @@ export function ModelsPage() {
       </>
     ) : null;
 
-  return (
-    <section className="flex flex-1 flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card padding="compact" bodyClassName="mt-0">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-white/55">
-            <Cpu size={14} /> {t("models_page.available_models")}
-          </div>
-          <div className="mt-2 text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
-            {totalStats.modelCount}
-          </div>
-        </Card>
-        <Card padding="compact" bodyClassName="mt-0">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-white/55">
-            <Check size={14} /> {t("models_page.enabled_models")}
-          </div>
-          <div className="mt-2 text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
-            {totalStats.enabledCount}
-          </div>
-          <div className="mt-0.5 text-xs text-slate-500 dark:text-white/45">
-            {t("models_page.priced_count", { count: totalStats.pricedCount })}
-          </div>
-        </Card>
-        <Card padding="compact" bodyClassName="mt-0">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-white/55">
-            <Activity size={14} /> {t("models_page.quota_cost")}
-          </div>
-          <div className="mt-2 text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
-            ${totalCost.toFixed(4)}
-          </div>
-          <div className="mt-0.5 text-xs text-slate-500 dark:text-white/45">
-            {t("models_page.total_cost")}
-          </div>
-        </Card>
+  const filterToolbar = (
+    <div className="space-y-3">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+        <div className="min-w-0 flex-1">
+          <TextInput
+            value={searchFilter}
+            onChange={(event) => setSearchFilter(event.currentTarget.value)}
+            placeholder={t("models_page.search")}
+            type="search"
+            name="model_search"
+            autoComplete="off"
+            spellCheck={false}
+            startAdornment={<Search size={14} className="text-slate-400 dark:text-white/35" />}
+          />
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {selectionToolbar}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => openAddModel(activeTab === "library" ? ownerFilter : "")}
+            aria-label={t("models_page.add_model")}
+            title={t("models_page.add_model")}
+            className="gap-1.5"
+          >
+            <Plus size={14} aria-hidden="true" />
+            {t("models_page.add_model")}
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => void loadModels()}
+            disabled={loading}
+            title={t("models_page.refresh")}
+            aria-label={t("models_page.refresh")}
+            className="gap-1.5"
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} aria-hidden="true" />
+            {t("models_page.refresh")}
+          </Button>
+        </div>
       </div>
+      <div className="flex flex-wrap gap-2">
+        {([
+          ["", t("models_page.filter_all")],
+          ["priced", t("models_page.filter_priced")],
+          ["unpriced", t("models_page.filter_unpriced")],
+          ["disabled", t("models_page.filter_disabled")],
+        ] as const).map(([value, label]) => (
+          <button
+            key={value || "all"}
+            type="button"
+            onClick={() => setStatusFilter(value)}
+            className={[
+              "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition",
+              statusFilter === value
+                ? "border-blue-200/80 bg-blue-50/80 text-blue-700 dark:border-blue-500/25 dark:bg-blue-500/10 dark:text-blue-300"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-neutral-950/60 dark:text-white/65 dark:hover:bg-white/5",
+            ].join(" ")}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 
-      <div className="flex">
-        <Tabs
-          value={activeTab}
-          onValueChange={(next) => setActiveTab(next as ModelPageTab)}
-          size="sm"
-        >
-          <TabsList>
-            <TabsTrigger value="active">{t("models_page.tab_active_models")}</TabsTrigger>
-            <TabsTrigger value="library">{t("models_page.tab_model_library")}</TabsTrigger>
-          </TabsList>
-        </Tabs>
+  const modelTable = (
+    <div
+      className={[
+        "relative",
+        useCompactTable ? "min-h-0" : "h-[calc(100dvh-460px)] min-h-[320px] overflow-hidden",
+      ].join(" ")}
+    >
+      {!loading && models.length === 0 ? (
+        <EmptyState
+          title={t("models_page.no_model_data")}
+          description={t("models_page.empty_models_desc")}
+          icon={<Cpu size={32} className="text-slate-400" />}
+          action={
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => openAddModel(activeTab === "library" ? ownerFilter : "")}
+              disabled={loading}
+            >
+              <Plus size={14} aria-hidden="true" />
+              {t("models_page.add_model")}
+            </Button>
+          }
+        />
+      ) : (
+        <VirtualTable<ModelItem>
+          rows={filteredModels}
+          columns={modelColumns}
+          rowKey={(row) => row.id}
+          loading={loading}
+          rowHeight={44}
+          naturalFlow={useCompactTable}
+          height={useCompactTable ? "h-auto" : "h-full"}
+          minHeight={useCompactTable ? "min-h-0" : "min-h-full"}
+          caption={t("models_page.table_caption")}
+          emptyText={
+            hasActiveFilters
+              ? t("models_page.empty_models_filtered")
+              : t("models_page.no_model_data")
+          }
+          minWidth="min-w-[1080px]"
+          stretch={false}
+          showAllLoadedMessage={false}
+        />
+      )}
+    </div>
+  );
+
+  const showingModelsFooter =
+    models.length > 0 ? (
+      <div className="border-t border-slate-100 px-5 py-3 text-xs text-slate-500 dark:border-neutral-800/60 dark:text-white/45">
+        {t("models_page.showing_models", {
+          visible: filteredModels.length.toLocaleString(),
+          total: models.length.toLocaleString(),
+        })}
       </div>
+    ) : null;
+
+  return (
+    <section className="space-y-6">
+      <div className="rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgb(15_23_42_/_0.035)] dark:border-white/[0.06] dark:bg-neutral-950/70 dark:shadow-[0_1px_2px_rgb(0_0_0_/_0.22)]">
+        <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5 pb-4">
+          <div className="min-w-0">
+            <h1 className="text-base font-semibold text-slate-900 dark:text-white">
+              {t("models_page.title")}
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-white/45">
+              {t("models_page.description")}
+            </p>
+          </div>
+          <Tabs
+            value={activeTab}
+            onValueChange={(next) => setActiveTab(next as ModelPageTab)}
+            size="sm"
+          >
+            <TabsList>
+              <TabsTrigger value="active">{t("models_page.tab_active_models")}</TabsTrigger>
+              <TabsTrigger value="library">{t("models_page.tab_model_library")}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        <div className="border-t border-slate-100 px-5 pb-4 pt-4 dark:border-neutral-800/60">
+          <MonitorSectionHeader title={t("models_page.section_overview")} />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {statCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={card.key}
+                  className="rounded-xl border border-slate-200/80 bg-slate-50/50 px-4 py-3.5 dark:border-white/[0.08] dark:bg-white/[0.02]"
+                >
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-white/55">
+                    <Icon size={14} className="text-slate-700 dark:text-white/75" aria-hidden="true" />
+                    <span>{card.label}</span>
+                  </p>
+                  <p
+                    className={`mt-2 text-right font-mono text-2xl font-semibold tabular-nums tracking-tight ${card.valueClass}`}
+                  >
+                    {card.value}
+                  </p>
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-white/45">
+                    {hasActiveFilters ? t("models_page.stats_scope_filtered") : card.hint}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
       {activeTab === "library" ? (
         <div
           data-testid="owner-library-layout"
-          className="grid h-[calc(100dvh-300px)] min-h-[28rem] gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]"
+          className="grid gap-4 border-t border-slate-100 px-5 pb-5 pt-4 dark:border-neutral-800/60 lg:grid-cols-[18rem_minmax(0,1fr)] lg:h-[calc(100dvh-380px)] lg:min-h-[28rem]"
         >
           <div data-testid="owner-sidebar-card" className="h-full min-h-0 min-w-0">
             <Card
@@ -1301,44 +1473,19 @@ export function ModelsPage() {
             </Card>
           </div>
 
-          <div data-testid="model-library-card" className="h-full min-h-0 min-w-0">
+          <div data-testid="model-library-card" className="flex h-full min-h-0 min-w-0 flex-col gap-4">
+            <div>
+              <MonitorSectionHeader
+                title={t("models_page.section_filters")}
+                description={t("models_page.section_filters_desc")}
+              />
+              {filterToolbar}
+            </div>
+
             <Card
               title={t("models_page.model_library")}
-              className="flex h-full flex-col overflow-hidden"
+              className="flex min-h-0 flex-1 flex-col overflow-hidden"
               bodyClassName="relative flex min-h-0 flex-1 flex-col"
-              actions={
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  {selectionToolbar}
-                  <TextInput
-                    value={searchFilter}
-                    onChange={(e) => setSearchFilter(e.target.value)}
-                    placeholder={t("models_page.search")}
-                    className="!w-48"
-                    startAdornment={
-                      <Search size={14} className="text-slate-400 dark:text-white/35" />
-                    }
-                  />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => openAddModel(ownerFilter)}
-                    aria-label={t("models_page.add_model")}
-                    title={t("models_page.add_model")}
-                  >
-                    <Plus size={14} />
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => void loadModels()}
-                    disabled={loading}
-                    title={t("models_page.refresh")}
-                    aria-label={t("models_page.refresh")}
-                  >
-                    <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-                  </Button>
-                </div>
-              }
             >
               <div
                 data-testid="openrouter-sync-section"
@@ -1451,74 +1598,35 @@ export function ModelsPage() {
                 </div>
               </div>
 
-              <VirtualTable<ModelItem>
-                rows={filteredModels}
-                columns={modelColumns}
-                rowKey={(row) => row.id}
-                loading={loading}
-                rowHeight={52}
-                caption={t("models_page.table_caption")}
-                emptyText={
-                  searchFilter ? t("models_page.no_results") : t("models_page.no_model_data")
-                }
-                minWidth="min-w-[1160px]"
-                height="h-full"
-                minHeight="min-h-0"
-              />
+              <div className="mb-3 min-h-0 flex-1">
+                {modelTable}
+              </div>
             </Card>
+            {showingModelsFooter}
           </div>
         </div>
       ) : (
-        <Card
-          title={t("models_page.model_configs")}
-          description={t("models_page.model_configs_desc")}
-          className="flex flex-1 flex-col overflow-hidden"
-          bodyClassName="relative flex min-h-0 flex-1 flex-col"
-          actions={
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              {selectionToolbar}
-              <TextInput
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                placeholder={t("models_page.search")}
-                className="!w-48"
-                startAdornment={<Search size={14} className="text-slate-400 dark:text-white/35" />}
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => openAddModel()}
-                aria-label={t("models_page.add_model")}
-                title={t("models_page.add_model")}
-              >
-                <Plus size={14} />
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => void loadModels()}
-                disabled={loading}
-                title={t("models_page.refresh")}
-                aria-label={t("models_page.refresh")}
-              >
-                <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-              </Button>
-            </div>
-          }
-        >
-          <VirtualTable<ModelItem>
-            rows={filteredModels}
-            columns={modelColumns}
-            rowKey={(row) => row.id}
-            loading={loading}
-            rowHeight={52}
-            caption={t("models_page.table_caption")}
-            emptyText={searchFilter ? t("models_page.no_results") : t("models_page.no_model_data")}
-            minWidth="min-w-[1160px]"
-            height="h-[calc(100vh-430px)]"
-          />
-        </Card>
+        <>
+          <div className="border-t border-slate-100 px-5 pt-4 pb-3 dark:border-neutral-800/60">
+            <MonitorSectionHeader
+              title={t("models_page.section_filters")}
+              description={t("models_page.section_filters_desc")}
+            />
+            {filterToolbar}
+          </div>
+
+          <div className="border-t border-slate-100 px-5 pt-3 pb-1 dark:border-neutral-800/60">
+            <MonitorSectionHeader
+              title={t("models_page.section_table")}
+              description={t("models_page.section_table_desc")}
+            />
+          </div>
+
+          <div className="px-5 pb-4">{modelTable}</div>
+          {showingModelsFooter}
+        </>
       )}
+      </div>
 
       <Modal
         open={form !== null}
