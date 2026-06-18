@@ -25,6 +25,10 @@ let localServer = null;
 let localServerOrigin = null;
 let mainWindow = null;
 
+function isFramelessWindowEnabled() {
+  return process.env.CODE_PROXY_FRAMELESS === "1";
+}
+
 const mimeTypes = new Map([
   [".css", "text/css; charset=utf-8"],
   [".html", "text/html; charset=utf-8"],
@@ -140,6 +144,24 @@ function serveStaticFile(req, res, distDir, pathname) {
   if (pathname === "/" || pathname === MANAGE_PREFIX) {
     res.writeHead(302, { Location: `${MANAGE_PREFIX}/` });
     res.end();
+    return;
+  }
+
+  if (pathname === `${MANAGE_PREFIX}/`) {
+    const manageFile = path.join(distDir, "manage.html");
+    fs.stat(manageFile, (error, stat) => {
+      if (error || !stat.isFile()) {
+        sendPlain(res, 404, "Built management UI was not found. Run bun run build first.");
+        return;
+      }
+
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Length": stat.size,
+        "Cache-Control": "no-store",
+      });
+      fs.createReadStream(manageFile).pipe(res);
+    });
     return;
   }
 
@@ -336,26 +358,48 @@ async function resolveRendererUrl() {
 
 async function createMainWindow() {
   const rendererUrl = await resolveRendererUrl();
-  mainWindow = new BrowserWindow({
+  const frameless = isFramelessWindowEnabled();
+  const windowOptions = {
     width: 1440,
     height: 900,
     minWidth: 1180,
     minHeight: 720,
-    title: "Code Proxy Admin",
+    title: "CliRelay",
     backgroundColor: "#f4f4f5",
     show: false,
     autoHideMenuBar: true,
+    frame: !frameless,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
     },
-  });
+  };
+
+  if (frameless && process.platform === "win32") {
+    Object.assign(windowOptions, {
+      thickFrame: false,
+      roundedCorners: true,
+    });
+  }
+
+  mainWindow = new BrowserWindow(windowOptions);
 
   mainWindow.once("ready-to-show", () => {
     mainWindow?.show();
   });
+
+  const notifyMaximizeChanged = () => {
+    if (!mainWindow) {
+      return;
+    }
+
+    mainWindow.webContents.send("desktop:window-maximize-changed", mainWindow.isMaximized());
+  };
+
+  mainWindow.on("maximize", notifyMaximizeChanged);
+  mainWindow.on("unmaximize", notifyMaximizeChanged);
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (isInternalUrl(url)) {
@@ -395,6 +439,26 @@ if (!gotLock) {
 
   app.whenReady().then(async () => {
     ipcMain.handle("desktop:get-backend-base", () => getBackendBase());
+    ipcMain.handle("desktop:window-minimize", () => {
+      mainWindow?.minimize();
+    });
+    ipcMain.handle("desktop:window-toggle-maximize", () => {
+      if (!mainWindow) {
+        return false;
+      }
+
+      if (mainWindow.isMaximized()) {
+        mainWindow.unmaximize();
+      } else {
+        mainWindow.maximize();
+      }
+
+      return mainWindow.isMaximized();
+    });
+    ipcMain.handle("desktop:window-close", () => {
+      mainWindow?.close();
+    });
+    ipcMain.handle("desktop:window-is-maximized", () => mainWindow?.isMaximized() ?? false);
     await createMainWindow();
 
     app.on("activate", async () => {

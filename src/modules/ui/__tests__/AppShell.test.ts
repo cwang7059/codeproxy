@@ -34,7 +34,9 @@ describe("AppShell", () => {
     const source = readModule("modules/ui/AppShell.tsx");
 
     expect(source).toContain("shell.sidebar_account_role");
-    expect(source).toContain("NAV_ITEMS.map");
+    expect(source).toContain("NAV_GROUPS.map");
+    expect(source).toContain('"shell.group_observe"');
+    expect(source).toContain('"shell.group_resources"');
     expect(source).not.toContain("shell.upgrade_title");
     expect(source).not.toContain("shell.upgrade_description");
     expect(source).not.toContain("shell.upgrade_action");
@@ -43,7 +45,7 @@ describe("AppShell", () => {
 
   test("uses basename-relative management navigation targets", () => {
     const source = readModule("modules/ui/AppShell.tsx");
-    const navBlock = source.match(/const NAV_ITEMS = \[[\s\S]*?\] as const;/)?.[0] ?? "";
+    const navBlock = source.match(/const NAV_GROUPS:[\s\S]*?const NAV_ITEMS = NAV_GROUPS\.flatMap/)?.[0] ?? "";
 
     expect(navBlock).toContain('to: "/ccswitch-import-settings"');
     expect(navBlock).toContain('i18nKey: "shell.nav_ccswitch_import_settings"');
@@ -54,6 +56,14 @@ describe("AppShell", () => {
     expect(navBlock).toContain('i18nKey: "shell.nav_api_key_permissions"');
     expect(navBlock).not.toContain('to: "/manage/identity-fingerprint"');
     expect(navBlock).not.toContain('to: "/manage/models"');
+  });
+
+  test("uses a lighter active nav treatment with a leading accent rail instead of a full solid block", () => {
+    const source = readModule("modules/ui/AppShell.tsx");
+
+    expect(source).toContain("border border-blue-200/80 bg-blue-50/90");
+    expect(source).toContain("w-1 rounded-full bg-blue-600");
+    expect(source).not.toContain("bg-gradient-to-r from-blue-600 to-blue-500");
   });
 
   test("resolves the API key permissions page title from its dedicated route", () => {

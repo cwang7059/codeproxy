@@ -21,6 +21,27 @@ declare global {
       skipTransition: () => void;
     };
   }
+
+  interface CodeProxyDesktopBridge {
+    isDesktop: boolean;
+    frameless?: boolean;
+    platform: NodeJS.Platform;
+    versions: {
+      chrome: string;
+      electron: string;
+      node: string;
+    };
+    getBackendBase: () => Promise<string>;
+    minimizeWindow?: () => Promise<void>;
+    toggleWindowMaximize?: () => Promise<boolean>;
+    closeWindow?: () => Promise<void>;
+    isWindowMaximized?: () => Promise<boolean>;
+    onWindowMaximizeChanged?: (listener: (maximized: boolean) => void) => () => void;
+  }
+
+  interface Window {
+    codeProxyDesktop?: CodeProxyDesktopBridge;
+  }
 }
 
 export {};

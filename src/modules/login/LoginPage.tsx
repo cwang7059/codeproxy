@@ -9,6 +9,7 @@ import { PageBackground } from "@/modules/ui/PageBackground";
 import { Reveal } from "@/modules/ui/Reveal";
 import { ThemeToggleButton } from "@/modules/ui/ThemeProvider";
 import { useToast } from "@/modules/ui/ToastProvider";
+import { isDesktopFrameless } from "@/lib/desktop";
 import { OpenAILogo, GeminiLogo, ClaudeLogo, VertexLogo } from "@/modules/dashboard/ProviderLogos";
 
 interface RedirectState {
@@ -86,12 +87,14 @@ export function LoginPage() {
   }
 
   return (
-    <PageBackground variant="login">
-      <div className="absolute right-6 top-6 z-20">
-        <ThemeToggleButton className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white/70 text-slate-700 shadow-sm backdrop-blur transition hover:bg-white dark:border-neutral-800 dark:bg-neutral-950/60 dark:text-slate-200 dark:hover:bg-neutral-950/80" />
-      </div>
+    <PageBackground variant="login" fill={isDesktopFrameless()}>
+      {!isDesktopFrameless() ? (
+        <div className="absolute right-6 top-6 z-20">
+          <ThemeToggleButton className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white/70 text-slate-700 shadow-sm backdrop-blur transition hover:bg-white dark:border-neutral-800 dark:bg-neutral-950/60 dark:text-slate-200 dark:hover:bg-neutral-950/80" />
+        </div>
+      ) : null}
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl items-center px-6 py-12">
+      <div className="relative mx-auto flex min-h-full w-full max-w-6xl items-center px-6 py-12">
         <Reveal className="w-full">
           <div className="grid w-full items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
             <aside className="space-y-10">

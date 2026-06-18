@@ -5,11 +5,15 @@ type BackgroundVariant = "login" | "app";
 export function PageBackground({
   children,
   variant,
+  fill = false,
 }: PropsWithChildren<{
   variant: BackgroundVariant;
+  fill?: boolean;
 }>) {
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-zinc-50 font-sans text-slate-900 antialiased dark:bg-neutral-950 dark:text-slate-50">
+    <div
+      className={`relative overflow-hidden bg-zinc-50 font-sans text-slate-900 antialiased dark:bg-neutral-950 dark:text-slate-50 ${fill ? "h-full min-h-0" : "min-h-[100dvh]"}`}
+    >
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-40 -top-44 h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.14),transparent_70%)] blur-3xl dark:bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.22),transparent_70%)]" />
         <div className="absolute -right-40 -top-28 h-[30rem] w-[30rem] rounded-full bg-[radial-gradient(circle_at_center,rgba(20,184,166,0.12),transparent_70%)] blur-3xl dark:bg-[radial-gradient(circle_at_center,rgba(45,212,191,0.16),transparent_70%)]" />
@@ -25,8 +29,7 @@ export function PageBackground({
           </>
         ) : null}
       </div>
-
-      <div className="relative">{children}</div>
+      <div className={`relative ${fill ? "flex h-full min-h-0 flex-col" : ""}`}>{children}</div>
     </div>
   );
 }

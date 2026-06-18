@@ -9,7 +9,7 @@ import type { Language } from "@/types";
 /** Short labels for each language, shown next to the icon */
 const SHORT_LABELS: Record<string, string> = {
   en: "EN",
-  "zh-CN": "中",
+  "zh-CN": "CN",
 };
 
 export function LanguageSelector({ className }: { className?: string }) {

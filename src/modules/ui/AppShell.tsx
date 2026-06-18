@@ -34,6 +34,8 @@ import { useAuth } from "@/modules/auth/AuthProvider";
 import { PageBackground } from "@/modules/ui/PageBackground";
 import { ThemeToggleButton } from "@/modules/ui/ThemeProvider";
 import { LanguageSelector } from "@/modules/ui/LanguageSelector";
+import { isDesktopFrameless, desktopWindowRegion } from "@/lib/desktop";
+import { DesktopWindowControls } from "@/modules/ui/DesktopWindowControls";
 
 interface ShellContextState {
   state: {
@@ -44,36 +46,69 @@ interface ShellContextState {
   };
 }
 
+type NavItem = {
+  to: string;
+  i18nKey: string;
+  icon: typeof LayoutDashboard;
+};
+
+type NavGroup = {
+  i18nKey: string;
+  items: NavItem[];
+};
+
 const ShellContext = createContext<ShellContextState | null>(null);
 const STORAGE_KEY_SIDEBAR_COLLAPSED = "cli-proxy-sidebar-collapsed";
 const SIDEBAR_MOBILE_MEDIA = "(max-width: 767px)";
 
-const NAV_ITEMS = [
-  { to: "/dashboard", i18nKey: "shell.nav_dashboard", icon: LayoutDashboard },
-  { to: "/monitor", i18nKey: "shell.nav_monitor", icon: Activity },
-  { to: "/monitor/request-logs", i18nKey: "shell.nav_request_logs", icon: ScrollText },
-  { to: "/ai-providers", i18nKey: "shell.nav_ai_providers", icon: Bot },
-  { to: "/auth-files", i18nKey: "shell.nav_auth_files", icon: FileKey },
-  { to: "/api-keys", i18nKey: "shell.nav_api_keys", icon: Sparkles },
-  { to: "/api-key-permissions", i18nKey: "shell.nav_api_key_permissions", icon: ShieldCheck },
+const NAV_GROUPS: NavGroup[] = [
   {
-    to: "/ccswitch-import-settings",
-    i18nKey: "shell.nav_ccswitch_import_settings",
-    icon: ArrowDownToLine,
+    i18nKey: "shell.group_observe",
+    items: [
+      { to: "/dashboard", i18nKey: "shell.nav_dashboard", icon: LayoutDashboard },
+      { to: "/monitor", i18nKey: "shell.nav_monitor", icon: Activity },
+      { to: "/monitor/request-logs", i18nKey: "shell.nav_request_logs", icon: ScrollText },
+      { to: "/logs", i18nKey: "shell.nav_logs", icon: FileText },
+    ],
   },
-  { to: "/image-generation", i18nKey: "shell.nav_image_generation", icon: Image },
-  { to: "/channel-groups", i18nKey: "shell.nav_channel_groups", icon: Layers },
   {
-    to: "/identity-fingerprint",
-    i18nKey: "shell.nav_identity_fingerprint",
-    icon: Fingerprint,
+    i18nKey: "shell.group_resources",
+    items: [
+      { to: "/ai-providers", i18nKey: "shell.nav_ai_providers", icon: Bot },
+      { to: "/channel-groups", i18nKey: "shell.nav_channel_groups", icon: Layers },
+      { to: "/models", i18nKey: "shell.nav_models", icon: Cpu },
+      { to: "/image-generation", i18nKey: "shell.nav_image_generation", icon: Image },
+      { to: "/proxies", i18nKey: "shell.nav_proxies", icon: Network },
+    ],
   },
-  { to: "/models", i18nKey: "shell.nav_models", icon: Cpu },
-  { to: "/proxies", i18nKey: "shell.nav_proxies", icon: Network },
-  { to: "/config", i18nKey: "shell.nav_config", icon: Settings },
-  { to: "/system", i18nKey: "shell.nav_system", icon: Info },
-  { to: "/logs", i18nKey: "shell.nav_logs", icon: FileText },
+  {
+    i18nKey: "shell.group_security",
+    items: [
+      { to: "/auth-files", i18nKey: "shell.nav_auth_files", icon: FileKey },
+      { to: "/api-keys", i18nKey: "shell.nav_api_keys", icon: Sparkles },
+      { to: "/api-key-permissions", i18nKey: "shell.nav_api_key_permissions", icon: ShieldCheck },
+      {
+        to: "/identity-fingerprint",
+        i18nKey: "shell.nav_identity_fingerprint",
+        icon: Fingerprint,
+      },
+    ],
+  },
+  {
+    i18nKey: "shell.group_system",
+    items: [
+      {
+        to: "/ccswitch-import-settings",
+        i18nKey: "shell.nav_ccswitch_import_settings",
+        icon: ArrowDownToLine,
+      },
+      { to: "/config", i18nKey: "shell.nav_config", icon: Settings },
+      { to: "/system", i18nKey: "shell.nav_system", icon: Info },
+    ],
+  },
 ] as const;
+
+const NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items);
 
 const getPageTitleKey = (pathname: string): string => {
   if (pathname.startsWith("/dashboard")) return "shell.nav_dashboard";
@@ -110,7 +145,11 @@ const getPageTitleKey = (pathname: string): string => {
 };
 
 function ShellFrame({ children }: PropsWithChildren) {
-  return <PageBackground variant="app">{children}</PageBackground>;
+  return (
+    <PageBackground variant="app" fill={isDesktopFrameless()}>
+      {children}
+    </PageBackground>
+  );
 }
 
 function ShellSidebar({
@@ -152,6 +191,11 @@ function ShellSidebar({
 
   const isMobile = mode === "mobile";
   const accountLogoutLabel = t("shell.logout_button");
+  const sidebarHeightClass = isMobile
+    ? "fixed inset-y-0 left-0 z-40 w-56"
+    : isDesktopFrameless()
+      ? "h-full"
+      : "h-[100dvh]";
 
   const handleNavClick = useCallback(
     (to: string) => {
@@ -168,7 +212,7 @@ function ShellSidebar({
     <aside
       className={[
         "shrink-0 overflow-hidden bg-white/94 dark:bg-neutral-950/88",
-        isMobile ? "fixed inset-y-0 left-0 z-40 w-56" : "h-[100dvh]",
+        sidebarHeightClass,
         "border-r border-slate-200 shadow-[12px_0_28px_rgba(15,23,42,0.04)] dark:border-neutral-800",
         "motion-reduce:transition-none motion-safe:transition-[width,transform,background-color,border-color] motion-safe:duration-300 motion-safe:ease-out",
         isMobile
@@ -199,30 +243,45 @@ function ShellSidebar({
             </span>
           </span>
         </div>
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4 pt-4">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const active = activeTo === item.to;
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                viewTransition
-                onClick={() => handleNavClick(item.to)}
-                className={
-                  active
-                    ? "flex min-w-0 items-center gap-3 rounded-[14px] bg-gradient-to-r from-blue-600 to-blue-500 px-3.5 py-2.5 text-[13px] font-semibold text-white shadow-[0_12px_24px_rgba(37,99,235,0.22)] transition-colors duration-200 ease-out whitespace-nowrap"
-                    : "flex min-w-0 items-center gap-3 rounded-[14px] px-3.5 py-2.5 text-[13px] font-medium text-slate-700 transition-colors duration-200 ease-out hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white whitespace-nowrap"
-                }
-              >
-                <Icon
-                  size={15}
-                  className="shrink-0 opacity-90 transition-colors duration-200 ease-out"
-                />
-                <span className="min-w-0 truncate">{t(item.i18nKey)}</span>
-              </Link>
-            );
-          })}
+        <nav className="flex-1 space-y-4 overflow-y-auto px-3 pb-4 pt-4">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.i18nKey} className="space-y-1.5">
+              <div className="px-3.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-white/28">
+                {t(group.i18nKey)}
+              </div>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const active = activeTo === item.to;
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      viewTransition
+                      onClick={() => handleNavClick(item.to)}
+                      className={
+                        active
+                          ? "relative flex min-w-0 items-center gap-3 rounded-[14px] border border-blue-200/80 bg-blue-50/90 px-3.5 py-2.5 text-[13px] font-semibold text-blue-700 transition-colors duration-200 ease-out dark:border-blue-400/15 dark:bg-blue-500/10 dark:text-blue-200 whitespace-nowrap"
+                          : "relative flex min-w-0 items-center gap-3 rounded-[14px] px-3.5 py-2.5 text-[13px] font-medium text-slate-700 transition-colors duration-200 ease-out hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white whitespace-nowrap"
+                      }
+                    >
+                      {active ? (
+                        <span
+                          aria-hidden="true"
+                          className="absolute bottom-2 left-1.5 top-2 w-1 rounded-full bg-blue-600 dark:bg-blue-300"
+                        />
+                      ) : null}
+                      <Icon
+                        size={15}
+                        className="shrink-0 opacity-90 transition-colors duration-200 ease-out"
+                      />
+                      <span className="min-w-0 truncate">{t(item.i18nKey)}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
         <div className="space-y-3 px-3 pb-4">
           <div className="flex items-center gap-3 rounded-[18px] bg-slate-50/80 p-3 dark:bg-white/[0.04]">
@@ -270,26 +329,46 @@ function ShellHeader({
 
   const SidebarIcon = sidebarCollapsed ? PanelLeftOpen : PanelLeftClose;
   const sidebarLabel = sidebarCollapsed ? t("shell.expand_sidebar") : t("shell.collapse_sidebar");
+  const frameless = isDesktopFrameless();
 
   return (
     <header className="z-20 shrink-0 border-b border-slate-200 bg-white/75 backdrop-blur-xl motion-reduce:transition-none motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-out dark:border-neutral-800 dark:bg-neutral-950/60">
       <h1 className="sr-only">{t(titleKey)}</h1>
-      <div className="flex h-16 items-center justify-between gap-3 px-3 sm:px-6">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+      <div className="flex h-16 items-center gap-3 px-3 pr-2 sm:px-6 sm:pr-3">
+        <div
+          className="flex min-w-0 flex-1 items-center gap-2 pr-2 sm:gap-3 sm:pr-6"
+          style={frameless ? desktopWindowRegion("drag") : undefined}
+        >
           <button
             type="button"
             onClick={onToggleSidebar}
             aria-label={sidebarLabel}
             title={sidebarLabel}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border-0 bg-transparent text-slate-500 shadow-none transition-[color,transform] duration-150 ease-out hover:-translate-y-0.5 hover:text-slate-900 active:translate-y-0 active:scale-95 dark:text-slate-400 dark:hover:text-white"
+            style={frameless ? desktopWindowRegion("no-drag") : undefined}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-slate-500 shadow-none transition-[color,transform] duration-150 ease-out hover:-translate-y-0.5 hover:text-slate-900 active:translate-y-0 active:scale-95 dark:text-slate-400 dark:hover:text-white"
           >
             <SidebarIcon size={16} />
           </button>
+          {frameless ? (
+            <div
+              className="flex shrink-0 items-center gap-1 rounded-2xl border border-slate-200/80 bg-white/70 px-1 py-1 dark:border-neutral-800/80 dark:bg-neutral-900/70"
+              style={desktopWindowRegion("no-drag")}
+            >
+              <LanguageSelector className="inline-flex h-9 min-w-[58px] items-center justify-center gap-0.5 rounded-xl px-2 text-slate-500 transition-colors duration-200 ease-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-neutral-800 dark:hover:text-white" />
+              <ThemeToggleButton className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors duration-200 ease-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-neutral-800 dark:hover:text-white" />
+            </div>
+          ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-          <LanguageSelector className="inline-flex h-9 items-center justify-center gap-0.5 rounded-xl px-1.5 text-slate-500 transition-colors duration-200 ease-out hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" />
-          <ThemeToggleButton className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors duration-200 ease-out hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" />
-        </div>
+        {frameless ? (
+          <div className="ml-1 shrink-0" style={desktopWindowRegion("no-drag")}>
+            <DesktopWindowControls compact />
+          </div>
+        ) : (
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            <LanguageSelector className="inline-flex h-9 items-center justify-center gap-0.5 rounded-xl px-1.5 text-slate-500 transition-colors duration-200 ease-out hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" />
+            <ThemeToggleButton className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors duration-200 ease-out hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" />
+          </div>
+        )}
       </div>
     </header>
   );
@@ -300,9 +379,9 @@ function ShellMain({ children }: PropsWithChildren) {
     <main
       id="main-content"
       tabIndex={-1}
-      className="flex min-h-full flex-col p-4 focus-visible:outline-none sm:p-6"
+      className="flex min-h-0 flex-col p-4 focus-visible:outline-none sm:p-6"
     >
-      {children}
+      <div className="min-h-full">{children}</div>
     </main>
   );
 }
@@ -392,6 +471,7 @@ export function AppShell({ children }: PropsWithChildren) {
     [location.pathname, logout],
   );
 
+  const viewportHeightClass = isDesktopFrameless() ? "h-full" : "h-[100dvh]";
   const sidebarCollapsed = isMobile ? !mobileSidebarOpen : desktopSidebarCollapsed;
 
   return (
@@ -419,21 +499,21 @@ export function AppShell({ children }: PropsWithChildren) {
               mode="mobile"
               onNavigate={() => setMobileSidebarOpen(false)}
             />
-            <div className="flex h-[100dvh] overflow-hidden">
-              <div className="flex min-w-0 flex-1 flex-col">
+            <div className={`flex ${viewportHeightClass} min-h-0 overflow-hidden`}>
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                 <ShellHeader sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} />
-                <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] min-h-0">
                   <ShellMain>{children}</ShellMain>
                 </div>
               </div>
             </div>
           </>
         ) : (
-          <div className="flex h-[100dvh] overflow-hidden">
+          <div className={`flex ${viewportHeightClass} min-h-0 overflow-hidden`}>
             <ShellSidebar collapsed={sidebarCollapsed} mode="desktop" />
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
               <ShellHeader sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} />
-              <div className="flex-1 overflow-y-auto overflow-x-hidden">
+              <div className="flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] min-h-0">
                 <ShellMain>{children}</ShellMain>
               </div>
             </div>

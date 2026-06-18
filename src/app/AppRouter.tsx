@@ -5,6 +5,7 @@ import { ProtectedRoute } from "@/app/guards/ProtectedRoute";
 import { DashboardLayout } from "@/modules/layout/DashboardLayout";
 import { ThemeProvider } from "@/modules/ui/ThemeProvider";
 import { ToastProvider } from "@/modules/ui/ToastProvider";
+import { DesktopFrame } from "@/modules/ui/DesktopFrame";
 import { AutoUpdatePrompt } from "@/modules/update/AutoUpdatePrompt";
 
 // Lazy-loaded page components for route-level code splitting
@@ -77,7 +78,8 @@ export function AppRouter() {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <div className="font-sans antialiased">
+        <DesktopFrame>
+          <div className="font-sans antialiased">
           <Suspense>
             <Routes>
               {/* Public page – outside AuthProvider to avoid triggering /management/config */}
@@ -161,7 +163,8 @@ export function AppRouter() {
               />
             </Routes>
           </Suspense>
-        </div>
+          </div>
+        </DesktopFrame>
       </ToastProvider>
     </ThemeProvider>
   );

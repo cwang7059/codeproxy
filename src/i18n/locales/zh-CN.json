@@ -1834,12 +1834,21 @@
     "page_home": "后台首页",
     "expand_sidebar": "展开侧边栏",
     "collapse_sidebar": "收起侧边栏",
+    "desktop_title": "CliRelay",
+    "desktop_minimize": "最小化",
+    "desktop_maximize": "最大化",
+    "desktop_restore": "还原",
+    "desktop_close": "关闭",
     "logout_button": "退出登录",
     "skip_to_content": "跳到主要内容",
     "upgrade_title": "升级到专业版",
     "upgrade_description": "获得更高吞吐、更细粒度监控与优先技术支持。",
     "upgrade_action": "立即升级",
-    "sidebar_account_role": "超级管理员"
+    "sidebar_account_role": "超级管理员",
+    "group_observe": "仪表盘与日志",
+    "group_resources": "资源管理",
+    "group_security": "安全与权限",
+    "group_system": "系统设置"
   },
   "proxies": {
     "title": "代理管理",
@@ -2574,7 +2583,10 @@
     "prev_page": "上一页",
     "next_page": "下一页",
     "last_page": "末页",
-    "rows_per_page": "每页行数"
+    "rows_per_page": "每页行数",
+    "records_short": "记录数",
+    "more_actions": "更多操作",
+    "high_risk_action_hint": "高风险操作，删除前仍需二次确认。"
   },
   "ccswitch": {
     "import_to_ccswitch": "导入到 CC Switch",
