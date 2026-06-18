@@ -199,7 +199,14 @@
     "summary_api_keys": "API Keys",
     "summary_providers": "Providers",
     "summary_auth_files": "Auth Files",
-    "updated_fallback": "Just now"
+    "updated_fallback": "Just now",
+    "section_business": "Business overview",
+    "section_system": "System health",
+    "section_throughput": "Live throughput",
+    "more_ranges": "Longer range",
+    "sparkline_empty": "No trend data yet",
+    "throughput_empty_title": "No live traffic yet",
+    "throughput_empty_desc": "RPM and TPM charts appear once requests start flowing."
   },
   "basic_settings": {
     "title": "Basic Settings",
@@ -3237,7 +3244,17 @@
     "health_healthy": "Healthy",
     "health_good": "Good",
     "health_warning": "Warning",
-    "health_risk": "Risk"
+    "health_risk": "Risk",
+    "health_breakdown_title": "Contributing factors",
+    "health_factor_high": "{{label}} {{pct}}% (high)",
+    "health_factor_normal": "{{label}} {{pct}}% (normal)",
+    "database_sublabel": "Includes WAL cache",
+    "log_storage_sublabel": "Request body storage",
+    "view_system_details": "View system details",
+    "channel_count": "Active channels",
+    "key_count_summary": "{{count}} API keys linked",
+    "latency_high": "Latency is high; check channels and upstream response",
+    "view_request_logs": "View request logs"
   },
   "oauth": {
     "not_imported": "Not Imported",

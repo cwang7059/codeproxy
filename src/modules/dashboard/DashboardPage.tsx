@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { Activity, DollarSign, RefreshCw, Sigma, Sparkles, TriangleAlert } from "lucide-react";
 import type { ECBasicOption } from "echarts/types/dist/shared";
 import {
@@ -14,6 +15,7 @@ import { AnimatedNumber } from "@/modules/ui/AnimatedNumber";
 import { Button } from "@/modules/ui/Button";
 import { Card } from "@/modules/ui/Card";
 import { EmptyState } from "@/modules/ui/EmptyState";
+import { Select } from "@/modules/ui/Select";
 import { Tabs, TabsList, TabsTrigger } from "@/modules/ui/Tabs";
 import { useToast } from "@/modules/ui/ToastProvider";
 import { EChart } from "@/modules/ui/charts/EChart";
@@ -21,6 +23,8 @@ import { ChartLegend } from "@/modules/ui/charts/ChartLegend";
 import { useInterval } from "@/hooks/useInterval";
 
 const DASHBOARD_RANGES = [1, 7, 30, 365, 1095] as const;
+const PRIMARY_DASHBOARD_RANGES = [1, 7, 30] as const;
+const EXTENDED_DASHBOARD_RANGES = [365, 1095] as const;
 type DashboardRange = (typeof DASHBOARD_RANGES)[number];
 
 const RANGE_KEYS: Record<DashboardRange, string> = {
@@ -41,7 +45,7 @@ const formatNumber = (n: number) =>
 const formatCompactNumber = (n: number) => {
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}b`;
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}m`;
-  if (n >= 10_000) return `${(n / 1_000).toFixed(1)}k`;
+  if (n >= 10_000) return `${(n / 1000).toFixed(1)}k`;
   return n.toLocaleString();
 };
 
@@ -53,7 +57,10 @@ const formatThroughputValue = (value: number) =>
 const formatRate = (rate: number) => `${rate.toFixed(2)}%`;
 const formatCurrency = (value: number) => `$${value.toFixed(4)}`;
 const PANEL_SURFACE =
-  "rounded-[18px] border border-slate-200/85 bg-white shadow-[0_10px_26px_rgba(15,23,42,0.05)] dark:border-neutral-800 dark:bg-neutral-950/85 dark:shadow-[0_10px_26px_rgba(0,0,0,0.28)]";
+  "rounded-[16px] border border-slate-200/85 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-neutral-800 dark:bg-neutral-950/85";
+
+const hasTrendData = (points: DashboardTrendPoint[] | undefined) =>
+  Array.isArray(points) && points.length >= 2 && points.some((point) => point.value > 0);
 
 const formatThroughputTooltip = (params: any) => {
   const items = Array.isArray(params) ? params : [params];
@@ -231,6 +238,8 @@ function DashboardKpiCard({
   icon: Icon,
   option,
   accent,
+  to,
+  showTrend,
 }: {
   title: string;
   value: ReactNode;
@@ -241,10 +250,14 @@ function DashboardKpiCard({
     iconWrap: string;
     iconColor: string;
   };
+  to?: string;
+  showTrend: boolean;
 }) {
-  return (
+  const { t } = useTranslation();
+
+  const body = (
     <Card
-      className={`${PANEL_SURFACE} h-full`}
+      className={`${PANEL_SURFACE} h-full transition hover:border-slate-300 dark:hover:border-neutral-700 ${to ? "hover:shadow-md" : ""}`}
       bodyClassName="mt-0 flex h-full flex-col"
       padding="compact"
     >
@@ -257,15 +270,33 @@ function DashboardKpiCard({
       </div>
       <div className="mt-3">
         <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{title}</p>
-        <div className="mt-2 text-[2rem] font-semibold leading-none tracking-tight text-slate-950 dark:text-white">
+        <div className="mt-2 font-mono text-[1.75rem] font-semibold leading-none tracking-tight tabular-nums text-slate-950 dark:text-white">
           {value}
         </div>
-        <p className="mt-2 text-[11px] text-slate-500 dark:text-white/45">{hint}</p>
+        <p className="mt-2 text-[11px] leading-relaxed text-slate-500 dark:text-white/55">{hint}</p>
       </div>
       <div className="mt-auto pt-3">
-        <EChart option={option} className="h-10" overflowVisible />
+        {showTrend ? (
+          <EChart option={option} className="h-10" overflowVisible />
+        ) : (
+          <div className="flex h-10 items-center justify-center rounded-xl border border-dashed border-slate-200/80 text-[11px] text-slate-400 dark:border-white/10 dark:text-white/40">
+            {t("dashboard.sparkline_empty")}
+          </div>
+        )}
       </div>
     </Card>
+  );
+
+  if (!to) return body;
+
+  return (
+    <Link
+      to={to}
+      viewTransition
+      className="block h-full rounded-[16px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+    >
+      {body}
+    </Link>
   );
 }
 
@@ -274,7 +305,6 @@ function ThroughputTrendChart({
   points,
   rpm,
   tpm,
-  connected,
   showRPM,
   showTPM,
   onToggle,
@@ -283,7 +313,6 @@ function ThroughputTrendChart({
   points: DashboardThroughputPoint[];
   rpm: number;
   tpm: number;
-  connected: boolean;
   showRPM: boolean;
   showTPM: boolean;
   onToggle: (key: string) => void;
@@ -293,49 +322,43 @@ function ThroughputTrendChart({
     () => createThroughputOption(points, showRPM, showTPM),
     [points, showRPM, showTPM],
   );
-  const active = rpm > 0 || tpm > 0;
+  const hasLiveTraffic =
+    rpm > 0 || tpm > 0 || points.some((point) => point.rpm > 0 || point.tpm > 0);
 
   return (
-    <Card
-      className={PANEL_SURFACE}
-      title={title}
-      actions={
-        <div
-          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-            connected
-              ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300"
-              : "bg-slate-100 text-slate-400 dark:bg-neutral-800 dark:text-white/45"
-          }`}
-        >
-          <span
-            className={`h-2 w-2 rounded-full ${
-              active ? "animate-pulse bg-emerald-500" : "bg-slate-300 dark:bg-neutral-600"
-            }`}
-          />
-          {connected ? t("system_monitor.live") : t("system_monitor.polling")}
-        </div>
-      }
-      padding="compact"
-    >
+    <Card className={PANEL_SURFACE} title={title} padding="compact">
       <div className="mb-3 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-[14px] bg-slate-50 px-3 py-2 dark:bg-neutral-900/70 dark:ring-1 dark:ring-white/8">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+        <div className="rounded-xl border border-slate-200/70 bg-slate-50/80 px-3 py-2 dark:border-white/[0.06] dark:bg-neutral-900/70">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-white/50">
             RPM
           </div>
-          <div className="mt-1 text-xl font-semibold tabular-nums text-blue-600 dark:text-blue-400">
+          <div className="mt-1 text-right text-xl font-semibold font-mono tabular-nums text-blue-600 dark:text-blue-400">
             {formatCompactNumber(rpm)}
           </div>
         </div>
-        <div className="rounded-[14px] bg-slate-50 px-3 py-2 dark:bg-neutral-900/70 dark:ring-1 dark:ring-white/8">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+        <div className="rounded-xl border border-slate-200/70 bg-slate-50/80 px-3 py-2 dark:border-white/[0.06] dark:bg-neutral-900/70">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-white/50">
             TPM
           </div>
-          <div className="mt-1 text-xl font-semibold tabular-nums text-violet-600 dark:text-violet-400">
+          <div className="mt-1 text-right text-xl font-semibold font-mono tabular-nums text-violet-600 dark:text-violet-400">
             {formatCompactNumber(tpm)}
           </div>
         </div>
       </div>
-      <EChart option={option} className="h-56" />
+      {hasLiveTraffic ? (
+        <EChart option={option} className="h-56" />
+      ) : (
+        <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-slate-200/80 bg-slate-50/50 dark:border-white/10 dark:bg-white/[0.02]">
+          <div className="max-w-sm px-4 text-center">
+            <p className="text-sm font-semibold text-slate-700 dark:text-white/80">
+              {t("dashboard.throughput_empty_title")}
+            </p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-white/55">
+              {t("dashboard.throughput_empty_desc")}
+            </p>
+          </div>
+        </div>
+      )}
       <ChartLegend
         className="justify-start pt-3"
         items={[
@@ -411,6 +434,8 @@ export function DashboardPage() {
     () => trends?.throughput_series ?? [],
     [trends?.throughput_series],
   );
+  const isExtendedRange = range === 365 || range === 1095;
+  const channelCount = stats?.channel_latency?.length ?? 0;
 
   const totalRequestOption = useMemo(
     () => createSparklineOption(trends?.request_volume ?? [], "#2563eb"),
@@ -434,37 +459,52 @@ export function DashboardPage() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-[2rem] font-semibold tracking-tight text-slate-950 text-balance dark:text-white">
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950 text-balance dark:text-white">
             {t("dashboard.heading")}
           </h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-white/55">
+          <p className="mt-1 text-sm text-slate-500 dark:text-white/58">
             {t("dashboard.hero_subtitle")}
-          </p>
-          <p className="mt-2 text-[11px] text-slate-400 dark:text-white/40">
-            {t("dashboard.overview_hint", { time: generatedAt })}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Tabs
-            value={String(range)}
-            onValueChange={(next) => setRange(Number(next) as DashboardRange)}
+            value={isExtendedRange ? "" : String(range)}
+            onValueChange={(next) => {
+              if (next) setRange(Number(next) as DashboardRange);
+            }}
           >
             <TabsList>
-              {DASHBOARD_RANGES.map((val) => (
+              {PRIMARY_DASHBOARD_RANGES.map((val) => (
                 <TabsTrigger key={val} value={String(val)}>
                   {t(RANGE_KEYS[val])}
                 </TabsTrigger>
               ))}
             </TabsList>
           </Tabs>
+          <Select
+            value={isExtendedRange ? String(range) : ""}
+            onChange={(value) => {
+              if (value) setRange(Number(value) as DashboardRange);
+            }}
+            options={[
+              { value: "", label: t("dashboard.more_ranges") },
+              ...EXTENDED_DASHBOARD_RANGES.map((val) => ({
+                value: String(val),
+                label: t(RANGE_KEYS[val]),
+              })),
+            ]}
+            aria-label={t("dashboard.more_ranges")}
+            className="w-[132px]"
+          />
           <Button
             variant="secondary"
             size="sm"
             onClick={() => void refresh(range)}
             disabled={loading}
+            title={t("dashboard.overview_hint", { time: generatedAt })}
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
             {t("dashboard.refresh")}
@@ -486,92 +526,119 @@ export function DashboardPage() {
         />
       ) : null}
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <DashboardKpiCard
-          title={t("dashboard.total_requests")}
-          value={<AnimatedNumber value={kpi?.total_requests ?? 0} format={formatNumber} />}
-          hint={
-            range === 1
-              ? t("dashboard.total_hint_today")
-              : t("dashboard.total_hint_days", { count: range })
-          }
-          icon={Activity}
-          option={totalRequestOption}
-          accent={{
-            iconWrap: "bg-blue-50 dark:bg-blue-500/12",
-            iconColor: "text-blue-600 dark:text-blue-400",
-          }}
-        />
-        <DashboardKpiCard
-          title={t("dashboard.success_rate")}
-          value={<AnimatedNumber value={kpi?.success_rate ?? 0} format={formatRate} />}
-          hint={t("dashboard.success_hint", {
-            success: formatNumber(kpi?.success_requests ?? 0),
-            failed: formatNumber(kpi?.failed_requests ?? 0),
-          })}
-          icon={Sigma}
-          option={successRateOption}
-          accent={{
-            iconWrap: "bg-emerald-50 dark:bg-emerald-500/12",
-            iconColor: "text-emerald-600 dark:text-emerald-400",
-          }}
-        />
-        <DashboardKpiCard
-          title={t("dashboard.total_tokens")}
-          value={<AnimatedNumber value={kpi?.total_tokens ?? 0} format={formatNumber} />}
-          hint={t("dashboard.token_hint", {
-            input: formatNumber(kpi?.input_tokens ?? 0),
-            output: formatNumber(kpi?.output_tokens ?? 0),
-          })}
-          icon={Sparkles}
-          option={totalTokenOption}
-          accent={{
-            iconWrap: "bg-violet-50 dark:bg-violet-500/12",
-            iconColor: "text-violet-600 dark:text-violet-400",
-          }}
-        />
-        <DashboardKpiCard
-          title={t("dashboard.total_cost")}
-          value={<AnimatedNumber value={kpi?.total_cost ?? 0} format={formatCurrency} />}
-          hint={t("dashboard.total_cost_hint")}
-          icon={DollarSign}
-          option={totalCostOption}
-          accent={{
-            iconWrap: "bg-cyan-50 dark:bg-cyan-500/12",
-            iconColor: "text-cyan-600 dark:text-cyan-400",
-          }}
-        />
-        <DashboardKpiCard
-          title={t("dashboard.failed_requests")}
-          value={<AnimatedNumber value={kpi?.failed_requests ?? 0} format={formatNumber} />}
-          hint={t("dashboard.failed_hint")}
-          icon={TriangleAlert}
-          option={failedRequestOption}
-          accent={{
-            iconWrap: "bg-rose-50 dark:bg-rose-500/12",
-            iconColor: "text-rose-600 dark:text-rose-400",
-          }}
-        />
-      </div>
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+              {t("dashboard.section_business")}
+            </h3>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-white/55">
+              {t("dashboard.overview_hint", { time: generatedAt })}
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <DashboardKpiCard
+            title={t("dashboard.total_requests")}
+            value={<AnimatedNumber value={kpi?.total_requests ?? 0} format={formatNumber} />}
+            hint={
+              range === 1
+                ? t("dashboard.total_hint_today")
+                : t("dashboard.total_hint_days", { count: range })
+            }
+            icon={Activity}
+            option={totalRequestOption}
+            showTrend={hasTrendData(trends?.request_volume)}
+            accent={{
+              iconWrap: "bg-blue-50 dark:bg-blue-500/12",
+              iconColor: "text-blue-600 dark:text-blue-400",
+            }}
+            to="/monitor/request-logs"
+          />
+          <DashboardKpiCard
+            title={t("dashboard.success_rate")}
+            value={<AnimatedNumber value={kpi?.success_rate ?? 0} format={formatRate} />}
+            hint={t("dashboard.success_hint", {
+              success: formatNumber(kpi?.success_requests ?? 0),
+              failed: formatNumber(kpi?.failed_requests ?? 0),
+            })}
+            icon={Sigma}
+            option={successRateOption}
+            showTrend={hasTrendData(trends?.success_rate)}
+            accent={{
+              iconWrap: "bg-emerald-50 dark:bg-emerald-500/12",
+              iconColor: "text-emerald-600 dark:text-emerald-400",
+            }}
+            to="/monitor"
+          />
+          <DashboardKpiCard
+            title={t("dashboard.total_tokens")}
+            value={<AnimatedNumber value={kpi?.total_tokens ?? 0} format={formatNumber} />}
+            hint={t("dashboard.token_hint", {
+              input: formatNumber(kpi?.input_tokens ?? 0),
+              output: formatNumber(kpi?.output_tokens ?? 0),
+            })}
+            icon={Sparkles}
+            option={totalTokenOption}
+            showTrend={hasTrendData(trends?.total_tokens)}
+            accent={{
+              iconWrap: "bg-violet-50 dark:bg-violet-500/12",
+              iconColor: "text-violet-600 dark:text-violet-400",
+            }}
+            to="/monitor"
+          />
+          <DashboardKpiCard
+            title={t("dashboard.total_cost")}
+            value={<AnimatedNumber value={kpi?.total_cost ?? 0} format={formatCurrency} />}
+            hint={t("dashboard.total_cost_hint")}
+            icon={DollarSign}
+            option={totalCostOption}
+            showTrend={hasTrendData(trends?.total_cost)}
+            accent={{
+              iconWrap: "bg-cyan-50 dark:bg-cyan-500/12",
+              iconColor: "text-cyan-600 dark:text-cyan-400",
+            }}
+            to="/monitor"
+          />
+          <DashboardKpiCard
+            title={t("dashboard.failed_requests")}
+            value={<AnimatedNumber value={kpi?.failed_requests ?? 0} format={formatNumber} />}
+            hint={t("dashboard.failed_hint")}
+            icon={TriangleAlert}
+            option={failedRequestOption}
+            showTrend={hasTrendData(trends?.failed_requests)}
+            accent={{
+              iconWrap: "bg-rose-50 dark:bg-rose-500/12",
+              iconColor: "text-rose-600 dark:text-rose-400",
+            }}
+            to="/monitor/request-logs?status=failed"
+          />
+        </div>
+      </section>
 
       <SystemMonitorSection
         stats={stats}
         connected={connected}
         apiKeyCount={summary?.counts.api_keys ?? 0}
+        channelCount={channelCount}
       />
 
-      <ThroughputTrendChart
-        title={t("dashboard.throughput_title")}
-        points={throughputSeries}
-        rpm={stats?.total_rpm ?? 0}
-        tpm={stats?.total_tpm ?? 0}
-        connected={connected}
-        showRPM={throughputLegend.rpm}
-        showTPM={throughputLegend.tpm}
-        onToggle={(key) =>
-          setThroughputLegend((prev) => ({ ...prev, [key]: !prev[key as "rpm" | "tpm"] }))
-        }
-      />
+      <section className="space-y-3">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+          {t("dashboard.section_throughput")}
+        </h3>
+        <ThroughputTrendChart
+          title={t("dashboard.throughput_title")}
+          points={throughputSeries}
+          rpm={stats?.total_rpm ?? 0}
+          tpm={stats?.total_tpm ?? 0}
+          showRPM={throughputLegend.rpm}
+          showTPM={throughputLegend.tpm}
+          onToggle={(key) =>
+            setThroughputLegend((prev) => ({ ...prev, [key]: !prev[key as "rpm" | "tpm"] }))
+          }
+        />
+      </section>
     </div>
   );
 }

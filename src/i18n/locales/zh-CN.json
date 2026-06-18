@@ -201,7 +201,14 @@
     "summary_api_keys": "API Keys",
     "summary_providers": "供应商接入",
     "summary_auth_files": "认证文件",
-    "updated_fallback": "刚刚"
+    "updated_fallback": "刚刚",
+    "section_business": "业务概览",
+    "section_system": "系统健康",
+    "section_throughput": "实时吞吐",
+    "more_ranges": "更长范围",
+    "sparkline_empty": "暂无趋势数据",
+    "throughput_empty_title": "暂无实时流量",
+    "throughput_empty_desc": "等待请求进入后即可看到 RPM / TPM 曲线"
   },
   "basic_settings": {
     "title": "基础设置",
@@ -3383,7 +3390,17 @@
     "health_healthy": "健康",
     "health_good": "良好",
     "health_warning": "警告",
-    "health_risk": "危险"
+    "health_risk": "危险",
+    "health_breakdown_title": "影响因素",
+    "health_factor_high": "{{label}} {{pct}}%（偏高）",
+    "health_factor_normal": "{{label}} {{pct}}%（正常）",
+    "database_sublabel": "含 WAL 缓存",
+    "log_storage_sublabel": "请求正文占用",
+    "view_system_details": "查看系统详情",
+    "channel_count": "活跃渠道",
+    "key_count_summary": "关联 {{count}} 个 API Key",
+    "latency_high": "延迟偏高，建议检查渠道与上游响应",
+    "view_request_logs": "查看请求日志"
   },
   "oauth": {
     "not_imported": "未导入",

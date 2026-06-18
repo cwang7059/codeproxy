@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { LoaderCircle, MoreHorizontal, RefreshCw, ScrollText } from "lucide-react";
 import { formatCompact } from "@/modules/monitor/monitor-format";
 import { usageApi } from "@/lib/http/apis";
@@ -38,6 +39,7 @@ const DEFAULT_CLEAR_OPTIONS: ClearUsageLogsPayload = {
 export function RequestLogsPage() {
   const { t } = useTranslation();
   const { notify } = useToast();
+  const [searchParams] = useSearchParams();
 
   // Content modal state
   const [contentModalOpen, setContentModalOpen] = useState(false);
@@ -102,6 +104,13 @@ export function RequestLogsPage() {
   const [modelQuery, setModelQuery] = useState("");
   const [channelQuery, setChannelQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
+  const requestedStatus = searchParams.get("status");
+
+  useEffect(() => {
+    if (requestedStatus === "success" || requestedStatus === "failed") {
+      setStatusFilter(requestedStatus);
+    }
+  }, [requestedStatus]);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [clearingLogs, setClearingLogs] = useState(false);
   const [clearOptions, setClearOptions] = useState<ClearUsageLogsPayload>(DEFAULT_CLEAR_OPTIONS);

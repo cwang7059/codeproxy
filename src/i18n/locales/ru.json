@@ -264,7 +264,14 @@
     "total_cost_hint": "Основано на настроенной стоимости моделей",
     "throughput_title": "Тренд пропускной способности",
     "overview_hint": "Данные обновлены {{time}}",
-    "updated_fallback": "Только что"
+    "updated_fallback": "Только что",
+    "section_business": "Обзор бизнеса",
+    "section_system": "Состояние системы",
+    "section_throughput": "Пропускная способность",
+    "more_ranges": "Длинный период",
+    "sparkline_empty": "Нет данных тренда",
+    "throughput_empty_title": "Пока нет живого трафика",
+    "throughput_empty_desc": "Графики RPM и TPM появятся после начала запросов."
   },
   "basic_settings": {
     "title": "Основные настройки",
@@ -2097,6 +2104,18 @@
     "loading_models": "Загрузка моделей…",
     "no_models": "Нет данных о моделях",
     "no_match": "Нет результатов"
+  },
+  "system_monitor": {
+    "health_breakdown_title": "Факторы оценки",
+    "health_factor_high": "{{label}} {{pct}}% (высокий)",
+    "health_factor_normal": "{{label}} {{pct}}% (норма)",
+    "database_sublabel": "Включая кэш WAL",
+    "log_storage_sublabel": "Хранение тел запросов",
+    "view_system_details": "Подробнее о системе",
+    "channel_count": "Активные каналы",
+    "key_count_summary": "Связано API-ключей: {{count}}",
+    "latency_high": "Высокая задержка; проверьте каналы и upstream",
+    "view_request_logs": "Журнал запросов"
   },
   "auto_update": {
     "title": "Доступно обновление",

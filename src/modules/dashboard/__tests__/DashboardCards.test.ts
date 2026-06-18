@@ -18,6 +18,7 @@ describe("dashboard card composition", () => {
     expect(source).toContain("ChartLegend");
     expect(source).toContain("useInterval");
     expect(source).toContain("const DASHBOARD_RANGES = [1, 7, 30, 365, 1095] as const");
+    expect(source).toContain("const PRIMARY_DASHBOARD_RANGES = [1, 7, 30] as const");
     expect(source).toContain('"dashboard.last_365_days"');
     expect(source).toContain('"dashboard.last_1095_days"');
     expect(source).toContain("summary?.trends");
@@ -28,6 +29,9 @@ describe("dashboard card composition", () => {
     expect(source).toContain("const autoRefreshMs = range > 30 ? 60_000 : 5_000");
     expect(source).toContain('<EChart option={option} className="h-10" overflowVisible />');
     expect(source).toContain("}, autoRefreshMs);");
+    expect(source).toContain('"dashboard.section_business"');
+    expect(source).toContain('"dashboard.sparkline_empty"');
+    expect(source).toContain('from "react-router-dom"');
     expect(source).not.toContain('replaceMerge="series"');
     expect(source).not.toContain('from "@/modules/monitor/MonitorPagePieces"');
     expect(source).not.toContain("<KpiCard");
@@ -40,6 +44,7 @@ describe("dashboard card composition", () => {
     expect(source).toContain("maximumFractionDigits: 2");
     expect(source).toContain("formatThroughputTooltip");
     expect(source).toContain("formatter: formatThroughputTooltip");
+    expect(source).toContain('"dashboard.throughput_empty_title"');
   });
 
   test("uses the shared Card component for system monitor panels", () => {
@@ -48,8 +53,10 @@ describe("dashboard card composition", () => {
     expect(source).toContain('from "@/modules/ui/Card"');
     expect(source).toContain("AverageLatencyCard");
     expect(source).toContain("apiKeyCount");
+    expect(source).toContain("channelCount");
     expect(source).toContain("stats?: SystemStats | null");
     expect(source).toContain("connected?: boolean");
+    expect(source).toContain("dashboard-system-utils");
     expect(source).not.toContain("useSystemStats(3)");
     expect(source).not.toContain("ConcurrencyCard");
     expect(source).not.toContain('className="rounded-2xl border border-slate-200 bg-white/50');
@@ -59,21 +66,22 @@ describe("dashboard card composition", () => {
     );
   });
 
-  test("uses a centered health hero and circular disk usage card in system monitor", () => {
+  test("uses health overview with breakdown and updated system monitor grid", () => {
     const source = readModule("modules/dashboard/SystemMonitorSection.tsx");
 
-    expect(source).toContain("HealthHeroCard");
+    expect(source).toContain("HealthOverviewCard");
     expect(source).toContain("DiskUsageRingCard");
-    expect(source).toContain('bodyClassName="mt-0 flex h-full items-center justify-center"');
-    expect(source).toContain("strokeDasharray={circumference}");
-    expect(source).toContain("grid gap-3 xl:grid-cols-[260px_minmax(0,1fr)_280px]");
+    expect(source).toContain("buildHealthScoreFactors");
+    expect(source).toContain("grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_280px]");
+    expect(source).not.toContain("HealthHeroCard");
     expect(source).not.toContain('label={t("system_monitor.disk_free")}');
   });
 
-  test("labels api key count explicitly instead of users in latency summary", () => {
+  test("summarizes api keys in channel mini kpi instead of latency card headline", () => {
     const source = readModule("modules/dashboard/SystemMonitorSection.tsx");
 
-    expect(source).toContain('t("system_monitor.key_count")');
+    expect(source).toContain('t("system_monitor.key_count_summary"');
+    expect(source).toContain('t("system_monitor.channel_count")');
     expect(source).not.toContain('t("system_monitor.users")');
   });
 
@@ -83,7 +91,7 @@ describe("dashboard card composition", () => {
 
     expect(dashboardSource).toContain("dark:bg-neutral-900/70");
     expect(dashboardSource).toContain("dark:text-slate-200");
-    expect(systemMonitorSource).toContain("dark:bg-neutral-900/70");
+    expect(systemMonitorSource).toContain("dark:bg-neutral-950/85");
     expect(systemMonitorSource).toContain("dark:text-white/80");
   });
 });
