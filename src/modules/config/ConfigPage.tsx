@@ -80,6 +80,7 @@ export function ConfigPage() {
   const [yamlText, setYamlText] = useState("");
   const [yamlDirty, setYamlDirty] = useState(false);
   const [managementKeyModalOpen, setManagementKeyModalOpen] = useState(false);
+  const [currentManagementKey, setCurrentManagementKey] = useState("");
   const [managementKeyDraft, setManagementKeyDraft] = useState("");
   const [managementKeyConfirm, setManagementKeyConfirm] = useState("");
   const [showManagementKeys, setShowManagementKeys] = useState(false);
@@ -301,6 +302,7 @@ export function ConfigPage() {
   const reloadDisabled = loading || saving;
   const showFloatingBar = tab !== "runtime";
   const openManagementKeyModal = useCallback(() => {
+    setCurrentManagementKey("");
     setManagementKeyDraft("");
     setManagementKeyConfirm("");
     setShowManagementKeys(false);
@@ -316,9 +318,14 @@ export function ConfigPage() {
   }, [managementKeySaving]);
 
   const handleManagementKeySubmit = useCallback(async () => {
+    const currentKey = currentManagementKey.trim();
     const nextKey = managementKeyDraft.trim();
     const confirmKey = managementKeyConfirm.trim();
 
+    if (!currentKey) {
+      setManagementKeyError(t("config_page.current_management_key_required"));
+      return;
+    }
     if (!nextKey) {
       setManagementKeyError(t("config_page.management_key_required"));
       return;
@@ -331,11 +338,15 @@ export function ConfigPage() {
       setManagementKeyError(t("config_page.management_key_mismatch"));
       return;
     }
+    if (currentKey === nextKey) {
+      setManagementKeyError(t("config_page.management_key_same_as_current"));
+      return;
+    }
 
     setManagementKeySaving(true);
     setManagementKeyError("");
     try {
-      await configApi.updateManagementKey(nextKey);
+      await configApi.updateManagementKey(currentKey, nextKey);
       replaceManagementKey(nextKey);
       notify({ type: "success", message: t("config_page.management_key_updated") });
       setManagementKeyModalOpen(false);
@@ -347,7 +358,7 @@ export function ConfigPage() {
     } finally {
       setManagementKeySaving(false);
     }
-  }, [managementKeyConfirm, managementKeyDraft, notify, replaceManagementKey, t]);
+  }, [currentManagementKey, managementKeyConfirm, managementKeyDraft, notify, replaceManagementKey, t]);
 
   return (
     <section
@@ -593,6 +604,19 @@ export function ConfigPage() {
               {managementKeyError}
             </div>
           ) : null}
+
+          <label className="block space-y-2">
+            <span className="text-sm font-medium text-slate-900 dark:text-white">
+              {t("config_page.current_management_key")}
+            </span>
+            <TextInput
+              type={showManagementKeys ? "text" : "password"}
+              value={currentManagementKey}
+              onChange={(event) => setCurrentManagementKey(event.currentTarget.value)}
+              placeholder={t("config_page.current_management_key_placeholder")}
+              disabled={managementKeySaving}
+            />
+          </label>
 
           <label className="block space-y-2">
             <span className="text-sm font-medium text-slate-900 dark:text-white">
