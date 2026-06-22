@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
+import { maskApiKey } from "@/lib/mask-api-key";
 import {
   ChevronLeft,
   ChevronRight,
@@ -58,13 +59,7 @@ export type RequestLogKeyOption = {
   searchText?: string;
 };
 
-export const maskRequestLogApiKey = (value: string): string => {
-  const trimmed = value.trim();
-  if (!trimmed) return "--";
-  if (trimmed.length <= 10)
-    return `${trimmed.slice(0, 2)}***${trimmed.slice(-2)}`;
-  return `${trimmed.slice(0, 6)}***${trimmed.slice(-4)}`;
-};
+export const maskRequestLogApiKey = maskApiKey;
 
 export const formatRequestLogTimestamp = (value: string): string => {
   const ms = parseUsageTimestampMs(value);
@@ -131,6 +126,7 @@ export const buildRequestLogKeyOptions = (
     allKeys: string;
     systemCall: string;
   },
+  buildOptions?: { maskSensitiveKeys?: boolean },
 ): RequestLogKeyOption[] => {
   const options: RequestLogKeyOption[] = [{ value: "", label: labels.allKeys }];
   let systemIncluded = false;
@@ -147,10 +143,13 @@ export const buildRequestLogKeyOptions = (
       systemIncluded = true;
       continue;
     }
+    const maskedKey = maskRequestLogApiKey(key);
     options.push({
       value: key,
-      label: name || maskRequestLogApiKey(key),
-      searchText: `${name || ""} ${key}`,
+      label: name || maskedKey,
+      searchText: buildOptions?.maskSensitiveKeys
+        ? `${name || ""} ${maskedKey}`.trim()
+        : `${name || ""} ${key}`,
     });
   }
 

@@ -9,13 +9,24 @@ import {
   CalendarClock,
   MonitorSmartphone,
   KeyRound,
+  FileKey,
   RefreshCw,
   Search,
   Server,
   Layers,
+  Link2,
+  RotateCcw,
 } from "lucide-react";
 import { apiClient } from "@/lib/http/client";
-import { isDesktopClient } from "@/lib/desktop";
+import {
+  getDesktopCodexStatus,
+  isDesktopClient,
+  restoreDesktopCodexIntegration,
+  type DesktopCodexStatus,
+} from "@/lib/desktop";
+import { connectDesktopCodex } from "@/modules/system/codexIntegration";
+import { maskApiKey } from "@/lib/mask-api-key";
+import { isPanelAdmin } from "@/lib/panel-role";
 import { useAuth } from "@/modules/auth/AuthProvider";
 import { Button } from "@/modules/ui/Button";
 import { Card } from "@/modules/ui/Card";
@@ -355,6 +366,7 @@ export function SystemPage({
   const { t } = useTranslation();
   const auth = useAuth();
   const desktopClient = isDesktopClient();
+  const adminView = isPanelAdmin(auth.state.role);
 
   const [modelsLoading, setModelsLoading] = useState(false);
   const [modelsError, setModelsError] = useState<string | null>(null);
@@ -362,11 +374,30 @@ export function SystemPage({
   const [modelFilter, setModelFilter] = useState("");
   const [backendBaseDraft, setBackendBaseDraft] = useState(auth.state.apiBase);
   const [backendSaving, setBackendSaving] = useState(false);
+  const [codexStatus, setCodexStatus] = useState<DesktopCodexStatus | null>(null);
+  const [codexLoading, setCodexLoading] = useState(false);
   const { notify } = useToast();
 
   useEffect(() => {
     setBackendBaseDraft(auth.state.apiBase);
   }, [auth.state.apiBase]);
+
+  useEffect(() => {
+    if (!desktopClient) {
+      setCodexStatus(null);
+      return;
+    }
+
+    let disposed = false;
+    void getDesktopCodexStatus().then((status) => {
+      if (!disposed) {
+        setCodexStatus(status);
+      }
+    });
+    return () => {
+      disposed = true;
+    };
+  }, [desktopClient]);
 
   const loadModels = useCallback(async () => {
     setModelsLoading(true);
@@ -437,11 +468,53 @@ export function SystemPage({
     }
   }, [auth.actions, backendBaseDraft, notify, t]);
 
+  const handleConnectCodex = useCallback(async () => {
+    setCodexLoading(true);
+    try {
+      const status = await connectDesktopCodex(auth.state.apiBase, auth.state.role);
+      setCodexStatus(status);
+      notify({ type: "success", message: t("system_page.codex_connect_success") });
+    } catch (error) {
+      notify({
+        type: "error",
+        message:
+          error instanceof Error && error.message === "codex_no_api_key"
+            ? t("system_page.codex_no_api_key")
+            : error instanceof Error && error.message === "codex_connect_failed"
+              ? t("system_page.codex_connect_failed")
+              : error instanceof Error
+                ? error.message
+                : t("system_page.codex_connect_failed"),
+      });
+    } finally {
+      setCodexLoading(false);
+    }
+  }, [auth.state.apiBase, auth.state.role, notify, t]);
+
+  const handleRestoreCodex = useCallback(async () => {
+    setCodexLoading(true);
+    try {
+      const status = await restoreDesktopCodexIntegration();
+      if (!status) {
+        throw new Error(t("system_page.codex_restore_failed"));
+      }
+      setCodexStatus(status);
+      notify({ type: "success", message: t("system_page.codex_restore_success") });
+    } catch (error) {
+      notify({
+        type: "error",
+        message: error instanceof Error ? error.message : t("system_page.codex_restore_failed"),
+      });
+    } finally {
+      setCodexLoading(false);
+    }
+  }, [notify, t]);
+
   return (
     <section className="page-stack min-w-0 overflow-x-hidden">
       <PageToolbar
         title={t("system_page.title")}
-        description={t("system_page.subtitle")}
+        description={adminView ? t("system_page.subtitle") : t("system_page.subtitle_user")}
         icon={
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
             <Server size={16} className="text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
@@ -450,6 +523,7 @@ export function SystemPage({
       />
 
       {/* ── Connection & Version Grid ── */}
+      {adminView ? (
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <InfoCard
           icon={Globe}
@@ -488,8 +562,9 @@ export function SystemPage({
           link
         />
       </div>
+      ) : null}
 
-      {desktopClient ? (
+      {desktopClient && adminView ? (
         <Card>
           <div className="space-y-4">
             <div className="space-y-1">
@@ -525,6 +600,85 @@ export function SystemPage({
         </Card>
       ) : null}
 
+      {desktopClient ? (
+        <Card>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                {t("system_page.codex_integration_title")}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-white/55">
+                {t("system_page.codex_integration_desc")}
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <InfoCard
+                icon={FileKey}
+                label={t("system_page.codex_config_path")}
+                value={codexStatus?.path || "--"}
+                mono
+                copyable
+              />
+              <InfoCard
+                icon={Link2}
+                label={t("system_page.codex_target_server")}
+                value={auth.state.apiBase || "--"}
+                mono
+                copyable
+              />
+              <InfoCard
+                icon={KeyRound}
+                label={adminView ? t("system_page.codex_dev_key") : t("system_page.codex_api_key")}
+                value={
+                  adminView
+                    ? codexStatus?.localDevKey || "--"
+                    : maskApiKey(codexStatus?.localDevKey || "")
+                }
+                mono
+                copyable={adminView}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span
+                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                  codexStatus?.managed
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                    : "bg-slate-100 text-slate-600 dark:bg-neutral-800 dark:text-white/60"
+                }`}
+              >
+                {codexStatus?.managed
+                  ? t("system_page.codex_status_managed")
+                  : t("system_page.codex_status_unmanaged")}
+              </span>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => void handleConnectCodex()}
+                disabled={codexLoading || !auth.state.apiBase}
+              >
+                {codexLoading ? (
+                  <RefreshCw size={13} className="animate-spin" />
+                ) : (
+                  <Link2 size={13} />
+                )}
+                {t("system_page.codex_connect_button")}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void handleRestoreCodex()}
+                disabled={codexLoading || !codexStatus?.managed}
+              >
+                <RotateCcw size={13} />
+                {t("system_page.codex_restore_button")}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      ) : null}
+
+      {adminView ? (
+      <>
       <UpdateDetailsCard
         heartbeatIntervalMs={updateHeartbeatIntervalMs}
         heartbeatTimeoutMs={updateHeartbeatTimeoutMs}
@@ -619,6 +773,8 @@ export function SystemPage({
           )}
         </div>
       </Card>
+      </>
+      ) : null}
     </section>
   );
 }

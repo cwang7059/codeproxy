@@ -36,6 +36,33 @@ declare global {
     probeBackendBase?: (backendBase: string) => Promise<
       "idle" | "checking" | "reachable" | "unreachable" | "invalid"
     >;
+    getCodexStatus?: () => Promise<{
+      path: string;
+      exists: boolean;
+      managed: boolean;
+      backendBase: string;
+      provider: string;
+      localDevKey: string;
+    }>;
+    applyCodexIntegration?: (
+      backendBase: string,
+      bearerToken: string,
+    ) => Promise<{
+      path: string;
+      exists: boolean;
+      managed: boolean;
+      backendBase: string;
+      provider: string;
+      localDevKey: string;
+    }>;
+    restoreCodexIntegration?: () => Promise<{
+      path: string;
+      exists: boolean;
+      managed: boolean;
+      backendBase: string;
+      provider: string;
+      localDevKey: string;
+    }>;
     readAuthSnapshot?: () => Promise<{
       apiBase?: string;
       managementKey?: string;

@@ -63,4 +63,16 @@ describe("requestLogsShared", () => {
       "sk-live-123456",
     );
   });
+
+  test("masks search text for regular users", () => {
+    const options = buildRequestLogKeyOptions(
+      ["sk-live-1234567890"],
+      { "sk-live-1234567890": "Live Key" },
+      { allKeys: "全部密钥", systemCall: "系统调用" },
+      { maskSensitiveKeys: true },
+    );
+
+    expect(options[1]?.searchText).toBe("Live Key sk-liv***7890");
+    expect(options[1]?.searchText).not.toContain("sk-live-1234567890");
+  });
 });

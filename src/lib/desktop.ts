@@ -42,6 +42,54 @@ export async function probeDesktopBackendBase(
   }
 }
 
+export interface DesktopCodexStatus {
+  path: string;
+  exists: boolean;
+  managed: boolean;
+  backendBase: string;
+  provider: string;
+  localDevKey: string;
+}
+
+export async function getDesktopCodexStatus(): Promise<DesktopCodexStatus | null> {
+  if (!window.codeProxyDesktop?.isDesktop || !window.codeProxyDesktop?.getCodexStatus) {
+    return null;
+  }
+
+  try {
+    return await window.codeProxyDesktop.getCodexStatus();
+  } catch {
+    return null;
+  }
+}
+
+export async function applyDesktopCodexIntegration(
+  backendBase: string,
+  bearerToken: string,
+): Promise<DesktopCodexStatus | null> {
+  if (!window.codeProxyDesktop?.isDesktop || !window.codeProxyDesktop?.applyCodexIntegration) {
+    return null;
+  }
+
+  try {
+    return await window.codeProxyDesktop.applyCodexIntegration(backendBase, bearerToken);
+  } catch {
+    return null;
+  }
+}
+
+export async function restoreDesktopCodexIntegration(): Promise<DesktopCodexStatus | null> {
+  if (!window.codeProxyDesktop?.isDesktop || !window.codeProxyDesktop?.restoreCodexIntegration) {
+    return null;
+  }
+
+  try {
+    return await window.codeProxyDesktop.restoreCodexIntegration();
+  } catch {
+    return null;
+  }
+}
+
 export function isDesktopFrameless(): boolean {
   return Boolean(window.codeProxyDesktop?.isDesktop && window.codeProxyDesktop?.frameless);
 }

@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const http = require("node:http");
 const https = require("node:https");
 const net = require("node:net");
+const os = require("node:os");
 const path = require("node:path");
 const tls = require("node:tls");
 const { isFramelessWindowEnabled } = require("./frameless.cjs");
@@ -27,6 +28,11 @@ const HTTP_HOP_BY_HOP_HEADERS = [
   "transfer-encoding",
   "upgrade",
 ];
+const CODEX_CONFIG_DIRNAME = ".codex";
+const CODEX_CONFIG_FILENAME = "config.toml";
+const CODEX_MANAGED_MARKER = "# Managed by Code Proxy Desktop";
+const CODEX_MANAGED_PROVIDER = "clirelay_remote";
+const CODEX_LOCAL_DEV_KEY = "local-dev-key";
 
 let localServer = null;
 let localServerOrigin = null;
@@ -205,6 +211,27 @@ function getDesktopSettingsPath() {
   return path.join(app.getPath("userData"), DESKTOP_SETTINGS_FILE);
 }
 
+function getCodexConfigPath() {
+  return path.join(os.homedir(), CODEX_CONFIG_DIRNAME, CODEX_CONFIG_FILENAME);
+}
+
+function buildManagedCodexConfig(backendBase, bearerToken) {
+  const normalized = normalizeBackendBase(backendBase);
+  const baseUrl = `${normalized}/v1`;
+  const token = String(bearerToken || CODEX_LOCAL_DEV_KEY).trim() || CODEX_LOCAL_DEV_KEY;
+  return `${CODEX_MANAGED_MARKER}
+model_provider = "${CODEX_MANAGED_PROVIDER}"
+model = "gpt-5.4"
+
+[model_providers.${CODEX_MANAGED_PROVIDER}]
+name = "Code Proxy Remote"
+base_url = "${baseUrl}"
+wire_api = "responses"
+supports_websockets = false
+experimental_bearer_token = "${token}"
+`;
+}
+
 async function readDesktopAuthSnapshot() {
   try {
     const raw = await fs.promises.readFile(getAuthSnapshotPath(), "utf8");
@@ -275,6 +302,94 @@ async function setDesktopBackendBaseOverride(rawBase) {
 
   await writeDesktopSettings(settings);
   return getBackendBase();
+}
+
+async function readCodexConfigFile() {
+  const configPath = getCodexConfigPath();
+  try {
+    const content = await fs.promises.readFile(configPath, "utf8");
+    return { exists: true, path: configPath, content };
+  } catch (error) {
+    if (error && typeof error === "object" && error.code === "ENOENT") {
+      return { exists: false, path: configPath, content: "" };
+    }
+    throw error;
+  }
+}
+
+async function getCodexIntegrationStatus() {
+  const settings = await readDesktopSettings();
+  const configFile = await readCodexConfigFile();
+  const managed =
+    Boolean(settings.codexConfigManaged?.enabled) ||
+    configFile.content.includes(CODEX_MANAGED_MARKER);
+
+  return {
+    path: configFile.path,
+    exists: configFile.exists,
+    managed,
+    backendBase: settings.codexConfigManaged?.backendBase || "",
+    provider: CODEX_MANAGED_PROVIDER,
+    localDevKey: settings.codexConfigManaged?.bearerToken || CODEX_LOCAL_DEV_KEY,
+  };
+}
+
+async function applyCodexIntegration(rawBase, bearerToken) {
+  const normalized = normalizeBackendBase(rawBase);
+  if (!normalized) {
+    throw new Error("Invalid backend base URL");
+  }
+  const token = String(bearerToken || CODEX_LOCAL_DEV_KEY).trim() || CODEX_LOCAL_DEV_KEY;
+
+  const settings = await readDesktopSettings();
+  const configFile = await readCodexConfigFile();
+
+  if (!settings.codexConfigManaged?.enabled) {
+    settings.codexConfigManaged = {
+      enabled: true,
+      backendBase: normalized,
+      bearerToken: token,
+      previousExists: configFile.exists,
+      previousContent: configFile.content,
+    };
+  } else {
+    settings.codexConfigManaged = {
+      ...settings.codexConfigManaged,
+      enabled: true,
+      backendBase: normalized,
+      bearerToken: token,
+    };
+  }
+
+  await fs.promises.mkdir(path.dirname(configFile.path), { recursive: true });
+  await fs.promises.writeFile(configFile.path, buildManagedCodexConfig(normalized, token), "utf8");
+  await writeDesktopSettings(settings);
+  return getCodexIntegrationStatus();
+}
+
+async function restoreCodexIntegration() {
+  const settings = await readDesktopSettings();
+  const configFile = await readCodexConfigFile();
+  const managedSettings = settings.codexConfigManaged;
+
+  if (managedSettings && typeof managedSettings === "object") {
+    if (managedSettings.previousExists) {
+      await fs.promises.mkdir(path.dirname(configFile.path), { recursive: true });
+      await fs.promises.writeFile(
+        configFile.path,
+        typeof managedSettings.previousContent === "string" ? managedSettings.previousContent : "",
+        "utf8",
+      );
+    } else if (configFile.exists) {
+      await fs.promises.unlink(configFile.path);
+    }
+  } else if (configFile.exists && configFile.content.includes(CODEX_MANAGED_MARKER)) {
+    await fs.promises.unlink(configFile.path);
+  }
+
+  delete settings.codexConfigManaged;
+  await writeDesktopSettings(settings);
+  return getCodexIntegrationStatus();
 }
 
 function getConfiguredRendererUrl() {
@@ -755,6 +870,11 @@ if (!gotLock) {
     ipcMain.handle("desktop:probe-backend-base", async (_event, backendBase) =>
       probeBackendBase(backendBase),
     );
+    ipcMain.handle("desktop:codex-status", async () => getCodexIntegrationStatus());
+    ipcMain.handle("desktop:codex-apply", async (_event, backendBase, bearerToken) =>
+      applyCodexIntegration(backendBase, bearerToken),
+    );
+    ipcMain.handle("desktop:codex-restore", async () => restoreCodexIntegration());
     ipcMain.handle("desktop:auth-snapshot-read", async () => readDesktopAuthSnapshot());
     ipcMain.handle("desktop:auth-snapshot-write", async (_event, snapshot) => {
       await writeDesktopAuthSnapshot(snapshot);

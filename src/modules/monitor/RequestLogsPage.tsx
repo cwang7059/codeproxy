@@ -2,6 +2,8 @@ import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { LoaderCircle, MoreHorizontal, RefreshCw, ScrollText, ShieldCheck, Sigma, DollarSign } from "lucide-react";
+import { useAuth } from "@/modules/auth/AuthProvider";
+import { isPanelAdmin } from "@/lib/panel-role";
 import { formatCompact } from "@/modules/monitor/monitor-format";
 import { usageApi } from "@/lib/http/apis";
 import type { ClearUsageLogsPayload, UsageLogItem, UsageLogsResponse } from "@/lib/http/apis/usage";
@@ -42,6 +44,8 @@ const DEFAULT_CLEAR_OPTIONS: ClearUsageLogsPayload = {
 export function RequestLogsPage() {
   const { t } = useTranslation();
   const { notify } = useToast();
+  const auth = useAuth();
+  const maskSensitiveKeys = !isPanelAdmin(auth.state.role);
   const [searchParams] = useSearchParams();
 
   // Content modal state
@@ -206,8 +210,8 @@ export function RequestLogsPage() {
     return buildRequestLogKeyOptions(filterOptions.api_keys, filterOptions.api_key_names ?? {}, {
       allKeys: t("request_logs.all_keys"),
       systemCall: t("request_logs.system_call"),
-    });
-  }, [filterOptions.api_keys, filterOptions.api_key_names, t]);
+    }, { maskSensitiveKeys });
+  }, [filterOptions.api_keys, filterOptions.api_key_names, maskSensitiveKeys, t]);
 
   const modelOptions = useMemo(() => {
     return [
@@ -411,7 +415,7 @@ export function RequestLogsPage() {
       <h1 className="sr-only">{t("request_logs.title")}</h1>
 
       {/* 单层卡片：标题 + 筛选 + 统计 + 表格 + 分页 */}
-      <div className="flex flex-1 flex-col rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgb(15_23_42_/_0.035)] dark:border-white/[0.06] dark:bg-neutral-950/70 dark:shadow-[0_1px_2px_rgb(0_0_0_/_0.22)]">
+      <div className="surface-card flex flex-1 flex-col">
         {/* 标题栏 */}
         <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5 pb-4">
           <div className="min-w-0">

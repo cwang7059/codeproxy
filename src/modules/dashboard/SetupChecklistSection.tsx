@@ -1,9 +1,13 @@
-import { CheckCircle2, Circle, Copy, FileKey, KeyRound, X } from "lucide-react";
+import { CheckCircle2, Circle, Copy, FileKey, KeyRound, Link2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+import { getDesktopCodexStatus, isDesktopClient } from "@/lib/desktop";
 import { apiKeyEntriesApi } from "@/lib/http/apis/api-keys";
 import { authFilesApi } from "@/lib/http/apis/auth-files";
+import { useAuth } from "@/modules/auth/AuthProvider";
+import { isPanelAdmin } from "@/lib/panel-role";
+import { connectDesktopCodex } from "@/modules/system/codexIntegration";
 import { Button } from "@/modules/ui/Button";
 import { Card } from "@/modules/ui/Card";
 import { useToast } from "@/modules/ui/ToastProvider";
@@ -38,32 +42,42 @@ function readDismissed(): boolean {
 export function SetupChecklistSection() {
   const { t } = useTranslation();
   const { notify } = useToast();
+  const { state: authState } = useAuth();
+  const desktopClient = isDesktopClient();
+  const adminView = isPanelAdmin(authState.role);
   const [dismissed, setDismissed] = useState(() => readDismissed());
   const [loading, setLoading] = useState(true);
   const [apiKeyCount, setApiKeyCount] = useState(0);
   const [authFileCount, setAuthFileCount] = useState(0);
+  const [codexConnected, setCodexConnected] = useState(false);
   const [codexCopied, setCodexCopied] = useState(false);
+  const [codexConnecting, setCodexConnecting] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [entries, authFiles] = await Promise.all([
+      const [entries, authFiles, codexStatus] = await Promise.all([
         apiKeyEntriesApi.list(),
         authFilesApi.list(),
+        desktopClient ? getDesktopCodexStatus() : Promise.resolve(null),
       ]);
       setApiKeyCount(entries.filter((entry) => String(entry.key ?? "").trim()).length);
       setAuthFileCount(authFiles.files?.length ?? 0);
+      setCodexConnected(Boolean(codexStatus?.managed));
     } catch {
       setApiKeyCount(0);
       setAuthFileCount(0);
+      setCodexConnected(false);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [desktopClient]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const codexDone = desktopClient ? codexConnected : codexCopied;
 
   const items = useMemo<ChecklistItem[]>(
     () => [
@@ -81,12 +95,12 @@ export function SetupChecklistSection() {
       },
       {
         id: "codex",
-        done: codexCopied,
-        to: "/api-keys",
-        icon: Copy,
+        done: codexDone,
+        to: desktopClient ? "/system" : "/api-keys",
+        icon: desktopClient ? Link2 : Copy,
       },
     ],
-    [apiKeyCount, authFileCount, codexCopied],
+    [apiKeyCount, authFileCount, codexDone, desktopClient],
   );
 
   const allDone = items.every((item) => item.done);
@@ -108,11 +122,34 @@ export function SetupChecklistSection() {
     }
   };
 
+  const connectCodex = async () => {
+    const apiBase = authState.apiBase.trim();
+    if (!apiBase) {
+      notify({ type: "error", message: t("dashboard.setup_codex_connect_failed") });
+      return;
+    }
+
+    setCodexConnecting(true);
+    try {
+      await connectDesktopCodex(apiBase, authState.role);
+      setCodexConnected(true);
+      notify({ type: "success", message: t("dashboard.setup_codex_connected") });
+    } catch {
+      notify({ type: "error", message: t("dashboard.setup_codex_connect_failed") });
+    } finally {
+      setCodexConnecting(false);
+    }
+  };
+
+  if (!adminView) {
+    return null;
+  }
+
   if (dismissed || loading) {
     return null;
   }
 
-  if (apiKeyCount > 0 && authFileCount > 0 && codexCopied) {
+  if (apiKeyCount > 0 && authFileCount > 0 && codexDone) {
     return null;
   }
 
@@ -177,16 +214,32 @@ export function SetupChecklistSection() {
                       ? t("dashboard.setup_api_keys_hint", { count: apiKeyCount })
                       : item.id === "auth-files"
                         ? t("dashboard.setup_auth_files_hint", { count: authFileCount })
-                        : t("dashboard.setup_codex_config_hint")}
+                        : desktopClient
+                          ? t("dashboard.setup_codex_config_hint_desktop")
+                          : t("dashboard.setup_codex_config_hint")}
                   </p>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 {item.id === "codex" ? (
-                  <Button size="sm" variant="secondary" onClick={() => void copyCodexConfig()}>
-                    <Icon size={14} />
-                    {t("dashboard.setup_codex_copy")}
-                  </Button>
+                  desktopClient ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => void connectCodex()}
+                      disabled={codexConnecting || item.done}
+                    >
+                      <Icon size={14} />
+                      {codexConnecting
+                        ? t("codex_connect_prompt.connecting")
+                        : t("dashboard.setup_codex_connect")}
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="secondary" onClick={() => void copyCodexConfig()}>
+                      <Icon size={14} />
+                      {t("dashboard.setup_codex_copy")}
+                    </Button>
+                  )
                 ) : (
                   <Link to={item.to} viewTransition>
                     <Button size="sm" variant={item.done ? "secondary" : "primary"}>
