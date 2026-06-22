@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Code2, Eye, Search, Settings } from "lucide-react";
+import { ChevronDown, ChevronUp, Code2, Eye, EyeOff, KeyRound, Search, Settings } from "lucide-react";
 import { parse as parseYaml } from "yaml";
-import { configFileApi } from "@/lib/http/apis";
+import { configApi, configFileApi } from "@/lib/http/apis";
+import { useAuth } from "@/modules/auth/AuthProvider";
+import { Button } from "@/modules/ui/Button";
 import { FloatingSaveBar } from "@/modules/config/FloatingSaveBar";
 import { RuntimeConfigPanel } from "@/modules/config/RuntimeConfigPanel";
 import { VisualConfigEditor } from "@/modules/config/visual/VisualConfigEditor";
@@ -9,6 +11,8 @@ import { useVisualConfig } from "@/modules/config/visual/useVisualConfig";
 import { Card } from "@/modules/ui/Card";
 import { ConfirmModal } from "@/modules/ui/ConfirmModal";
 import { EmptyState } from "@/modules/ui/EmptyState";
+import { Modal } from "@/modules/ui/Modal";
+import { PageToolbar } from "@/modules/ui/PageToolbar";
 import { TextInput } from "@/modules/ui/Input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/modules/ui/Tabs";
 import { useToast } from "@/modules/ui/ToastProvider";
@@ -56,6 +60,9 @@ function useStickyTab(): [ConfigTab, (next: ConfigTab) => void] {
 export function ConfigPage() {
   const { t } = useTranslation();
   const { notify } = useToast();
+  const {
+    actions: { replaceManagementKey },
+  } = useAuth();
   const [tab, setTab] = useStickyTab();
 
   const {
@@ -72,6 +79,12 @@ export function ConfigPage() {
 
   const [yamlText, setYamlText] = useState("");
   const [yamlDirty, setYamlDirty] = useState(false);
+  const [managementKeyModalOpen, setManagementKeyModalOpen] = useState(false);
+  const [managementKeyDraft, setManagementKeyDraft] = useState("");
+  const [managementKeyConfirm, setManagementKeyConfirm] = useState("");
+  const [showManagementKeys, setShowManagementKeys] = useState(false);
+  const [managementKeySaving, setManagementKeySaving] = useState(false);
+  const [managementKeyError, setManagementKeyError] = useState("");
 
   const [confirmReloadOpen, setConfirmReloadOpen] = useState(false);
 
@@ -287,15 +300,80 @@ export function ConfigPage() {
   const saveDisabled = disableControls || loading || saving || !isDirty;
   const reloadDisabled = loading || saving;
   const showFloatingBar = tab !== "runtime";
+  const openManagementKeyModal = useCallback(() => {
+    setManagementKeyDraft("");
+    setManagementKeyConfirm("");
+    setShowManagementKeys(false);
+    setManagementKeyError("");
+    setManagementKeyModalOpen(true);
+  }, []);
+
+  const closeManagementKeyModal = useCallback(() => {
+    if (managementKeySaving) return;
+    setManagementKeyModalOpen(false);
+    setShowManagementKeys(false);
+    setManagementKeyError("");
+  }, [managementKeySaving]);
+
+  const handleManagementKeySubmit = useCallback(async () => {
+    const nextKey = managementKeyDraft.trim();
+    const confirmKey = managementKeyConfirm.trim();
+
+    if (!nextKey) {
+      setManagementKeyError(t("config_page.management_key_required"));
+      return;
+    }
+    if (nextKey.length < 6) {
+      setManagementKeyError(t("config_page.management_key_too_short"));
+      return;
+    }
+    if (nextKey !== confirmKey) {
+      setManagementKeyError(t("config_page.management_key_mismatch"));
+      return;
+    }
+
+    setManagementKeySaving(true);
+    setManagementKeyError("");
+    try {
+      await configApi.updateManagementKey(nextKey);
+      replaceManagementKey(nextKey);
+      notify({ type: "success", message: t("config_page.management_key_updated") });
+      setManagementKeyModalOpen(false);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : t("config_page.management_key_update_failed");
+      setManagementKeyError(message);
+      notify({ type: "error", message });
+    } finally {
+      setManagementKeySaving(false);
+    }
+  }, [managementKeyConfirm, managementKeyDraft, notify, replaceManagementKey, t]);
 
   return (
-    <div
+    <section
       className={
         visualLayoutEnabled
-          ? "flex h-[calc(100dvh-112px)] min-h-0 flex-col gap-6 overflow-x-hidden"
-          : "space-y-6 overflow-x-hidden"
+          ? "page-stack flex h-[calc(100dvh-112px)] min-h-0 flex-col overflow-x-hidden"
+          : "page-stack overflow-x-hidden"
       }
     >
+      <PageToolbar
+        title={t("shell.nav_config")}
+        description={t("config_page.page_description")}
+        icon={<Settings size={18} className="text-slate-900 dark:text-white" aria-hidden="true" />}
+        actions={
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={openManagementKeyModal}
+            disabled={loading || saving}
+          >
+            <KeyRound size={14} aria-hidden="true" />
+            {t("config_page.change_management_key")}
+          </Button>
+        }
+      />
+
       <div className={visualLayoutEnabled ? "flex min-h-0 flex-1 flex-col gap-4" : undefined}>
         <Tabs value={tab} onValueChange={(next) => handleTabChange(next as ConfigTab)}>
           <div className="flex">
@@ -319,11 +397,10 @@ export function ConfigPage() {
             <TabsContent value="visual" className="h-full">
               <div className="flex min-h-0 h-full flex-col gap-4">
                 <Card
-                  title={t("config_page.visual_title")}
-                  description={t("config_page.visual_desc")}
+                  padding="none"
                   loading={loading}
-                  className="flex min-h-0 flex-1 flex-col"
-                  bodyClassName="min-h-0 flex-1 overflow-y-auto"
+                  className="flex min-h-0 flex-1 flex-col overflow-hidden"
+                  bodyClassName="min-h-0 flex-1 overflow-y-auto p-5"
                 >
                   {error ? (
                     <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-400/25 dark:bg-rose-500/15 dark:text-white">
@@ -344,11 +421,11 @@ export function ConfigPage() {
 
             <TabsContent value="source">
               <div className="space-y-4">
-                <Card
-                  title={t("config_page.source_title")}
-                  description={t("config_page.search_hint")}
-                  loading={loading}
-                >
+                <Card padding="none" loading={loading}>
+                  <div className="p-5">
+                  <p className="mb-4 text-xs text-slate-600 dark:text-white/65">
+                    {t("config_page.search_hint")}
+                  </p>
                   {error ? (
                     <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-400/25 dark:bg-rose-500/15 dark:text-white">
                       {error}
@@ -453,6 +530,7 @@ export function ConfigPage() {
                       />
                     </div>
                   )}
+                  </div>
                 </Card>
               </div>
             </TabsContent>
@@ -487,6 +565,74 @@ export function ConfigPage() {
           void loadYaml();
         }}
       />
-    </div>
+
+      <Modal
+        open={managementKeyModalOpen}
+        title={t("config_page.change_management_key")}
+        description={t("config_page.change_management_key_desc")}
+        onClose={closeManagementKeyModal}
+        maxWidth="max-w-lg"
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeManagementKeyModal} disabled={managementKeySaving}>
+              {t("ui.cancel_default")}
+            </Button>
+            <Button onClick={() => void handleManagementKeySubmit()} disabled={managementKeySaving}>
+              {t("config_page.save_changes")}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-neutral-800 dark:bg-neutral-900/80 dark:text-white/65">
+            {t("config_page.change_management_key_hint")}
+          </div>
+
+          {managementKeyError ? (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300">
+              {managementKeyError}
+            </div>
+          ) : null}
+
+          <label className="block space-y-2">
+            <span className="text-sm font-medium text-slate-900 dark:text-white">
+              {t("config_page.new_management_key")}
+            </span>
+            <TextInput
+              type={showManagementKeys ? "text" : "password"}
+              value={managementKeyDraft}
+              onChange={(event) => setManagementKeyDraft(event.currentTarget.value)}
+              placeholder={t("config_page.new_management_key_placeholder")}
+              disabled={managementKeySaving}
+            />
+          </label>
+
+          <label className="block space-y-2">
+            <span className="text-sm font-medium text-slate-900 dark:text-white">
+              {t("config_page.confirm_management_key")}
+            </span>
+            <TextInput
+              type={showManagementKeys ? "text" : "password"}
+              value={managementKeyConfirm}
+              onChange={(event) => setManagementKeyConfirm(event.currentTarget.value)}
+              placeholder={t("config_page.confirm_management_key_placeholder")}
+              disabled={managementKeySaving}
+            />
+          </label>
+
+          <button
+            type="button"
+            onClick={() => setShowManagementKeys((value) => !value)}
+            className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-slate-900 dark:text-white/65 dark:hover:text-white"
+            disabled={managementKeySaving}
+          >
+            {showManagementKeys ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+            {showManagementKeys
+              ? t("login.hide_key")
+              : t("login.show_key")}
+          </button>
+        </div>
+      </Modal>
+    </section>
   );
 }

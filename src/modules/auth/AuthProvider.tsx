@@ -37,6 +37,7 @@ interface AuthContextState {
     }) => Promise<void>;
     logout: () => void;
     restore: () => Promise<void>;
+    replaceManagementKey: (managementKey: string) => void;
   };
   meta: {
     managementEndpoint: string;
@@ -192,6 +193,28 @@ export function AuthProvider({ children }: PropsWithChildren) {
     clearAuthSnapshot();
   }, []);
 
+  const replaceManagementKey = useCallback(
+    (nextManagementKey: string) => {
+      const trimmedKey = nextManagementKey.trim();
+      setManagementKey(trimmedKey);
+      apiClient.setConfig({
+        apiBase,
+        managementKey: trimmedKey,
+      });
+
+      if (rememberPassword && trimmedKey) {
+        writeAuthSnapshot({
+          apiBase,
+          managementKey: trimmedKey,
+          rememberPassword: true,
+        });
+      } else {
+        clearAuthSnapshot();
+      }
+    },
+    [apiBase, rememberPassword],
+  );
+
   const restore = useCallback(async () => {
     setIsRestoring(true);
     await bootstrap();
@@ -212,6 +235,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         login,
         logout,
         restore,
+        replaceManagementKey,
       },
       meta: {
         managementEndpoint: computeManagementApiBase(apiBase),
@@ -228,6 +252,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       login,
       logout,
       restore,
+      replaceManagementKey,
     ],
   );
 

@@ -2,6 +2,7 @@ import { apiClient } from "@/lib/http/client";
 
 export const configApi = {
   getConfig: () => apiClient.get<Record<string, unknown>>("/config"),
+  updateManagementKey: (value: string) => apiClient.put("/management-key", { value }),
 
   updateDebug: (enabled: boolean) => apiClient.put("/debug", { value: enabled }),
   updateProxyUrl: (proxyUrl: string) => apiClient.put("/proxy-url", { value: proxyUrl }),
