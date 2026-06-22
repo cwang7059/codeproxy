@@ -197,6 +197,8 @@
     "heading": "仪表盘",
     "hero_badge": "运行概览",
     "hero_subtitle": "实时监控系统运行状态、关键指标与资源健康度",
+    "my_usage_heading": "我的用量",
+    "my_usage_subtitle": "查看已绑定 API Key 的请求、Token 与费用统计",
     "today": "今天",
     "last_7_days": "最近 7 天",
     "last_30_days": "最近 30 天",
