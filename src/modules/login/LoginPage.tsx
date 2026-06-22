@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { useTranslation } from "react-i18next";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Copy, Eye, EyeOff, LoaderCircle, Lock } from "lucide-react";
+import { DEFAULT_API_BASE, HIDE_API_BASE } from "@/lib/constants";
 import { detectApiBaseFromLocation, normalizeApiBase } from "@/lib/connection";
 import { useAuth } from "@/modules/auth/AuthProvider";
 import { useLoginConnectionProbe } from "@/modules/login/useLoginConnectionProbe";
@@ -26,7 +27,8 @@ interface RedirectState {
 
 type FieldErrors = {
   apiBase?: string;
-  managementKey?: string;
+  username?: string;
+  password?: string;
   form?: string;
 };
 
@@ -83,7 +85,7 @@ export function LoginPage() {
       isAuthenticated,
       isRestoring,
       apiBase: persistedBase,
-      managementKey: persistedKey,
+      username: persistedUsername,
       rememberPassword: persistedRemember,
     },
     actions: { login },
@@ -91,20 +93,25 @@ export function LoginPage() {
   const { notify } = useToast();
   const desktopClient = isDesktopClient();
 
+  const hideApiBase = HIDE_API_BASE || desktopClient;
+
   const currentAddress = useMemo(
-    () => (desktopClient && persistedBase ? persistedBase : detectApiBaseFromLocation()),
+    () =>
+      DEFAULT_API_BASE ||
+      (desktopClient && persistedBase ? persistedBase : detectApiBaseFromLocation()),
     [desktopClient, persistedBase],
   );
   const defaultBase = useMemo(() => persistedBase || currentAddress, [currentAddress, persistedBase]);
 
   const [apiBase, setApiBase] = useState(defaultBase);
-  const [managementKey, setManagementKey] = useState(persistedKey || "");
+  const [username, setUsername] = useState(persistedUsername || "");
+  const [password, setPassword] = useState("");
   const [rememberPassword, setRememberPassword] = useState(persistedRemember);
-  const [showKey, setShowKey] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
-  const managementKeyRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const connectionStatus = useLoginConnectionProbe(apiBase);
 
   const managementEndpoint = useMemo(() => {
@@ -115,13 +122,13 @@ export function LoginPage() {
   const connectionHint = connectionStatusLabel(t, connectionStatus);
 
   useEffect(() => {
-    managementKeyRef.current?.focus();
+    passwordRef.current?.focus();
   }, []);
 
   const handleUseCurrentAddress = useCallback(() => {
     setApiBase(currentAddress);
     setFieldErrors((prev) => ({ ...prev, apiBase: undefined, form: undefined }));
-    managementKeyRef.current?.focus();
+    passwordRef.current?.focus();
   }, [currentAddress]);
 
   const handleCopyEndpoint = useCallback(async () => {
@@ -142,7 +149,7 @@ export function LoginPage() {
         lowered.includes("密钥") ||
         lowered.includes("key")
       ) {
-        return { managementKey: message, form: message };
+        return { password: message, form: message };
       }
       if (
         lowered.includes("network") ||
@@ -162,26 +169,34 @@ export function LoginPage() {
       event.preventDefault();
       setFieldErrors({});
 
-      if (!normalizeApiBase(apiBase)) {
+      if (!hideApiBase && !normalizeApiBase(apiBase)) {
         const message = t("login.error_required");
         setFieldErrors({ apiBase: message, form: message });
         notify({ type: "error", message });
         return;
       }
 
-      if (!managementKey.trim()) {
-        const message = t("login.error_management_key_required");
-        setFieldErrors({ managementKey: message, form: message });
+      if (!username.trim()) {
+        const message = t("login.error_username_required");
+        setFieldErrors({ username: message, form: message });
         notify({ type: "error", message });
-        managementKeyRef.current?.focus();
+        return;
+      }
+
+      if (!password.trim()) {
+        const message = t("login.error_password_required");
+        setFieldErrors({ password: message, form: message });
+        notify({ type: "error", message });
+        passwordRef.current?.focus();
         return;
       }
 
       setLoading(true);
       try {
         await login({
-          apiBase,
-          managementKey,
+          apiBase: hideApiBase ? currentAddress : apiBase,
+          username,
+          password,
           rememberPassword,
         });
         notify({ type: "success", message: t("login.login_success") });
@@ -199,9 +214,12 @@ export function LoginPage() {
     },
     [
       apiBase,
+      currentAddress,
+      hideApiBase,
       login,
       location.state,
-      managementKey,
+      username,
+      password,
       mapSubmitError,
       navigate,
       notify,
@@ -271,7 +289,7 @@ export function LoginPage() {
                       {t("login.sign_in")}
                     </h2>
                     <p className="text-sm text-slate-500 dark:text-white/55">
-                      {t("login.continue_with_key")}
+                      {t("login.continue_with_account")}
                     </p>
                   </div>
 
@@ -285,104 +303,114 @@ export function LoginPage() {
                   ) : null}
 
                   <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                    <label className="block space-y-2">
-                      <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-white/55">
-                        <span
-                          className={`h-2 w-2 rounded-full ${connectionStatusClass(connectionStatus)}`}
-                          aria-hidden="true"
-                        />
-                        <span>{t("login.connection_title")}</span>
-                        {connectionHint ? (
-                          <span className="normal-case tracking-normal text-slate-400 dark:text-white/40">
-                            · {connectionHint}
-                          </span>
-                        ) : null}
-                      </span>
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <TextInput
-                          value={apiBase}
-                          onChange={(event) => {
-                            setApiBase(event.target.value);
-                            setFieldErrors((prev) => ({
-                              ...prev,
-                              apiBase: undefined,
-                              form: undefined,
-                            }));
-                          }}
-                          placeholder={t("login.custom_connection_placeholder")}
-                          autoComplete="url"
-                          aria-invalid={Boolean(fieldErrors.apiBase)}
-                          className={`${INPUT_SURFACE} px-4 py-3 ${fieldErrors.apiBase ? INPUT_ERROR_RING : ""}`}
-                        />
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          className="shrink-0"
-                          onClick={handleUseCurrentAddress}
-                        >
-                          {t("login.use_current_address")}
-                        </Button>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-white/50">
-                        <span>
-                          {t("login.endpoint_label")}:{" "}
-                          <span className="font-mono tabular-nums text-slate-700 dark:text-white/72">
-                            {managementEndpoint}
-                          </span>
+                    {!hideApiBase ? (
+                      <label className="block space-y-2">
+                        <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-white/55">
+                          <span
+                            className={`h-2 w-2 rounded-full ${connectionStatusClass(connectionStatus)}`}
+                            aria-hidden="true"
+                          />
+                          <span>{t("login.connection_title")}</span>
+                          {connectionHint ? (
+                            <span className="normal-case tracking-normal text-slate-400 dark:text-white/40">
+                              · {connectionHint}
+                            </span>
+                          ) : null}
                         </span>
-                        {managementEndpoint !== "-" ? (
-                          <button
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <TextInput
+                            value={apiBase}
+                            onChange={(event) => {
+                              setApiBase(event.target.value);
+                              setFieldErrors((prev) => ({
+                                ...prev,
+                                apiBase: undefined,
+                                form: undefined,
+                              }));
+                            }}
+                            placeholder={t("login.custom_connection_placeholder")}
+                            autoComplete="url"
+                            aria-invalid={Boolean(fieldErrors.apiBase)}
+                            className={`${INPUT_SURFACE} px-4 py-3 ${fieldErrors.apiBase ? INPUT_ERROR_RING : ""}`}
+                          />
+                          <Button
                             type="button"
-                            onClick={() => void handleCopyEndpoint()}
-                            className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-white/65 dark:hover:bg-white/5"
+                            variant="secondary"
+                            size="sm"
+                            className="shrink-0"
+                            onClick={handleUseCurrentAddress}
                           >
-                            <Copy size={12} aria-hidden="true" />
-                            {t("login.copy_endpoint")}
-                          </button>
+                            {t("login.use_current_address")}
+                          </Button>
+                        </div>
+                        {fieldErrors.apiBase ? (
+                          <p className="text-xs text-rose-600 dark:text-rose-300">
+                            {fieldErrors.apiBase}
+                          </p>
                         ) : null}
-                      </div>
-                      {fieldErrors.apiBase ? (
+                      </label>
+                    ) : null}
+
+                    <label className="block space-y-2">
+                      <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-white/55">
+                        {t("login.username_label")}
+                      </span>
+                      <TextInput
+                        value={username}
+                        onChange={(event) => {
+                          setUsername(event.target.value);
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            username: undefined,
+                            form: undefined,
+                          }));
+                        }}
+                        placeholder={t("login.username_placeholder")}
+                        autoComplete="username"
+                        aria-invalid={Boolean(fieldErrors.username)}
+                        className={`${INPUT_SURFACE} px-4 py-3 ${fieldErrors.username ? INPUT_ERROR_RING : ""}`}
+                      />
+                      {fieldErrors.username ? (
                         <p className="text-xs text-rose-600 dark:text-rose-300">
-                          {fieldErrors.apiBase}
+                          {fieldErrors.username}
                         </p>
                       ) : null}
                     </label>
 
                     <label className="block space-y-2">
                       <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-white/55">
-                        {t("login.management_key_label")}
+                        {t("login.password_label")}
                       </span>
                       <TextInput
-                        ref={managementKeyRef}
-                        value={managementKey}
+                        ref={passwordRef}
+                        value={password}
                         onChange={(event) => {
-                          setManagementKey(event.target.value);
+                          setPassword(event.target.value);
                           setFieldErrors((prev) => ({
                             ...prev,
-                            managementKey: undefined,
+                            password: undefined,
                             form: undefined,
                           }));
                         }}
-                        type={showKey ? "text" : "password"}
-                        placeholder={t("login.placeholder")}
+                        type={showPassword ? "text" : "password"}
+                        placeholder={t("login.password_placeholder")}
                         autoComplete="current-password"
-                        aria-invalid={Boolean(fieldErrors.managementKey)}
-                        className={`${INPUT_SURFACE} px-4 py-3 ${fieldErrors.managementKey ? INPUT_ERROR_RING : ""}`}
+                        aria-invalid={Boolean(fieldErrors.password)}
+                        className={`${INPUT_SURFACE} px-4 py-3 ${fieldErrors.password ? INPUT_ERROR_RING : ""}`}
                         endAdornment={
                           <button
                             type="button"
-                            onClick={() => setShowKey((value) => !value)}
+                            onClick={() => setShowPassword((value) => !value)}
                             className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
-                            aria-label={showKey ? t("login.hide_key") : t("login.show_key")}
+                            aria-label={showPassword ? t("login.hide_key") : t("login.show_key")}
                           >
-                            {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                           </button>
                         }
                       />
-                      {fieldErrors.managementKey ? (
+                      {fieldErrors.password ? (
                         <p className="text-xs text-rose-600 dark:text-rose-300">
-                          {fieldErrors.managementKey}
+                          {fieldErrors.password}
                         </p>
                       ) : null}
                     </label>

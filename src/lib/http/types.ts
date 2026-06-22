@@ -1,7 +1,13 @@
+import type { PanelRole } from "@/lib/http/apis/panel-auth";
+
 export interface AuthSnapshot {
   apiBase: string;
-  managementKey: string;
+  sessionToken: string;
+  username: string;
+  role: PanelRole;
   rememberPassword: boolean;
+  /** @deprecated legacy management key login */
+  managementKey?: string;
 }
 
 export type AuthFileType =

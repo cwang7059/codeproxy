@@ -11,7 +11,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Activity,
-  ArrowDownToLine,
   Bot,
   Cpu,
   Fingerprint,
@@ -20,17 +19,18 @@ import {
   LayoutDashboard,
   FileKey,
   FileText,
-  Info,
   LogOut,
   Network,
   PanelLeftClose,
   PanelLeftOpen,
-  ScrollText,
+  Server,
   Settings,
   ShieldCheck,
   Sparkles,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/modules/auth/AuthProvider";
+import { filterNavPath, panelRoleLabelKey } from "@/lib/panel-role";
 import { PageBackground } from "@/modules/ui/PageBackground";
 import { ThemeToggleButton } from "@/modules/ui/ThemeProvider";
 import { LanguageSelector } from "@/modules/ui/LanguageSelector";
@@ -71,7 +71,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/dashboard", i18nKey: "shell.nav_dashboard", icon: LayoutDashboard },
       { to: "/monitor", i18nKey: "shell.nav_monitor", icon: Activity },
-      { to: "/monitor/request-logs", i18nKey: "shell.nav_request_logs", icon: ScrollText },
       { to: "/logs", i18nKey: "shell.nav_logs", icon: FileText },
     ],
   },
@@ -101,13 +100,9 @@ const NAV_GROUPS: NavGroup[] = [
   {
     i18nKey: "shell.group_system",
     items: [
-      {
-        to: "/ccswitch-import-settings",
-        i18nKey: "shell.nav_ccswitch_import_settings",
-        icon: ArrowDownToLine,
-      },
+      { to: "/users", i18nKey: "shell.nav_users", icon: Users },
       { to: "/config", i18nKey: "shell.nav_config", icon: Settings },
-      { to: "/system", i18nKey: "shell.nav_system", icon: Info },
+      { to: "/system", i18nKey: "shell.nav_system", icon: Server },
     ],
   },
 ] as const;
@@ -116,7 +111,7 @@ const NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items);
 
 const getPageTitleKey = (pathname: string): string => {
   if (pathname.startsWith("/dashboard")) return "shell.nav_dashboard";
-  if (pathname.startsWith("/monitor/request-logs")) return "shell.nav_request_logs";
+  if (pathname.startsWith("/monitor/request-logs")) return "shell.nav_monitor";
   if (pathname.startsWith("/monitor")) return "shell.nav_monitor";
   if (pathname.startsWith("/ai-providers")) return "shell.nav_ai_providers";
   if (pathname.startsWith("/auth-files")) return "shell.nav_auth_files";
@@ -130,7 +125,7 @@ const getPageTitleKey = (pathname: string): string => {
     pathname.startsWith("/ccswitch-import-settings") ||
     pathname.startsWith("/manage/ccswitch-import-settings")
   )
-    return "shell.nav_ccswitch_import_settings";
+    return "shell.page_api_keys";
   if (pathname.startsWith("/image-generation")) return "shell.nav_image_generation";
   if (pathname.startsWith("/channel-groups")) return "shell.page_channel_groups";
   if (
@@ -142,6 +137,7 @@ const getPageTitleKey = (pathname: string): string => {
     return "shell.nav_models";
   if (pathname.startsWith("/proxies") || pathname.startsWith("/manage/proxies"))
     return "shell.nav_proxies";
+  if (pathname.startsWith("/users")) return "shell.nav_users";
   if (pathname.startsWith("/config")) return "shell.nav_config";
   if (pathname.startsWith("/system")) return "shell.nav_system";
   if (pathname.startsWith("/logs")) return "shell.nav_logs";
@@ -170,7 +166,8 @@ function ShellSidebar({
   const navigate = useNavigate();
   const {
     actions: { logout },
-  } = useShell();
+    state: { username, role },
+  } = useAuth();
   // Track the clicked nav target so the highlight updates instantly on click,
   // without waiting for lazy chunks to load & location to update.
   const [pendingTo, setPendingTo] = useState<string | null>(null);
@@ -180,12 +177,26 @@ function ShellSidebar({
     setPendingTo(null);
   }, [location.pathname]);
 
-  const resolveActiveTo = useCallback((pathname: string) => {
-    const sorted = [...NAV_ITEMS].sort((a, b) => b.to.length - a.to.length);
-    return (
-      sorted.find((item) => pathname === item.to || pathname.startsWith(`${item.to}/`))?.to ?? null
-    );
-  }, []);
+  const visibleGroups = useMemo(
+    () =>
+      NAV_GROUPS.map((group) => ({
+        ...group,
+        items: group.items.filter((item) => filterNavPath(role, item.to)),
+      })).filter((group) => group.items.length > 0),
+    [role],
+  );
+
+  const visibleNavItems = useMemo(() => visibleGroups.flatMap((group) => group.items), [visibleGroups]);
+
+  const resolveActiveTo = useCallback(
+    (pathname: string) => {
+      const sorted = [...visibleNavItems].sort((a, b) => b.to.length - a.to.length);
+      return (
+        sorted.find((item) => pathname === item.to || pathname.startsWith(`${item.to}/`))?.to ?? null
+      );
+    },
+    [visibleNavItems],
+  );
 
   const activeTo = useMemo(() => {
     // If user just clicked a nav item, use that immediately for highlighting
@@ -255,7 +266,7 @@ function ShellSidebar({
           className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-3 pb-4 pt-4"
           style={!isMobile && isDesktopFrameless() ? desktopWindowRegion("no-drag") : undefined}
         >
-          {NAV_GROUPS.map((group, groupIndex) => (
+          {visibleGroups.map((group, groupIndex) => (
             <div
               key={group.i18nKey}
               className={[
@@ -311,10 +322,10 @@ function ShellSidebar({
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold text-slate-950 dark:text-white">
-                Admin
+                {username || t("shell.sidebar_account_name")}
               </div>
               <div className="truncate text-[11px] text-slate-400">
-                {t("shell.sidebar_account_role")}
+                {t(panelRoleLabelKey(role))}
               </div>
             </div>
             <button

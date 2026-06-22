@@ -15,7 +15,7 @@ import {
 } from "@/lib/connection";
 import { getDesktopBackendBase, isDesktopClient, setDesktopBackendBase } from "@/lib/desktop";
 import { apiClient } from "@/lib/http/client";
-import { configApi } from "@/lib/http/apis";
+import { panelAuthApi, type PanelRole } from "@/lib/http/apis/panel-auth";
 import type { AuthSnapshot } from "@/lib/http/types";
 
 const AUTH_PERSIST_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -25,21 +25,27 @@ interface AuthContextState {
     isAuthenticated: boolean;
     isRestoring: boolean;
     apiBase: string;
-    managementKey: string;
+    sessionToken: string;
+    username: string;
+    role: PanelRole | null;
     rememberPassword: boolean;
     serverVersion: string | null;
     serverBuildDate: string | null;
+    /** @deprecated legacy field for existing callers */
+    managementKey: string;
   };
   actions: {
     login: (input: {
       apiBase: string;
-      managementKey: string;
+      username: string;
+      password: string;
       rememberPassword: boolean;
     }) => Promise<void>;
     logout: () => void;
     restore: () => Promise<void>;
-    replaceManagementKey: (managementKey: string) => void;
     updateApiBase: (apiBase: string) => Promise<void>;
+    /** @deprecated session auth does not rotate local management keys */
+    replaceManagementKey: (managementKey: string) => void;
   };
   meta: {
     managementEndpoint: string;
@@ -72,10 +78,18 @@ const readAuthSnapshotFromLocalStorage = (): PersistedAuthSnapshot | null => {
       window.localStorage.removeItem(AUTH_STORAGE_KEY);
       return null;
     }
-    if (!parsed.apiBase || !parsed.managementKey) {
+    const token = parsed.sessionToken ?? parsed.managementKey;
+    if (!parsed.apiBase || !token) {
       return null;
     }
-    return parsed as PersistedAuthSnapshot;
+    return {
+      apiBase: parsed.apiBase,
+      sessionToken: token,
+      username: parsed.username ?? "",
+      role: parsed.role ?? "admin",
+      rememberPassword: Boolean(parsed.rememberPassword),
+      expiresAt: parsed.expiresAt,
+    };
   } catch {
     return null;
   }
@@ -90,13 +104,16 @@ function normalizePersistedAuthSnapshot(
   if (typeof snapshot.expiresAt !== "number" || snapshot.expiresAt <= Date.now()) {
     return null;
   }
-  if (!snapshot.apiBase || !snapshot.managementKey) {
+  const token = snapshot.sessionToken ?? snapshot.managementKey;
+  if (!snapshot.apiBase || !token) {
     return null;
   }
 
   return {
     apiBase: normalizeApiBase(snapshot.apiBase),
-    managementKey: snapshot.managementKey,
+    sessionToken: token,
+    username: snapshot.username ?? "",
+    role: snapshot.role ?? "admin",
     rememberPassword: Boolean(snapshot.rememberPassword),
   };
 }
@@ -105,7 +122,7 @@ const readAuthSnapshot = async (): Promise<AuthSnapshot | null> => {
   if (isDesktopAuthStorageAvailable()) {
     try {
       const snapshot = await window.codeProxyDesktop?.readAuthSnapshot?.();
-      const normalized = normalizePersistedAuthSnapshot(snapshot);
+      const normalized = normalizePersistedAuthSnapshot(snapshot as Partial<PersistedAuthSnapshot>);
       if (!normalized && snapshot) {
         await window.codeProxyDesktop?.clearAuthSnapshot?.();
       }
@@ -125,7 +142,7 @@ const writeAuthSnapshot = async (snapshot: AuthSnapshot): Promise<void> => {
   };
 
   if (isDesktopAuthStorageAvailable()) {
-    await window.codeProxyDesktop?.writeAuthSnapshot?.(payload);
+    await window.codeProxyDesktop?.writeAuthSnapshot?.(payload as never);
     return;
   }
 
@@ -146,7 +163,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isRestoring, setIsRestoring] = useState(true);
   const [apiBase, setApiBase] = useState("");
-  const [managementKey, setManagementKey] = useState("");
+  const [sessionToken, setSessionToken] = useState("");
+  const [username, setUsername] = useState("");
+  const [role, setRole] = useState<PanelRole | null>(null);
   const [rememberPassword, setRememberPassword] = useState(false);
   const [serverVersion, setServerVersion] = useState<string | null>(null);
   const [serverBuildDate, setServerBuildDate] = useState<string | null>(null);
@@ -156,35 +175,71 @@ export function AuthProvider({ children }: PropsWithChildren) {
     [desktopClient],
   );
 
+  const applySession = useCallback(
+    async (next: {
+      apiBase: string;
+      sessionToken: string;
+      username: string;
+      role: PanelRole;
+      rememberPassword: boolean;
+    }) => {
+      setApiBase(next.apiBase);
+      setSessionToken(next.sessionToken);
+      setUsername(next.username);
+      setRole(next.role);
+      setRememberPassword(next.rememberPassword);
+      setIsAuthenticated(true);
+
+      if (next.rememberPassword) {
+        await writeAuthSnapshot({
+          apiBase: next.apiBase,
+          sessionToken: next.sessionToken,
+          username: next.username,
+          role: next.role,
+          rememberPassword: true,
+        });
+      } else {
+        await clearAuthSnapshot();
+      }
+    },
+    [],
+  );
+
   const bootstrap = useCallback(async () => {
     const desktopBase = desktopClient ? await getDesktopBackendBase() : null;
     const fallbackBase = desktopBase ?? detectApiBaseFromLocation();
     const snapshot = await readAuthSnapshot();
 
     const resolvedBase = snapshot?.apiBase ?? fallbackBase;
-    const resolvedKey = snapshot?.managementKey ?? "";
+    const resolvedToken = snapshot?.sessionToken ?? "";
     const resolvedRemember = snapshot?.rememberPassword ?? false;
 
     setApiBase(resolvedBase);
-    setManagementKey(resolvedKey);
+    setSessionToken(resolvedToken);
+    setUsername(snapshot?.username ?? "");
+    setRole(snapshot?.role ?? null);
     setRememberPassword(resolvedRemember);
 
     apiClient.setConfig({
       apiBase: resolveRequestApiBase(resolvedBase),
-      managementKey: resolvedKey,
+      authToken: resolvedToken,
     });
 
-    if (!resolvedKey) {
+    if (!resolvedToken) {
       setIsAuthenticated(false);
       setIsRestoring(false);
       return;
     }
 
     try {
-      await configApi.getConfig();
+      const me = await panelAuthApi.me();
+      setUsername(me.username);
+      setRole(me.role);
       setIsAuthenticated(true);
     } catch {
       setIsAuthenticated(false);
+      setSessionToken("");
+      setRole(null);
       await clearAuthSnapshot();
     } finally {
       setIsRestoring(false);
@@ -198,6 +253,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     const handleUnauthorized = () => {
       setIsAuthenticated(false);
+      setSessionToken("");
+      setRole(null);
       void clearAuthSnapshot();
     };
 
@@ -220,9 +277,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const login = useCallback(
-    async (input: { apiBase: string; managementKey: string; rememberPassword: boolean }) => {
+    async (input: {
+      apiBase: string;
+      username: string;
+      password: string;
+      rememberPassword: boolean;
+    }) => {
       const normalizedBase = normalizeApiBase(input.apiBase);
-      const trimmedKey = input.managementKey.trim();
       const previousDesktopBase = desktopClient ? await getDesktopBackendBase() : null;
 
       if (desktopClient) {
@@ -231,77 +292,60 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       apiClient.setConfig({
         apiBase: resolveRequestApiBase(normalizedBase),
-        managementKey: trimmedKey,
+        authToken: "",
       });
 
       try {
-        await configApi.getConfig();
+        const response = await panelAuthApi.login({
+          username: input.username.trim(),
+          password: input.password,
+        });
+
+        apiClient.setConfig({
+          apiBase: resolveRequestApiBase(normalizedBase),
+          authToken: response.token,
+        });
+
+        await applySession({
+          apiBase: normalizedBase,
+          sessionToken: response.token,
+          username: response.username,
+          role: response.role,
+          rememberPassword: input.rememberPassword,
+        });
       } catch (error) {
         if (desktopClient) {
           await setDesktopBackendBase(previousDesktopBase ?? "");
         }
         apiClient.setConfig({
           apiBase: resolveRequestApiBase(previousDesktopBase ?? apiBase),
-          managementKey,
+          authToken: sessionToken,
         });
         throw error;
       }
-
-      setApiBase(normalizedBase);
-      setManagementKey(trimmedKey);
-      setRememberPassword(input.rememberPassword);
-      setIsAuthenticated(true);
-
-      if (input.rememberPassword) {
-        await writeAuthSnapshot({
-          apiBase: normalizedBase,
-          managementKey: trimmedKey,
-          rememberPassword: true,
-        });
-      } else {
-        await clearAuthSnapshot();
-      }
     },
-    [apiBase, desktopClient, managementKey, resolveRequestApiBase],
+    [apiBase, applySession, desktopClient, resolveRequestApiBase, sessionToken],
   );
 
   const logout = useCallback(() => {
+    const token = sessionToken;
     setIsAuthenticated(false);
+    setSessionToken("");
+    setRole(null);
     apiClient.setConfig({
       apiBase: resolveRequestApiBase(apiBase),
-      managementKey: "",
+      authToken: "",
     });
 
-    if (rememberPassword && managementKey.trim()) {
-      setManagementKey(managementKey);
-      return;
+    if (token) {
+      void panelAuthApi.logout().catch(() => undefined);
     }
 
-    setManagementKey("");
-    void clearAuthSnapshot();
-  }, [apiBase, managementKey, rememberPassword, resolveRequestApiBase]);
-
-  const replaceManagementKey = useCallback(
-    (nextManagementKey: string) => {
-      const trimmedKey = nextManagementKey.trim();
-      setManagementKey(trimmedKey);
-      apiClient.setConfig({
-        apiBase: resolveRequestApiBase(apiBase),
-        managementKey: trimmedKey,
-      });
-
-      if (rememberPassword && trimmedKey) {
-        void writeAuthSnapshot({
-          apiBase,
-          managementKey: trimmedKey,
-          rememberPassword: true,
-        });
-      } else {
-        void clearAuthSnapshot();
-      }
-    },
-    [apiBase, rememberPassword, resolveRequestApiBase],
-  );
+    if (!rememberPassword) {
+      setUsername("");
+      void clearAuthSnapshot();
+    }
+  }, [apiBase, rememberPassword, resolveRequestApiBase, sessionToken]);
 
   const updateApiBase = useCallback(
     async (nextApiBase: string) => {
@@ -315,34 +359,41 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       apiClient.setConfig({
         apiBase: resolveRequestApiBase(normalizedBase),
-        managementKey,
+        authToken: sessionToken,
       });
 
       try {
-        await configApi.getConfig();
+        await panelAuthApi.me();
       } catch (error) {
         if (desktopClient) {
           await setDesktopBackendBase(previousDesktopBase ?? previousBase);
         }
         apiClient.setConfig({
           apiBase: resolveRequestApiBase(previousBase),
-          managementKey,
+          authToken: sessionToken,
         });
         throw error;
       }
 
       setApiBase(normalizedBase);
 
-      if (rememberPassword && managementKey.trim()) {
+      if (rememberPassword && sessionToken.trim()) {
         await writeAuthSnapshot({
           apiBase: normalizedBase,
-          managementKey,
+          sessionToken,
+          username,
+          role: role ?? "user",
           rememberPassword: true,
         });
       }
     },
-    [apiBase, desktopClient, managementKey, rememberPassword, resolveRequestApiBase],
+    [apiBase, desktopClient, rememberPassword, resolveRequestApiBase, role, sessionToken, username],
   );
+
+  const replaceManagementKey = useCallback((_nextManagementKey: string) => {
+    // Session-based auth keeps using the server-issued token; rotating the
+    // remote management secret does not require updating the local snapshot.
+  }, []);
 
   const restore = useCallback(async () => {
     setIsRestoring(true);
@@ -355,17 +406,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
         isAuthenticated,
         isRestoring,
         apiBase,
-        managementKey,
+        sessionToken,
+        username,
+        role,
         rememberPassword,
         serverVersion,
         serverBuildDate,
+        managementKey: sessionToken,
       },
       actions: {
         login,
         logout,
         restore,
-        replaceManagementKey,
         updateApiBase,
+        replaceManagementKey,
       },
       meta: {
         managementEndpoint: computeManagementApiBase(apiBase),
@@ -375,15 +429,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
       isAuthenticated,
       isRestoring,
       apiBase,
-      managementKey,
+      sessionToken,
+      username,
+      role,
       rememberPassword,
       serverVersion,
       serverBuildDate,
       login,
       logout,
       restore,
-      replaceManagementKey,
       updateApiBase,
+      replaceManagementKey,
     ],
   );
 

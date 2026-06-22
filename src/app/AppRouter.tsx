@@ -2,12 +2,14 @@ import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "@/modules/auth/AuthProvider";
 import { ProtectedRoute } from "@/app/guards/ProtectedRoute";
+import { RoleRoute } from "@/app/guards/RoleRoute";
 import { DashboardLayout } from "@/modules/layout/DashboardLayout";
 import { ThemeProvider } from "@/modules/ui/ThemeProvider";
 import { ToastProvider } from "@/modules/ui/ToastProvider";
 import { DesktopFrame } from "@/modules/ui/DesktopFrame";
 import { RouteViewport } from "@/modules/ui/RouteViewport";
 import { AutoUpdatePrompt } from "@/modules/update/AutoUpdatePrompt";
+import { CodexConnectPrompt } from "@/modules/system/CodexConnectPrompt";
 
 // Lazy-loaded page components for route-level code splitting
 const LoginPage = lazy(() =>
@@ -16,11 +18,8 @@ const LoginPage = lazy(() =>
 const DashboardPage = lazy(() =>
   import("@/modules/dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })),
 );
-const MonitorPage = lazy(() =>
-  import("@/modules/monitor/MonitorPage").then((m) => ({ default: m.MonitorPage })),
-);
-const RequestLogsPage = lazy(() =>
-  import("@/modules/monitor/RequestLogsPage").then((m) => ({ default: m.RequestLogsPage })),
+const MonitorHubPage = lazy(() =>
+  import("@/modules/monitor/MonitorHubPage").then((m) => ({ default: m.MonitorHubPage })),
 );
 const ProvidersPage = lazy(() =>
   import("@/modules/providers/ProvidersPage").then((m) => ({ default: m.ProvidersPage })),
@@ -45,11 +44,6 @@ const ApiKeyPermissionsPage = lazy(() =>
     default: m.ApiKeyPermissionsPage,
   })),
 );
-const CcSwitchImportSettingsPage = lazy(() =>
-  import("@/modules/ccswitch/CcSwitchImportSettingsPage").then((m) => ({
-    default: m.CcSwitchImportSettingsPage,
-  })),
-);
 const ChannelGroupsPage = lazy(() =>
   import("@/modules/channel-groups/ChannelGroupsPage").then((m) => ({
     default: m.ChannelGroupsPage,
@@ -68,6 +62,9 @@ const ProxiesPage = lazy(() =>
 );
 const ApiKeyLookupPage = lazy(() =>
   import("@/modules/apikey-lookup/ApiKeyLookupPage").then((m) => ({ default: m.ApiKeyLookupPage })),
+);
+const UsersPage = lazy(() =>
+  import("@/modules/users/UsersPage").then((m) => ({ default: m.UsersPage })),
 );
 const ImageGenerationPage = lazy(() =>
   import("@/modules/image-generation/ImageGenerationPage").then((m) => ({
@@ -93,14 +90,16 @@ export function AppRouter() {
                   <AuthProvider>
                     <RouteViewport>
                       <AutoUpdatePrompt />
+                      <CodexConnectPrompt />
                       <Suspense>
                         <Routes>
                           <Route path="/login" element={<LoginPage />} />
                         <Route element={<ProtectedRoute />}>
                           <Route element={<DashboardLayout />}>
+                            <Route element={<RoleRoute />}>
                             <Route path="/dashboard" element={<DashboardPage />} />
-                            <Route path="/monitor" element={<MonitorPage />} />
-                            <Route path="/monitor/request-logs" element={<RequestLogsPage />} />
+                            <Route path="/monitor" element={<MonitorHubPage />} />
+                            <Route path="/monitor/request-logs" element={<MonitorHubPage />} />
                             <Route path="/ai-providers" element={<ProvidersPage />} />
                             <Route path="/ai-providers/*" element={<ProvidersPage />} />
                             <Route path="/auth-files" element={<AuthFilesPage />} />
@@ -113,6 +112,7 @@ export function AppRouter() {
                               element={<Navigate to="/auth-files?tab=alias" replace />}
                             />
                             <Route path="/usage" element={<Navigate to="/monitor" replace />} />
+                            <Route path="/users" element={<UsersPage />} />
                             <Route path="/config" element={<ConfigPage />} />
                             <Route path="/logs" element={<LogsPage />} />
                             <Route path="/system" element={<SystemPage />} />
@@ -128,11 +128,11 @@ export function AppRouter() {
                             />
                             <Route
                               path="/ccswitch-import-settings"
-                              element={<CcSwitchImportSettingsPage />}
+                              element={<Navigate to="/api-keys?tab=ccswitch-import" replace />}
                             />
                             <Route
                               path="/manage/ccswitch-import-settings"
-                              element={<Navigate to="/ccswitch-import-settings" replace />}
+                              element={<Navigate to="/api-keys?tab=ccswitch-import" replace />}
                             />
                             <Route path="/image-generation" element={<ImageGenerationPage />} />
                             <Route path="/channel-groups" element={<ChannelGroupsPage />} />
@@ -155,6 +155,7 @@ export function AppRouter() {
                               element={<Navigate to="/models" replace />}
                             />
                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                            </Route>
                           </Route>
                         </Route>
                         <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -3,7 +3,9 @@ import { computeManagementApiBase } from "@/lib/connection";
 
 interface ApiClientConfig {
   apiBase: string;
-  managementKey: string;
+  authToken?: string;
+  /** @deprecated use authToken */
+  managementKey?: string;
 }
 
 type BrowserFilePickerWindow = Window &
@@ -32,13 +34,13 @@ type ResponseType = "json" | "text" | "blob";
 export class ApiClient {
   private apiBase = "";
 
-  private managementKey = "";
+  private authToken = "";
 
   private authSuspended = false;
 
   setConfig(config: ApiClientConfig): void {
     this.apiBase = computeManagementApiBase(config.apiBase);
-    this.managementKey = config.managementKey.trim();
+    this.authToken = (config.authToken ?? config.managementKey ?? "").trim();
     this.authSuspended = false;
   }
 
@@ -78,8 +80,8 @@ export class ApiClient {
     if (typeof init?.body === "string" && !hasContentType) {
       headers.set("Content-Type", "application/json");
     }
-    if (this.managementKey) {
-      headers.set("Authorization", `Bearer ${this.managementKey}`);
+    if (this.authToken) {
+      headers.set("Authorization", `Bearer ${this.authToken}`);
     }
 
     headersFromOptions.forEach((value, key) => {
