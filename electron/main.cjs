@@ -13,6 +13,7 @@ const DEFAULT_WINDOW_HEIGHT = 700;
 const MIN_WINDOW_WIDTH = 1024;
 const MIN_WINDOW_HEIGHT = 640;
 const AUTH_SNAPSHOT_FILE = "auth-snapshot.json";
+const DESKTOP_SETTINGS_FILE = "desktop-settings.json";
 const API_PREFIXES = ["/v0", "/v1", "/v1beta"];
 const MANAGE_PREFIX = "/manage";
 const HTTP_HOP_BY_HOP_HEADERS = [
@@ -33,6 +34,7 @@ let mainWindow = null;
 let tray = null;
 let isQuitting = false;
 let trayHintShown = false;
+let desktopBackendBaseOverride = null;
 
 const mimeTypes = new Map([
   [".css", "text/css; charset=utf-8"],
@@ -164,12 +166,43 @@ function releaseDesktopResources() {
   }
 }
 
+function normalizeBackendBase(rawBase) {
+  let base = String(rawBase || "").trim();
+  if (!base) {
+    return "";
+  }
+
+  base = base.replace(/\/?v0\/management\/?$/i, "");
+  base = base.replace(/\/+$/, "");
+  if (!/^https?:\/\//i.test(base)) {
+    base = `http://${base}`;
+  }
+
+  try {
+    const url = new URL(base);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return "";
+    }
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
+}
+
 function getBackendBase() {
-  return (process.env.CODE_PROXY_API_BASE || DEFAULT_BACKEND_BASE).replace(/\/+$/, "");
+  return (
+    desktopBackendBaseOverride ||
+    normalizeBackendBase(process.env.CODE_PROXY_API_BASE) ||
+    DEFAULT_BACKEND_BASE
+  ).replace(/\/+$/, "");
 }
 
 function getAuthSnapshotPath() {
   return path.join(app.getPath("userData"), AUTH_SNAPSHOT_FILE);
+}
+
+function getDesktopSettingsPath() {
+  return path.join(app.getPath("userData"), DESKTOP_SETTINGS_FILE);
 }
 
 async function readDesktopAuthSnapshot() {
@@ -198,6 +231,50 @@ async function clearDesktopAuthSnapshot() {
       throw error;
     }
   }
+}
+
+async function readDesktopSettings() {
+  try {
+    const raw = await fs.promises.readFile(getDesktopSettingsPath(), "utf8");
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return {};
+    }
+    return parsed;
+  } catch (error) {
+    if (error && typeof error === "object" && error.code === "ENOENT") {
+      return {};
+    }
+    throw error;
+  }
+}
+
+async function writeDesktopSettings(settings) {
+  const settingsPath = getDesktopSettingsPath();
+  await fs.promises.mkdir(path.dirname(settingsPath), { recursive: true });
+  await fs.promises.writeFile(settingsPath, JSON.stringify(settings, null, 2), "utf8");
+}
+
+async function loadDesktopBackendBaseOverride() {
+  const settings = await readDesktopSettings();
+  const normalized = normalizeBackendBase(settings.backendBase);
+  desktopBackendBaseOverride = normalized || null;
+}
+
+async function setDesktopBackendBaseOverride(rawBase) {
+  const normalized = normalizeBackendBase(rawBase);
+  const settings = await readDesktopSettings();
+
+  if (normalized) {
+    settings.backendBase = normalized;
+    desktopBackendBaseOverride = normalized;
+  } else {
+    delete settings.backendBase;
+    desktopBackendBaseOverride = null;
+  }
+
+  await writeDesktopSettings(settings);
+  return getBackendBase();
 }
 
 function getConfiguredRendererUrl() {
@@ -236,6 +313,51 @@ function resolveBackendUrl(rawUrl, backendBase) {
   } catch {
     return null;
   }
+}
+
+function probeBackendBase(rawBase) {
+  const normalized = normalizeBackendBase(rawBase);
+  if (!normalized) {
+    return Promise.resolve("invalid");
+  }
+
+  return new Promise((resolve) => {
+    const targetUrl = resolveBackendUrl("/v0/management", normalized);
+    if (!targetUrl) {
+      resolve("invalid");
+      return;
+    }
+
+    const requestModule = targetUrl.protocol === "https:" ? https : http;
+    const request = requestModule.request(
+      {
+        protocol: targetUrl.protocol,
+        hostname: targetUrl.hostname,
+        port: targetUrl.port,
+        method: "GET",
+        path: `${targetUrl.pathname}${targetUrl.search}`,
+        timeout: 5000,
+      },
+      (response) => {
+        response.resume();
+        if (
+          response.statusCode === 401 ||
+          response.statusCode === 403 ||
+          (response.statusCode >= 200 && response.statusCode < 500)
+        ) {
+          resolve("reachable");
+          return;
+        }
+        resolve(response.statusCode >= 500 ? "unreachable" : "reachable");
+      },
+    );
+
+    request.on("timeout", () => {
+      request.destroy(new Error("timeout"));
+    });
+    request.on("error", () => resolve("unreachable"));
+    request.end();
+  });
 }
 
 function sanitizeHttpProxyHeaders(headers, targetHost) {
@@ -430,13 +552,12 @@ function proxyWebSocketUpgrade(req, socket, head, backendBase) {
 
 function startLocalServer() {
   const distDir = path.resolve(__dirname, "..", "dist");
-  const backendBase = getBackendBase();
 
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
       const requestUrl = new URL(req.url || "/", "http://127.0.0.1");
       if (isApiRequest(requestUrl.pathname)) {
-        proxyApiRequest(req, res, backendBase);
+        proxyApiRequest(req, res, getBackendBase());
         return;
       }
 
@@ -457,7 +578,7 @@ function startLocalServer() {
         return;
       }
 
-      proxyWebSocketUpgrade(req, socket, head, backendBase);
+      proxyWebSocketUpgrade(req, socket, head, getBackendBase());
     });
 
     server.once("error", reject);
@@ -625,8 +746,15 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
+    await loadDesktopBackendBaseOverride();
     app.setAppUserModelId("代理控制台");
     ipcMain.handle("desktop:get-backend-base", () => getBackendBase());
+    ipcMain.handle("desktop:set-backend-base", async (_event, backendBase) =>
+      setDesktopBackendBaseOverride(backendBase),
+    );
+    ipcMain.handle("desktop:probe-backend-base", async (_event, backendBase) =>
+      probeBackendBase(backendBase),
+    );
     ipcMain.handle("desktop:auth-snapshot-read", async () => readDesktopAuthSnapshot());
     ipcMain.handle("desktop:auth-snapshot-write", async (_event, snapshot) => {
       await writeDesktopAuthSnapshot(snapshot);

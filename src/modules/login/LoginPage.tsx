@@ -13,7 +13,7 @@ import { PageBackground } from "@/modules/ui/PageBackground";
 import { Reveal } from "@/modules/ui/Reveal";
 import { ThemeToggleButton } from "@/modules/ui/ThemeProvider";
 import { useToast } from "@/modules/ui/ToastProvider";
-import { isDesktopFrameless, desktopWindowRegion } from "@/lib/desktop";
+import { isDesktopClient, isDesktopFrameless, desktopWindowRegion } from "@/lib/desktop";
 import { OpenAILogo, GeminiLogo, ClaudeLogo, VertexLogo } from "@/modules/dashboard/ProviderLogos";
 import { DesktopWindowControls } from "@/modules/ui/DesktopWindowControls";
 import { copyToClipboard } from "@/utils/clipboard";
@@ -89,8 +89,12 @@ export function LoginPage() {
     actions: { login },
   } = useAuth();
   const { notify } = useToast();
+  const desktopClient = isDesktopClient();
 
-  const currentAddress = useMemo(() => detectApiBaseFromLocation(), []);
+  const currentAddress = useMemo(
+    () => (desktopClient && persistedBase ? persistedBase : detectApiBaseFromLocation()),
+    [desktopClient, persistedBase],
+  );
   const defaultBase = useMemo(() => persistedBase || currentAddress, [currentAddress, persistedBase]);
 
   const [apiBase, setApiBase] = useState(defaultBase);
@@ -113,7 +117,6 @@ export function LoginPage() {
   useEffect(() => {
     managementKeyRef.current?.focus();
   }, []);
-
 
   const handleUseCurrentAddress = useCallback(() => {
     setApiBase(currentAddress);
@@ -261,7 +264,7 @@ export function LoginPage() {
           <Reveal className="mx-auto w-full max-w-5xl">
           <div className="grid w-full items-center gap-8 lg:grid-cols-2 lg:gap-10 xl:gap-12">
             <section className="order-1 w-full lg:order-2">
-              <div className="rounded-2xl border border-slate-200/90 bg-white/92 p-6 text-slate-900 shadow-[0_24px_60px_-48px_rgba(15,23,42,0.55)] backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/78 dark:text-slate-50 dark:shadow-[0_24px_60px_-48px_rgba(0,0,0,0.85)] sm:p-8">
+              <div className="surface-card bg-white/92 p-6 text-slate-900 backdrop-blur dark:bg-neutral-950/78 dark:text-slate-50 sm:p-8">
                 <div className="space-y-5">
                   <div className="space-y-1">
                     <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
@@ -420,8 +423,8 @@ export function LoginPage() {
               </div>
             </section>
 
-            <aside className="order-2 flex w-full flex-col items-center space-y-8 text-center lg:order-1 lg:items-start lg:space-y-10 lg:text-left">
-              <div className="flex items-center gap-3">
+            <aside className="order-2 flex w-full flex-col items-center justify-center space-y-8 text-center lg:order-1 lg:self-stretch lg:space-y-10">
+              <div className="flex items-center justify-center gap-3">
                 <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/70 ring-1 ring-slate-200 backdrop-blur dark:bg-neutral-950/60 dark:ring-neutral-800">
                   <Lock size={18} className="text-slate-900 dark:text-white" />
                 </div>
@@ -430,22 +433,22 @@ export function LoginPage() {
                 </div>
               </div>
 
-              <div className="hidden max-w-md space-y-4 sm:block lg:max-w-none lg:space-y-6">
+              <div className="hidden max-w-md space-y-4 sm:block lg:max-w-lg lg:space-y-6">
                 <h1 className="text-4xl font-semibold leading-[1.08] tracking-tight text-slate-900 lg:text-5xl dark:text-white">
                   {t("login.hero_title_line1")}
                   <br />
                   {t("login.hero_title_line2")}
                 </h1>
-                <p className="max-w-xl text-sm leading-7 text-slate-600 dark:text-white/70">
+                <p className="mx-auto max-w-xl text-sm leading-7 text-slate-600 dark:text-white/70">
                   {t("login.hero_description")}
                 </p>
               </div>
 
-              <div className="w-full space-y-3">
+              <div className="w-full max-w-lg space-y-3">
                 <div className="text-xs font-semibold tracking-[0.22em] text-slate-500 dark:text-white/50">
                   {t("login.trusted_by")}
                 </div>
-                <div className="hidden flex-wrap justify-center gap-3 sm:flex lg:justify-start">
+                <div className="hidden flex-wrap justify-center gap-3 sm:flex">
                   {PROVIDERS.map(({ key, label, Logo, logoClassName }) => (
                     <span
                       key={key}

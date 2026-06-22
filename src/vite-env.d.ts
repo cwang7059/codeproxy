@@ -32,6 +32,10 @@ declare global {
       node: string;
     };
     getBackendBase: () => Promise<string>;
+    setBackendBase?: (backendBase: string) => Promise<string>;
+    probeBackendBase?: (backendBase: string) => Promise<
+      "idle" | "checking" | "reachable" | "unreachable" | "invalid"
+    >;
     readAuthSnapshot?: () => Promise<{
       apiBase?: string;
       managementKey?: string;

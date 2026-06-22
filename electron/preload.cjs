@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld("codeProxyDesktop", {
     node: process.versions.node,
   },
   getBackendBase: () => ipcRenderer.invoke("desktop:get-backend-base"),
+  setBackendBase: (backendBase) => ipcRenderer.invoke("desktop:set-backend-base", backendBase),
+  probeBackendBase: (backendBase) => ipcRenderer.invoke("desktop:probe-backend-base", backendBase),
   readAuthSnapshot: () => ipcRenderer.invoke("desktop:auth-snapshot-read"),
   writeAuthSnapshot: (snapshot) => ipcRenderer.invoke("desktop:auth-snapshot-write", snapshot),
   clearAuthSnapshot: () => ipcRenderer.invoke("desktop:auth-snapshot-clear"),

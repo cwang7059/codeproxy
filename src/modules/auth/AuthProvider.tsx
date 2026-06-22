@@ -13,7 +13,7 @@ import {
   detectApiBaseFromLocation,
   normalizeApiBase,
 } from "@/lib/connection";
-import { isDesktopClient } from "@/lib/desktop";
+import { getDesktopBackendBase, isDesktopClient, setDesktopBackendBase } from "@/lib/desktop";
 import { apiClient } from "@/lib/http/client";
 import { configApi } from "@/lib/http/apis";
 import type { AuthSnapshot } from "@/lib/http/types";
@@ -39,6 +39,7 @@ interface AuthContextState {
     logout: () => void;
     restore: () => Promise<void>;
     replaceManagementKey: (managementKey: string) => void;
+    updateApiBase: (apiBase: string) => Promise<void>;
   };
   meta: {
     managementEndpoint: string;
@@ -141,6 +142,7 @@ const clearAuthSnapshot = async (): Promise<void> => {
 };
 
 export function AuthProvider({ children }: PropsWithChildren) {
+  const desktopClient = isDesktopClient();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isRestoring, setIsRestoring] = useState(true);
   const [apiBase, setApiBase] = useState("");
@@ -149,12 +151,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [serverVersion, setServerVersion] = useState<string | null>(null);
   const [serverBuildDate, setServerBuildDate] = useState<string | null>(null);
 
+  const resolveRequestApiBase = useCallback(
+    (targetApiBase: string) => (desktopClient ? detectApiBaseFromLocation() : targetApiBase),
+    [desktopClient],
+  );
+
   const bootstrap = useCallback(async () => {
-    const desktopClient = isDesktopClient();
-    const fallbackBase = detectApiBaseFromLocation();
+    const desktopBase = desktopClient ? await getDesktopBackendBase() : null;
+    const fallbackBase = desktopBase ?? detectApiBaseFromLocation();
     const snapshot = await readAuthSnapshot();
 
-    const resolvedBase = desktopClient ? fallbackBase : snapshot?.apiBase ?? fallbackBase;
+    const resolvedBase = snapshot?.apiBase ?? fallbackBase;
     const resolvedKey = snapshot?.managementKey ?? "";
     const resolvedRemember = snapshot?.rememberPassword ?? false;
 
@@ -163,7 +170,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setRememberPassword(resolvedRemember);
 
     apiClient.setConfig({
-      apiBase: resolvedBase,
+      apiBase: resolveRequestApiBase(resolvedBase),
       managementKey: resolvedKey,
     });
 
@@ -182,7 +189,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } finally {
       setIsRestoring(false);
     }
-  }, []);
+  }, [desktopClient, resolveRequestApiBase]);
 
   useEffect(() => {
     void bootstrap();
@@ -216,13 +223,29 @@ export function AuthProvider({ children }: PropsWithChildren) {
     async (input: { apiBase: string; managementKey: string; rememberPassword: boolean }) => {
       const normalizedBase = normalizeApiBase(input.apiBase);
       const trimmedKey = input.managementKey.trim();
+      const previousDesktopBase = desktopClient ? await getDesktopBackendBase() : null;
+
+      if (desktopClient) {
+        await setDesktopBackendBase(normalizedBase);
+      }
 
       apiClient.setConfig({
-        apiBase: normalizedBase,
+        apiBase: resolveRequestApiBase(normalizedBase),
         managementKey: trimmedKey,
       });
 
-      await configApi.getConfig();
+      try {
+        await configApi.getConfig();
+      } catch (error) {
+        if (desktopClient) {
+          await setDesktopBackendBase(previousDesktopBase ?? "");
+        }
+        apiClient.setConfig({
+          apiBase: resolveRequestApiBase(previousDesktopBase ?? apiBase),
+          managementKey,
+        });
+        throw error;
+      }
 
       setApiBase(normalizedBase);
       setManagementKey(trimmedKey);
@@ -239,13 +262,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
         await clearAuthSnapshot();
       }
     },
-    [],
+    [apiBase, desktopClient, managementKey, resolveRequestApiBase],
   );
 
   const logout = useCallback(() => {
     setIsAuthenticated(false);
     apiClient.setConfig({
-      apiBase,
+      apiBase: resolveRequestApiBase(apiBase),
       managementKey: "",
     });
 
@@ -256,14 +279,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     setManagementKey("");
     void clearAuthSnapshot();
-  }, [apiBase, managementKey, rememberPassword]);
+  }, [apiBase, managementKey, rememberPassword, resolveRequestApiBase]);
 
   const replaceManagementKey = useCallback(
     (nextManagementKey: string) => {
       const trimmedKey = nextManagementKey.trim();
       setManagementKey(trimmedKey);
       apiClient.setConfig({
-        apiBase,
+        apiBase: resolveRequestApiBase(apiBase),
         managementKey: trimmedKey,
       });
 
@@ -277,7 +300,48 @@ export function AuthProvider({ children }: PropsWithChildren) {
         void clearAuthSnapshot();
       }
     },
-    [apiBase, rememberPassword],
+    [apiBase, rememberPassword, resolveRequestApiBase],
+  );
+
+  const updateApiBase = useCallback(
+    async (nextApiBase: string) => {
+      const normalizedBase = normalizeApiBase(nextApiBase);
+      const previousBase = apiBase;
+      const previousDesktopBase = desktopClient ? await getDesktopBackendBase() : null;
+
+      if (desktopClient) {
+        await setDesktopBackendBase(normalizedBase);
+      }
+
+      apiClient.setConfig({
+        apiBase: resolveRequestApiBase(normalizedBase),
+        managementKey,
+      });
+
+      try {
+        await configApi.getConfig();
+      } catch (error) {
+        if (desktopClient) {
+          await setDesktopBackendBase(previousDesktopBase ?? previousBase);
+        }
+        apiClient.setConfig({
+          apiBase: resolveRequestApiBase(previousBase),
+          managementKey,
+        });
+        throw error;
+      }
+
+      setApiBase(normalizedBase);
+
+      if (rememberPassword && managementKey.trim()) {
+        await writeAuthSnapshot({
+          apiBase: normalizedBase,
+          managementKey,
+          rememberPassword: true,
+        });
+      }
+    },
+    [apiBase, desktopClient, managementKey, rememberPassword, resolveRequestApiBase],
   );
 
   const restore = useCallback(async () => {
@@ -301,6 +365,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         logout,
         restore,
         replaceManagementKey,
+        updateApiBase,
       },
       meta: {
         managementEndpoint: computeManagementApiBase(apiBase),
@@ -318,6 +383,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       logout,
       restore,
       replaceManagementKey,
+      updateApiBase,
     ],
   );
 

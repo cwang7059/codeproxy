@@ -1,4 +1,5 @@
 import { normalizeApiBase } from "@/lib/connection";
+import { probeDesktopBackendBase } from "@/lib/desktop";
 
 export type LoginConnectionStatus =
   | "idle"
@@ -13,6 +14,11 @@ export async function probeManagementEndpoint(
 ): Promise<LoginConnectionStatus> {
   const normalized = normalizeApiBase(apiBase);
   if (!normalized) return "invalid";
+
+  const desktopStatus = await probeDesktopBackendBase(normalized);
+  if (desktopStatus) {
+    return desktopStatus;
+  }
 
   try {
     const response = await fetch(`${normalized}/v0/management`, {

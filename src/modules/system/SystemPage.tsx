@@ -15,9 +15,11 @@ import {
   Layers,
 } from "lucide-react";
 import { apiClient } from "@/lib/http/client";
+import { isDesktopClient } from "@/lib/desktop";
 import { useAuth } from "@/modules/auth/AuthProvider";
 import { Button } from "@/modules/ui/Button";
 import { Card } from "@/modules/ui/Card";
+import { PageToolbar } from "@/modules/ui/PageToolbar";
 import { TextInput } from "@/modules/ui/Input";
 import { useToast } from "@/modules/ui/ToastProvider";
 import { UpdateDetailsCard } from "@/modules/update/UpdateDetailsCard";
@@ -352,11 +354,19 @@ export function SystemPage({
 } = {}) {
   const { t } = useTranslation();
   const auth = useAuth();
+  const desktopClient = isDesktopClient();
 
   const [modelsLoading, setModelsLoading] = useState(false);
   const [modelsError, setModelsError] = useState<string | null>(null);
   const [models, setModels] = useState<string[]>([]);
   const [modelFilter, setModelFilter] = useState("");
+  const [backendBaseDraft, setBackendBaseDraft] = useState(auth.state.apiBase);
+  const [backendSaving, setBackendSaving] = useState(false);
+  const { notify } = useToast();
+
+  useEffect(() => {
+    setBackendBaseDraft(auth.state.apiBase);
+  }, [auth.state.apiBase]);
 
   const loadModels = useCallback(async () => {
     setModelsLoading(true);
@@ -405,24 +415,39 @@ export function SystemPage({
 
   const apiKeyLookupUrl = `${window.location.origin}/manage/apikey-lookup`;
 
+  const handleSaveBackendBase = useCallback(async () => {
+    const nextBase = backendBaseDraft.trim();
+    if (!nextBase) {
+      notify({ type: "error", message: t("system_page.desktop_server_required") });
+      return;
+    }
+
+    setBackendSaving(true);
+    try {
+      await auth.actions.updateApiBase(nextBase);
+      notify({ type: "success", message: t("system_page.desktop_server_saved") });
+    } catch (error) {
+      notify({
+        type: "error",
+        message:
+          error instanceof Error ? error.message : t("system_page.desktop_server_save_failed"),
+      });
+    } finally {
+      setBackendSaving(false);
+    }
+  }, [auth.actions, backendBaseDraft, notify, t]);
+
   return (
-    <div className="min-w-0 space-y-6 overflow-x-hidden">
-      {/* ── Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
-            <Server size={16} className="text-indigo-600 dark:text-indigo-400" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">
-              {t("system_page.title")}
-            </h2>
-            <p className="hidden text-xs text-slate-500 dark:text-white/45 sm:block">
-              {t("system_page.subtitle")}
-            </p>
-          </div>
-        </div>
-      </div>
+    <section className="page-stack min-w-0 overflow-x-hidden">
+      <PageToolbar
+        title={t("system_page.title")}
+        description={t("system_page.subtitle")}
+        icon={
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+            <Server size={16} className="text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+          </span>
+        }
+      />
 
       {/* ── Connection & Version Grid ── */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -463,6 +488,42 @@ export function SystemPage({
           link
         />
       </div>
+
+      {desktopClient ? (
+        <Card>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                {t("system_page.desktop_server_title")}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-white/55">
+                {t("system_page.desktop_server_desc")}
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 md:flex-row">
+              <TextInput
+                value={backendBaseDraft}
+                onChange={(event) => setBackendBaseDraft(event.target.value)}
+                placeholder={t("system_page.desktop_server_placeholder")}
+                className="md:flex-1"
+              />
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => void handleSaveBackendBase()}
+                disabled={backendSaving}
+              >
+                {backendSaving ? (
+                  <RefreshCw size={13} className="animate-spin" />
+                ) : (
+                  <Server size={13} />
+                )}
+                {t("system_page.desktop_server_save")}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
       <UpdateDetailsCard
         heartbeatIntervalMs={updateHeartbeatIntervalMs}
@@ -558,6 +619,6 @@ export function SystemPage({
           )}
         </div>
       </Card>
-    </div>
+    </section>
   );
 }
