@@ -47,8 +47,10 @@ describe("AppShell", () => {
     const source = readModule("modules/ui/AppShell.tsx");
     const navBlock = source.match(/const NAV_GROUPS:[\s\S]*?const NAV_ITEMS = NAV_GROUPS\.flatMap/)?.[0] ?? "";
 
-    expect(navBlock).toContain('to: "/ccswitch-import-settings"');
-    expect(navBlock).toContain('i18nKey: "shell.nav_ccswitch_import_settings"');
+    expect(navBlock).not.toContain('to: "/ccswitch-import-settings"');
+    expect(navBlock).not.toContain('i18nKey: "shell.nav_ccswitch_import_settings"');
+    expect(navBlock).not.toContain('to: "/monitor/request-logs"');
+    expect(navBlock).toContain('to: "/system"');
     expect(navBlock).toContain('to: "/identity-fingerprint"');
     expect(navBlock).toContain('to: "/models"');
     expect(navBlock).toContain('to: "/proxies"');
@@ -61,8 +63,8 @@ describe("AppShell", () => {
   test("uses a lighter active nav treatment with a leading accent rail instead of a full solid block", () => {
     const source = readModule("modules/ui/AppShell.tsx");
 
-    expect(source).toContain("border border-blue-200/80 bg-blue-50/90");
-    expect(source).toContain("w-1 rounded-full bg-blue-600");
+    expect(source).toContain("bg-blue-50/70");
+    expect(source).toContain("w-0.5 rounded-full bg-blue-600");
     expect(source).not.toContain("bg-gradient-to-r from-blue-600 to-blue-500");
   });
 

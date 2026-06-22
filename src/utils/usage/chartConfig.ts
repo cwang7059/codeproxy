@@ -1,6 +1,6 @@
 /**
  * Chart.js configuration utilities for usage statistics
- * Extracted from UsagePage.tsx for reusability
+ * Extracted for reuse across usage charts.
  */
 
 import type { ChartOptions } from "chart.js";

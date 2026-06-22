@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
+import { FileKey } from "lucide-react";
 import { ConfirmModal } from "@/modules/ui/ConfirmModal";
+import { PageToolbar } from "@/modules/ui/PageToolbar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/modules/ui/Tabs";
 import type { AuthFileItem } from "@/lib/http/types";
 import { proxiesApi, type ProxyPoolEntry } from "@/lib/http/apis/proxies";
@@ -419,14 +421,27 @@ export function AuthFilesPage() {
   });
 
   return (
-    <div className="space-y-3">
-      <Tabs value={tab} onValueChange={(next) => setTab(next as typeof tab)}>
-        <TabsList>
-          <TabsTrigger value="files">{t("auth_files_page.files_tab")}</TabsTrigger>
-          <TabsTrigger value="excluded">{t("auth_files_page.excluded_tab")}</TabsTrigger>
-          <TabsTrigger value="alias">{t("auth_files_page.alias_tab")}</TabsTrigger>
-        </TabsList>
+    <section className="page-stack">
+      <div className="surface-card">
+        <div className="px-5 pt-5 pb-4">
+          <PageToolbar
+            title={t("auth_files_page.title")}
+            description={t("auth_files_page.description")}
+            titleAs="h1"
+            icon={<FileKey size={18} className="text-slate-900 dark:text-white" aria-hidden="true" />}
+          />
+        </div>
 
+        <Tabs value={tab} onValueChange={(next) => setTab(next as typeof tab)}>
+          <div className="border-t border-slate-100 px-5 py-3 dark:border-neutral-800/60">
+            <TabsList>
+              <TabsTrigger value="files">{t("auth_files_page.files_tab")}</TabsTrigger>
+              <TabsTrigger value="excluded">{t("auth_files_page.excluded_tab")}</TabsTrigger>
+              <TabsTrigger value="alias">{t("auth_files_page.alias_tab")}</TabsTrigger>
+            </TabsList>
+          </div>
+
+          <div className="px-5 pb-5">
         <TabsContent value="files">
           <AuthFilesFilesTab
             fileInputRef={fileInputRef}
@@ -535,7 +550,9 @@ export function AuthFilesPage() {
             deleteAliasChannel={deleteAliasChannel}
           />
         </TabsContent>
+          </div>
       </Tabs>
+      </div>
 
       <AuthFileDetailModal
         open={detailOpen}
@@ -633,6 +650,6 @@ export function AuthFilesPage() {
           void handleDeleteSelection(action.names).finally(() => setConfirm(null));
         }}
       />
-    </div>
+    </section>
   );
 }

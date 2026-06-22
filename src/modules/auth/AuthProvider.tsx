@@ -284,14 +284,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
       rememberPassword: boolean;
     }) => {
       const normalizedBase = normalizeApiBase(input.apiBase);
+      const desktopBase = desktopClient ? await getDesktopBackendBase() : null;
+      const targetBase = desktopClient
+        ? normalizeApiBase(desktopBase || normalizedBase)
+        : normalizedBase;
       const previousDesktopBase = desktopClient ? await getDesktopBackendBase() : null;
 
-      if (desktopClient) {
-        await setDesktopBackendBase(normalizedBase);
+      if (desktopClient && targetBase) {
+        await setDesktopBackendBase(targetBase);
       }
 
       apiClient.setConfig({
-        apiBase: resolveRequestApiBase(normalizedBase),
+        apiBase: resolveRequestApiBase(targetBase),
         authToken: "",
       });
 
@@ -302,12 +306,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
         });
 
         apiClient.setConfig({
-          apiBase: resolveRequestApiBase(normalizedBase),
+          apiBase: resolveRequestApiBase(targetBase),
           authToken: response.token,
         });
 
         await applySession({
-          apiBase: normalizedBase,
+          apiBase: targetBase,
           sessionToken: response.token,
           username: response.username,
           role: response.role,

@@ -30,7 +30,7 @@ export function Card({
   return (
     <section
       className={[
-        "relative min-w-0 rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgb(15_23_42_/_0.035)] dark:border-white/[0.06] dark:bg-neutral-950/70 dark:shadow-[0_1px_2px_rgb(0_0_0_/_0.22)]",
+        "surface-card",
         "motion-reduce:transition-none motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-out",
         paddingClass,
         className,

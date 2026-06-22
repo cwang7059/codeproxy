@@ -14,7 +14,7 @@ import { PageBackground } from "@/modules/ui/PageBackground";
 import { Reveal } from "@/modules/ui/Reveal";
 import { ThemeToggleButton } from "@/modules/ui/ThemeProvider";
 import { useToast } from "@/modules/ui/ToastProvider";
-import { isDesktopClient, isDesktopFrameless, desktopWindowRegion } from "@/lib/desktop";
+import { isDesktopClient, isDesktopFrameless, desktopWindowRegion, getDesktopBackendBase } from "@/lib/desktop";
 import { OpenAILogo, GeminiLogo, ClaudeLogo, VertexLogo } from "@/modules/dashboard/ProviderLogos";
 import { DesktopWindowControls } from "@/modules/ui/DesktopWindowControls";
 import { copyToClipboard } from "@/utils/clipboard";
@@ -95,12 +95,29 @@ export function LoginPage() {
 
   const hideApiBase = HIDE_API_BASE || desktopClient;
 
-  const currentAddress = useMemo(
-    () =>
-      DEFAULT_API_BASE ||
-      (desktopClient && persistedBase ? persistedBase : detectApiBaseFromLocation()),
-    [desktopClient, persistedBase],
-  );
+  const [desktopBackendBase, setDesktopBackendBase] = useState("");
+
+  useEffect(() => {
+    if (!desktopClient) {
+      return;
+    }
+    void getDesktopBackendBase().then((base) => {
+      if (base) {
+        setDesktopBackendBase(base);
+      }
+    });
+  }, [desktopClient]);
+
+  const currentAddress = useMemo(() => {
+    if (DEFAULT_API_BASE) {
+      return DEFAULT_API_BASE;
+    }
+    if (desktopClient) {
+      return desktopBackendBase || persistedBase || DEFAULT_API_BASE;
+    }
+    return detectApiBaseFromLocation();
+  }, [desktopBackendBase, desktopClient, persistedBase]);
+
   const defaultBase = useMemo(() => persistedBase || currentAddress, [currentAddress, persistedBase]);
 
   const [apiBase, setApiBase] = useState(defaultBase);
@@ -110,6 +127,12 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+  useEffect(() => {
+    if (currentAddress) {
+      setApiBase(currentAddress);
+    }
+  }, [currentAddress]);
 
   const passwordRef = useRef<HTMLInputElement>(null);
   const connectionStatus = useLoginConnectionProbe(apiBase);

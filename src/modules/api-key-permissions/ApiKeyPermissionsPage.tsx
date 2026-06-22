@@ -5,86 +5,24 @@ import { apiKeyEntriesApi, type ApiKeyEntry } from "@/lib/http/apis/api-keys";
 import {
   applyApiKeyPermissionProfile,
   apiKeyPermissionProfilesApi,
-  makePermissionProfileId,
   type ApiKeyPermissionProfile,
 } from "@/lib/http/apis/api-key-permission-profiles";
-import { RestrictionMultiSelect } from "@/modules/api-keys/RestrictionMultiSelect";
 import { useApiKeyPermissionOptions } from "@/modules/api-keys/hooks/useApiKeyPermissionOptions";
+import {
+  draftToProfile,
+  emptyProfileDraft,
+  readProfileDraft,
+  type ProfileDraft,
+} from "@/modules/api-key-permissions/apiKeyPermissionProfileUtils";
+import { ApiKeyPermissionProfileForm } from "@/modules/api-key-permissions/components/ApiKeyPermissionProfileForm";
 import { Button } from "@/modules/ui/Button";
 import { Card } from "@/modules/ui/Card";
 import { ConfirmModal } from "@/modules/ui/ConfirmModal";
 import { EmptyState } from "@/modules/ui/EmptyState";
-import { TextInput } from "@/modules/ui/Input";
 import { Modal } from "@/modules/ui/Modal";
-import { ToggleSwitch } from "@/modules/ui/ToggleSwitch";
+import { PageToolbar } from "@/modules/ui/PageToolbar";
 import { useToast } from "@/modules/ui/ToastProvider";
 import { VirtualTable, type VirtualTableColumn } from "@/modules/ui/VirtualTable";
-
-type ProfileDraft = {
-  id: string;
-  name: string;
-  dailyLimit: string;
-  totalQuota: string;
-  concurrencyLimit: string;
-  rpmLimit: string;
-  tpmLimit: string;
-  allowedModels: string[];
-  allowedChannels: string[];
-  allowedChannelGroups: string[];
-  useExactChannelRestrictions: boolean;
-  systemPrompt: string;
-};
-
-const emptyDraft = (): ProfileDraft => ({
-  id: "",
-  name: "",
-  dailyLimit: "",
-  totalQuota: "",
-  concurrencyLimit: "",
-  rpmLimit: "",
-  tpmLimit: "",
-  allowedModels: [],
-  allowedChannels: [],
-  allowedChannelGroups: [],
-  useExactChannelRestrictions: false,
-  systemPrompt: "",
-});
-
-const limitToText = (value: number | undefined) => (value && value > 0 ? String(value) : "");
-
-const limitFromText = (value: string) => {
-  const parsed = Number.parseInt(value.trim(), 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-};
-
-const readDraft = (profile: ApiKeyPermissionProfile): ProfileDraft => ({
-  id: profile.id,
-  name: profile.name,
-  dailyLimit: limitToText(profile["daily-limit"]),
-  totalQuota: limitToText(profile["total-quota"]),
-  concurrencyLimit: limitToText(profile["concurrency-limit"]),
-  rpmLimit: limitToText(profile["rpm-limit"]),
-  tpmLimit: limitToText(profile["tpm-limit"]),
-  allowedModels: [...profile["allowed-models"]],
-  allowedChannels: [...profile["allowed-channels"]],
-  allowedChannelGroups: [...profile["allowed-channel-groups"]],
-  useExactChannelRestrictions: profile["allowed-channels"].length > 0,
-  systemPrompt: profile["system-prompt"],
-});
-
-const draftToProfile = (draft: ProfileDraft): ApiKeyPermissionProfile => ({
-  id: draft.id || makePermissionProfileId(draft.name),
-  name: draft.name.trim(),
-  "daily-limit": limitFromText(draft.dailyLimit),
-  "total-quota": limitFromText(draft.totalQuota),
-  "concurrency-limit": limitFromText(draft.concurrencyLimit),
-  "rpm-limit": limitFromText(draft.rpmLimit),
-  "tpm-limit": limitFromText(draft.tpmLimit),
-  "allowed-channel-groups": draft.allowedChannelGroups,
-  "allowed-channels": draft.useExactChannelRestrictions ? draft.allowedChannels : [],
-  "allowed-models": draft.allowedModels,
-  "system-prompt": draft.systemPrompt.trim(),
-});
 
 const formatLimit = (value: number, unlimited: string) =>
   value > 0 ? value.toLocaleString() : unlimited;
@@ -99,7 +37,7 @@ export function ApiKeyPermissionsPage() {
   const [entries, setEntries] = useState<ApiKeyEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [draft, setDraft] = useState<ProfileDraft>(() => emptyDraft());
+  const [draft, setDraft] = useState<ProfileDraft>(() => emptyProfileDraft());
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ApiKeyPermissionProfile | null>(null);
   const {
@@ -182,12 +120,12 @@ export function ApiKeyPermissionsPage() {
   ]);
 
   const openCreateModal = () => {
-    setDraft(emptyDraft());
+    setDraft(emptyProfileDraft());
     setModalOpen(true);
   };
 
   const openEditModal = (profile: ApiKeyPermissionProfile) => {
-    setDraft(readDraft(profile));
+    setDraft(readProfileDraft(profile));
     setModalOpen(true);
   };
 
@@ -357,30 +295,35 @@ export function ApiKeyPermissionsPage() {
     [entries, t],
   );
 
+  const formInstanceKey = modalOpen ? draft.id || "new" : "closed";
+
   return (
-    <div className="space-y-6">
-      <Card
-        title={t("api_key_permissions_page.title")}
-        description={t("api_key_permissions_page.description")}
-        actions={
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => void loadPage()}
-              disabled={loading}
-            >
-              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-              {t("api_key_permissions_page.refresh")}
-            </Button>
-            <Button variant="primary" size="sm" onClick={openCreateModal}>
-              <Plus size={14} />
-              {t("api_key_permissions_page.create")}
-            </Button>
-          </div>
-        }
-        loading={loading}
-      >
+    <section className="page-stack">
+      <Card padding="none" loading={loading}>
+        <div className="px-5 pt-5 pb-4">
+          <PageToolbar
+            title={t("api_key_permissions_page.title")}
+            description={t("api_key_permissions_page.description")}
+            actions={
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void loadPage()}
+                  disabled={loading}
+                >
+                  <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+                  {t("api_key_permissions_page.refresh")}
+                </Button>
+                <Button variant="primary" size="sm" onClick={openCreateModal}>
+                  <Plus size={14} />
+                  {t("api_key_permissions_page.create")}
+                </Button>
+              </div>
+            }
+          />
+        </div>
+        <div className="px-5 pb-5">
         {profiles.length === 0 ? (
           <EmptyState
             title={t("api_key_permissions_page.empty_title")}
@@ -401,6 +344,7 @@ export function ApiKeyPermissionsPage() {
             showAllLoadedMessage={false}
           />
         )}
+        </div>
       </Card>
 
       <Modal
@@ -426,147 +370,14 @@ export function ApiKeyPermissionsPage() {
           </>
         }
       >
-        <div className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80">
-              {t("api_key_permissions_page.form_name")}
-            </label>
-            <TextInput
-              type="text"
-              value={draft.name}
-              aria-label={t("api_key_permissions_page.form_name")}
-              onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
-              placeholder={t("api_key_permissions_page.form_name_placeholder")}
-            />
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-3">
-            {[
-              ["dailyLimit", "form_daily_limit"],
-              ["totalQuota", "form_total_quota"],
-              ["concurrencyLimit", "form_concurrency_limit"],
-              ["rpmLimit", "form_rpm_limit"],
-              ["tpmLimit", "form_tpm_limit"],
-            ].map(([key, labelKey]) => (
-              <div key={key}>
-                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80">
-                  {t(`api_key_permissions_page.${labelKey}`)}
-                </label>
-                <TextInput
-                  type="number"
-                  min={0}
-                  value={draft[key as keyof ProfileDraft] as string}
-                  aria-label={t(`api_key_permissions_page.${labelKey}`)}
-                  placeholder={t("api_key_permissions_page.form_unlimited_hint")}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, [key]: event.target.value }))}
-                />
-              </div>
-            ))}
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80">
-              {t("api_keys_page.form_allowed_channel_groups")}
-            </label>
-            <RestrictionMultiSelect
-              options={availableChannelGroups}
-              value={draft.allowedChannelGroups}
-              onChange={(selected) =>
-                setDraft((prev) => ({ ...prev, allowedChannelGroups: selected }))
-              }
-              placeholder={t("api_keys_page.select_channel_groups")}
-              unrestrictedLabel={t("api_keys_page.form_all_channel_groups")}
-              selectedCountLabel={(count) =>
-                t("api_keys_page.selected_channel_groups_count", { count })
-              }
-              searchPlaceholder={t("api_keys_page.search_channel_groups")}
-              selectFilteredLabel={t("api_keys_page.select_filtered")}
-              clearRestrictionLabel={t("api_keys_page.clear_restriction")}
-              noResultsLabel={t("api_keys_page.no_results")}
-            />
-          </div>
-
-          <div>
-            <div className="mb-2 flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2 dark:border-amber-500/25 dark:bg-amber-500/10">
-              <div className="min-w-0">
-                <div className="text-sm font-medium text-slate-800 dark:text-white/85">
-                  {t("api_keys_page.form_exact_channels")}
-                </div>
-                <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-100/75">
-                  {t("api_keys_page.form_exact_channels_desc")}
-                </p>
-              </div>
-              <ToggleSwitch
-                checked={draft.useExactChannelRestrictions}
-                ariaLabel={t("api_keys_page.form_exact_channels")}
-                onCheckedChange={(checked) =>
-                  setDraft((prev) => ({
-                    ...prev,
-                    useExactChannelRestrictions: checked,
-                    allowedChannels: checked ? prev.allowedChannels : [],
-                  }))
-                }
-              />
-            </div>
-            {draft.useExactChannelRestrictions ? (
-              <>
-                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80">
-                  {t("api_keys_page.form_allowed_channels")}
-                </label>
-                <RestrictionMultiSelect
-                  options={filteredAvailableChannels}
-                  value={draft.allowedChannels}
-                  onChange={(selected) =>
-                    setDraft((prev) => ({ ...prev, allowedChannels: selected }))
-                  }
-                  placeholder={t("api_keys_page.select_channels")}
-                  unrestrictedLabel={t("api_keys_page.form_all_channels")}
-                  selectedCountLabel={(count) =>
-                    t("api_keys_page.selected_channels_count", { count })
-                  }
-                  searchPlaceholder={t("api_keys_page.search_channels")}
-                  selectFilteredLabel={t("api_keys_page.select_filtered")}
-                  clearRestrictionLabel={t("api_keys_page.clear_restriction")}
-                  noResultsLabel={t("api_keys_page.no_results")}
-                />
-              </>
-            ) : null}
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80">
-              {t("api_keys_page.form_allowed_models")}
-            </label>
-            <RestrictionMultiSelect
-              options={availableModels}
-              value={draft.allowedModels}
-              onChange={(selected) => setDraft((prev) => ({ ...prev, allowedModels: selected }))}
-              placeholder={t("api_keys_page.select_models")}
-              unrestrictedLabel={t("api_keys_page.form_all_models")}
-              selectedCountLabel={(count) => t("api_keys_page.selected_models_count", { count })}
-              searchPlaceholder={t("api_keys_page.search_models")}
-              selectFilteredLabel={t("api_keys_page.select_filtered")}
-              clearRestrictionLabel={t("api_keys_page.clear_restriction")}
-              noResultsLabel={t("api_keys_page.no_results")}
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80">
-              {t("api_key_permissions_page.form_system_prompt")}
-            </label>
-            <textarea
-              value={draft.systemPrompt}
-              aria-label={t("api_key_permissions_page.form_system_prompt")}
-              onChange={(event) =>
-                setDraft((prev) => ({ ...prev, systemPrompt: event.target.value }))
-              }
-              placeholder={t("api_keys_page.system_prompt_hint")}
-              rows={3}
-              className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-all focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:focus:border-indigo-500"
-            />
-          </div>
-        </div>
+        <ApiKeyPermissionProfileForm
+          key={formInstanceKey}
+          draft={draft}
+          setDraft={setDraft}
+          availableModels={availableModels}
+          availableChannelGroups={availableChannelGroups}
+          filteredAvailableChannels={filteredAvailableChannels}
+        />
       </Modal>
 
       <ConfirmModal
@@ -580,6 +391,6 @@ export function ApiKeyPermissionsPage() {
         onConfirm={() => void handleDeleteProfile()}
         onClose={() => setDeleteTarget(null)}
       />
-    </div>
+    </section>
   );
 }

@@ -672,7 +672,7 @@ export function MonitorPage() {
   return (
     <section className="flex flex-1 flex-col">
       <h1 className="sr-only">{t("monitor.title")}</h1>
-      <div className="flex flex-1 flex-col rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgb(15_23_42_/_0.035)] dark:border-white/[0.06] dark:bg-neutral-950/70 dark:shadow-[0_1px_2px_rgb(0_0_0_/_0.22)]">
+      <div className="surface-card flex flex-1 flex-col">
         <MonitorToolbarSection
           t={t}
           timeRange={timeRange}

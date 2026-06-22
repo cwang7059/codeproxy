@@ -1,22 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Activity, Check, Cpu, Edit3, Plus, RefreshCw, Search, Sigma, Trash2 } from "lucide-react";
-import { Button } from "@/modules/ui/Button";
-import { Card } from "@/modules/ui/Card";
-import { Checkbox } from "@/modules/ui/Checkbox";
+import { Activity, Check, Cpu, Sigma } from "lucide-react";
 import { ConfirmModal } from "@/modules/ui/ConfirmModal";
-import { EmptyState } from "@/modules/ui/EmptyState";
-import { TextInput } from "@/modules/ui/Input";
-import { Modal } from "@/modules/ui/Modal";
-import { SearchableSelect, type SearchableSelectOption } from "@/modules/ui/SearchableSelect";
-import { Select } from "@/modules/ui/Select";
 import { Tabs, TabsList, TabsTrigger } from "@/modules/ui/Tabs";
-import { ToggleSwitch } from "@/modules/ui/ToggleSwitch";
 import { useToast } from "@/modules/ui/ToastProvider";
-import { OverflowTooltip } from "@/modules/ui/Tooltip";
-import { VirtualTable, type VirtualTableColumn } from "@/modules/ui/VirtualTable";
 import { apiClient } from "@/lib/http/client";
-import { loadConfiguredModelAvailability, type ModelPricingMode } from "@/modules/models/modelAvailability";
+import { loadConfiguredModelAvailability } from "@/modules/models/modelAvailability";
+import { ModelConfigModal } from "@/modules/models/components/ModelConfigModal";
+import { ModelOwnerPresetModal } from "@/modules/models/components/ModelOwnerPresetModal";
+import { ModelsActiveTab } from "@/modules/models/components/ModelsActiveTab";
+import {
+  ModelsDataTable,
+  ModelsTableFooter,
+} from "@/modules/models/components/ModelsDataTable";
+import {
+  ModelsFilterToolbar,
+  ModelsSelectionToolbar,
+} from "@/modules/models/components/ModelsFilterToolbar";
+import { ModelsLibraryTab } from "@/modules/models/components/ModelsLibraryTab";
+import { ModelsOverviewSection } from "@/modules/models/components/ModelsOverviewSection";
 import {
   buildOwnerPresetDrafts,
   defaultOpenRouterSyncState,
@@ -24,9 +26,6 @@ import {
   emptyOwnerForm,
   fetchModelConfigs,
   fetchOwnerPresets,
-  formatPrice,
-  formatSyncTimestamp,
-  hasPricing,
   mergeConfiguredModelAvailability,
   normalizeOpenRouterSyncResult,
   normalizeOpenRouterSyncState,
@@ -37,13 +36,11 @@ import {
   syncIntervalMinutesFromHours,
   toFormState,
   toOwnerFormState,
-  VendorIcon,
   type ModelFormState,
   type ModelItem,
   type ModelOwnerPreset,
   type ModelPageTab,
   type ModelScope,
-  type OpenRouterModelSyncResult,
   type OpenRouterModelSyncState,
   type OwnerFormState,
 } from "@/modules/models/models-page-helpers";
@@ -52,8 +49,8 @@ import {
   filterModelItems,
   type ModelStatusFilter,
 } from "@/modules/models/models-page-utils";
-import { MonitorSectionHeader } from "@/modules/monitor/MonitorPagePieces";
 import { PageToolbar } from "@/modules/ui/PageToolbar";
+import type { SearchableSelectOption } from "@/modules/ui/SearchableSelect";
 
 export function ModelsPage() {
   const { t } = useTranslation();
@@ -88,8 +85,6 @@ export function ModelsPage() {
   const [syncIntervalHours, setSyncIntervalHours] = useState(
     syncIntervalHoursValue(defaultOpenRouterSyncState.intervalMinutes),
   );
-  const skipSyncIntervalBlurRef = useRef(false);
-
   const modelScope: ModelScope = activeTab;
 
   const loadModels = useCallback(async () => {
@@ -584,290 +579,58 @@ export function ModelsPage() {
   }, [loadModels, notify, t]);
 
   const canDeleteModels = activeTab === "library";
-
-  const modelColumns = useMemo<VirtualTableColumn<ModelItem>[]>(
-    () => [
-      ...(canDeleteModels
-        ? [
-            {
-              key: "select",
-              label: "",
-              width: "w-12",
-              headerClassName: "text-center",
-              cellClassName: "text-center",
-              headerRender: () => (
-                <Checkbox
-                  aria-label={t("models_page.select_all_visible_models")}
-                  checked={allVisibleModelsSelected}
-                  indeterminate={someVisibleModelsSelected && !allVisibleModelsSelected}
-                  disabled={filteredModelIds.length === 0}
-                  onCheckedChange={toggleVisibleModelSelection}
-                />
-              ),
-              render: (row) => (
-                <Checkbox
-                  aria-label={t("models_page.select_model_aria", { model: row.id })}
-                  checked={selectedModelIds.has(row.id)}
-                  onCheckedChange={(checked) => toggleModelSelection(row.id, checked)}
-                />
-              ),
-            } satisfies VirtualTableColumn<ModelItem>,
-          ]
-        : []),
-      {
-        key: "model",
-        label: t("models_page.col_model"),
-        width: "w-[240px] min-w-[240px]",
-        cellClassName: "min-w-0",
-        render: (row) => (
-          <div className="flex min-w-0 items-center gap-2">
-            <VendorIcon modelId={row.id} size={16} />
-            <OverflowTooltip
-              content={
-                row.description
-                  ? `${row.id}\n${row.description}`
-                  : row.id
-              }
-              className="block min-w-0"
-            >
-              <span className="block min-w-0 truncate font-medium">{row.id}</span>
-            </OverflowTooltip>
-          </div>
-        ),
-      },
-      {
-        key: "owner",
-        label: t("models_page.col_owner"),
-        width: "w-32",
-        render: (row) => row.owned_by || "-",
-      },
-      {
-        key: "mode",
-        label: t("models_page.col_pricing_mode"),
-        width: "w-36",
-        render: (row) =>
-          row.pricing.mode === "call" ? t("models_page.mode_call") : t("models_page.mode_token"),
-      },
-      {
-        key: "price",
-        label: t("models_page.col_price"),
-        width: "w-52",
-        cellClassName: "font-mono text-xs tabular-nums text-slate-700 dark:text-slate-200",
-        render: (row) => formatPrice(row, t("models_page.not_priced")),
-      },
-      {
-        key: "status",
-        label: t("models_page.col_status"),
-        width: "w-32",
-        headerClassName: "text-center",
-        cellClassName: "text-center",
-        render: (row) => {
-          const priced = hasPricing(row);
-          return (
-            <span
-              className={[
-                "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold",
-                row.enabled && priced
-                  ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300"
-                  : "bg-slate-100 text-slate-500 dark:bg-neutral-800 dark:text-white/40",
-              ].join(" ")}
-            >
-              {row.enabled && priced ? <Check size={10} /> : null}
-              {row.enabled
-                ? priced
-                  ? t("models_page.priced")
-                  : t("models_page.not_priced")
-                : t("models_page.disabled")}
-            </span>
-          );
-        },
-      },
-      {
-        key: "actions",
-        label: t("models_page.col_actions"),
-        width: "w-24",
-        render: (row) => (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={() => openEditModel(row.id)}
-              aria-label={t("models_page.edit_model_aria", { model: row.id })}
-              title={t("models_page.edit_model_aria", { model: row.id })}
-            >
-              <Edit3 size={14} />
-            </Button>
-            {canDeleteModels ? (
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={() => setDeleteTarget(row)}
-                aria-label={t("models_page.delete_model_aria", { model: row.id })}
-                title={t("models_page.delete_model_aria", { model: row.id })}
-              >
-                <Trash2 size={14} />
-              </Button>
-            ) : null}
-          </div>
-        ),
-      },
-    ],
-    [
-      allVisibleModelsSelected,
-      canDeleteModels,
-      filteredModelIds.length,
-      openEditModel,
-      selectedModelIds,
-      someVisibleModelsSelected,
-      t,
-      toggleModelSelection,
-      toggleVisibleModelSelection,
-    ],
-  );
-
-  const selectionToolbar =
-    canDeleteModels && selectedModelCount > 0 ? (
-      <>
-        <span className="inline-flex h-8 items-center rounded-full bg-slate-100 px-3 text-xs font-semibold text-slate-600 dark:bg-white/[0.08] dark:text-white/65">
-          {t("models_page.selected_models_count", { count: selectedModelCount })}
-        </span>
-        <Button
-          variant="danger"
-          size="sm"
-          onClick={() => setBulkDeleteTargetIds(selectedModels.map((model) => model.id))}
-          disabled={deleting}
-        >
-          <Trash2 size={14} />
-          {t("models_page.delete_selected_models", { count: selectedModelCount })}
-        </Button>
-      </>
-    ) : null;
+  const addModelOwnedBy = activeTab === "library" ? ownerFilter : "";
 
   const filterToolbar = (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-        <div className="min-w-0 flex-1">
-          <TextInput
-            value={searchFilter}
-            onChange={(event) => setSearchFilter(event.currentTarget.value)}
-            placeholder={t("models_page.search")}
-            type="search"
-            name="model_search"
-            autoComplete="off"
-            spellCheck={false}
-            startAdornment={<Search size={14} className="text-slate-400 dark:text-white/35" />}
+    <ModelsFilterToolbar
+      searchFilter={searchFilter}
+      statusFilter={statusFilter}
+      loading={loading}
+      selectionToolbar={
+        canDeleteModels ? (
+          <ModelsSelectionToolbar
+            selectedModelCount={selectedModelCount}
+            deleting={deleting}
+            onBulkDelete={() =>
+              setBulkDeleteTargetIds(selectedModels.map((model) => model.id))
+            }
           />
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {selectionToolbar}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => openAddModel(activeTab === "library" ? ownerFilter : "")}
-            aria-label={t("models_page.add_model")}
-            title={t("models_page.add_model")}
-            className="gap-1.5"
-          >
-            <Plus size={14} aria-hidden="true" />
-            {t("models_page.add_model")}
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => void loadModels()}
-            disabled={loading}
-            title={t("models_page.refresh")}
-            aria-label={t("models_page.refresh")}
-            className="gap-1.5"
-          >
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} aria-hidden="true" />
-            {t("models_page.refresh")}
-          </Button>
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {([
-          ["", t("models_page.filter_all")],
-          ["priced", t("models_page.filter_priced")],
-          ["unpriced", t("models_page.filter_unpriced")],
-          ["disabled", t("models_page.filter_disabled")],
-        ] as const).map(([value, label]) => (
-          <button
-            key={value || "all"}
-            type="button"
-            onClick={() => setStatusFilter(value)}
-            className={[
-              "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition",
-              statusFilter === value
-                ? "border-blue-200/80 bg-blue-50/80 text-blue-700 dark:border-blue-500/25 dark:bg-blue-500/10 dark:text-blue-300"
-                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-neutral-950/60 dark:text-white/65 dark:hover:bg-white/5",
-            ].join(" ")}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-    </div>
+        ) : null
+      }
+      onSearchFilterChange={setSearchFilter}
+      onStatusFilterChange={setStatusFilter}
+      onAddModel={() => openAddModel(addModelOwnedBy)}
+      onRefresh={() => void loadModels()}
+    />
   );
 
   const modelTable = (
-    <div
-      className="relative overflow-x-auto rounded-xl"
-      style={{ height: tableViewportHeight }}
-    >
-      {!loading && models.length === 0 ? (
-        <EmptyState
-          title={t("models_page.no_model_data")}
-          description={t("models_page.empty_models_desc")}
-          icon={<Cpu size={32} className="text-slate-400" />}
-          action={
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => openAddModel(activeTab === "library" ? ownerFilter : "")}
-              disabled={loading}
-            >
-              <Plus size={14} aria-hidden="true" />
-              {t("models_page.add_model")}
-            </Button>
-          }
-        />
-      ) : (
-        <VirtualTable<ModelItem>
-          rows={filteredModels}
-          columns={modelColumns}
-          rowKey={(row) => row.id}
-          loading={loading}
-          rowHeight={44}
-          height="h-full"
-          minHeight="min-h-full"
-          caption={t("models_page.table_caption")}
-          emptyText={
-            hasActiveFilters
-              ? t("models_page.empty_models_filtered")
-              : t("models_page.no_model_data")
-          }
-          minWidth="min-w-[980px]"
-          stretch={false}
-          showAllLoadedMessage={false}
-        />
-      )}
-    </div>
+    <ModelsDataTable
+      models={models}
+      filteredModels={filteredModels}
+      loading={loading}
+      hasActiveFilters={hasActiveFilters}
+      canDeleteModels={canDeleteModels}
+      tableViewportHeight={tableViewportHeight}
+      filteredModelIds={filteredModelIds}
+      selectedModelIds={selectedModelIds}
+      allVisibleModelsSelected={allVisibleModelsSelected}
+      someVisibleModelsSelected={someVisibleModelsSelected}
+      onAddModel={() => openAddModel(addModelOwnedBy)}
+      onEditModel={openEditModel}
+      onDeleteModel={setDeleteTarget}
+      onToggleModelSelection={toggleModelSelection}
+      onToggleVisibleModelSelection={toggleVisibleModelSelection}
+    />
   );
 
-  const showingModelsFooter =
-    models.length > 0 ? (
-      <div className="border-t border-slate-100 px-5 py-3 text-xs text-slate-500 dark:border-neutral-800/60 dark:text-white/45">
-        {t("models_page.showing_models", {
-          visible: filteredModels.length.toLocaleString(),
-          total: models.length.toLocaleString(),
-        })}
-      </div>
-    ) : null;
+  const showingModelsFooter = (
+    <ModelsTableFooter models={models} filteredModels={filteredModels} />
+  );
 
   return (
-    <section className="space-y-6">
-      <div className="rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgb(15_23_42_/_0.035)] dark:border-white/[0.06] dark:bg-neutral-950/70 dark:shadow-[0_1px_2px_rgb(0_0_0_/_0.22)]">
+    <section className="page-stack">
+      <div className="surface-card">
         <div className="px-5 pt-5 pb-4">
           <PageToolbar
             title={t("models_page.title")}
@@ -888,621 +651,73 @@ export function ModelsPage() {
           />
         </div>
 
-        <div className="border-t border-slate-100 px-5 pb-4 pt-4 dark:border-neutral-800/60">
-          <MonitorSectionHeader title={t("models_page.section_overview")} />
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {statCards.map((card) => {
-              const Icon = card.icon;
-              return (
-                <div
-                  key={card.key}
-                  className="rounded-xl border border-slate-200/80 bg-slate-50/50 px-4 py-3.5 dark:border-white/[0.08] dark:bg-white/[0.02]"
-                >
-                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-white/55">
-                    <Icon size={14} className="text-slate-700 dark:text-white/75" aria-hidden="true" />
-                    <span>{card.label}</span>
-                  </p>
-                  <p
-                    className={`mt-2 text-right font-mono text-2xl font-semibold tabular-nums tracking-tight ${card.valueClass}`}
-                  >
-                    {card.value}
-                  </p>
-                  <p className="mt-1.5 text-xs text-slate-500 dark:text-white/45">
-                    {hasActiveFilters ? t("models_page.stats_scope_filtered") : card.hint}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <ModelsOverviewSection statCards={statCards} hasActiveFilters={hasActiveFilters} />
 
-      {activeTab === "library" ? (
-        <div
-          data-testid="owner-library-layout"
-          className="grid gap-4 border-t border-slate-100 px-5 pb-5 pt-4 dark:border-neutral-800/60 lg:grid-cols-[18rem_minmax(0,1fr)] lg:h-[calc(100dvh-380px)] lg:min-h-[28rem]"
-        >
-          <div data-testid="owner-sidebar-card" className="h-full min-h-0 min-w-0">
-            <Card
-              title={t("models_page.model_owners")}
-              className="flex h-full min-h-0 flex-col overflow-hidden"
-              bodyClassName="flex min-h-0 flex-1 flex-col gap-2"
-              actions={
-                <Button
-                  variant="secondary"
-                  size="xs"
-                  onClick={() => setOwnerForm(emptyOwnerForm)}
-                  aria-label={t("models_page.add_owner")}
-                  title={t("models_page.add_owner")}
-                >
-                  <Plus size={13} />
-                  {t("models_page.add_owner")}
-                </Button>
-              }
-            >
-              <TextInput
-                value={ownerSearchFilter}
-                onChange={(e) => setOwnerSearchFilter(e.target.value)}
-                placeholder={t("models_page.owner_sidebar_search_placeholder")}
-                size="sm"
-                startAdornment={<Search size={14} className="text-slate-400 dark:text-white/35" />}
-              />
-
-              <button
-                type="button"
-                onClick={() => setOwnerFilter("")}
-                className={[
-                  "flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-sm transition",
-                  ownerFilter === ""
-                    ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
-                    : "bg-slate-50 text-slate-700 hover:bg-slate-100 dark:bg-white/[0.04] dark:text-white/70 dark:hover:bg-white/[0.08]",
-                ].join(" ")}
-              >
-                <span className="min-w-0 truncate font-medium">{t("models_page.all_owners")}</span>
-                <span
-                  className={[
-                    "shrink-0 rounded-full px-2 py-0.5 text-[11px]",
-                    ownerFilter === ""
-                      ? "bg-white/15 text-white/80 dark:bg-slate-950/10 dark:text-slate-700"
-                      : "bg-white text-slate-500 dark:bg-neutral-950 dark:text-white/45",
-                  ].join(" ")}
-                >
-                  {t("models_page.owner_model_count", { count: models.length })}
-                </span>
-              </button>
-
-              <div
-                data-testid="owner-sidebar-list"
-                className="-mx-1 min-h-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto px-1 py-1"
-              >
-                {libraryOwners.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-200 px-3 py-6 text-center text-sm text-slate-500 dark:border-neutral-800 dark:text-white/45">
-                    {t("models_page.no_owner_presets")}
-                  </div>
-                ) : filteredLibraryOwners.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-200 px-3 py-6 text-center text-sm text-slate-500 dark:border-neutral-800 dark:text-white/45">
-                    {t("models_page.no_owner_search_results")}
-                  </div>
-                ) : (
-                  filteredLibraryOwners.map((owner) => {
-                    const count = ownerModelCounts.get(owner.value) ?? owner.modelCount ?? 0;
-                    const selected = ownerFilter === owner.value;
-                    return (
-                      <div
-                        key={owner.value}
-                        className={[
-                          "group/owner relative flex items-center gap-2 overflow-hidden rounded-xl px-2 py-1.5 transition-colors duration-200 ease-out",
-                          selected
-                            ? "bg-slate-100 ring-1 ring-slate-200 dark:bg-white/[0.08] dark:ring-white/10"
-                            : "hover:bg-slate-50 dark:hover:bg-white/[0.04]",
-                        ].join(" ")}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setOwnerFilter(owner.value)}
-                          className="min-w-0 flex-1 text-left"
-                          title={owner.description || owner.value}
-                        >
-                          <span className="block truncate text-sm font-medium text-slate-900 dark:text-white">
-                            {owner.label || owner.value}
-                          </span>
-                          <span className="block truncate text-[11px] text-slate-500 dark:text-white/45">
-                            {owner.value}
-                          </span>
-                        </button>
-                        <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500 transition-transform duration-200 ease-out group-focus-within/owner:-translate-x-16 group-hover/owner:-translate-x-16 motion-reduce:transition-none dark:bg-white/[0.08] dark:text-white/45">
-                          {t("models_page.owner_model_count", { count })}
-                        </span>
-                        <div className="pointer-events-none absolute right-2 top-1/2 flex -translate-y-1/2 translate-x-3 items-center gap-1 opacity-0 transition-all duration-200 ease-out group-focus-within/owner:pointer-events-auto group-focus-within/owner:translate-x-0 group-focus-within/owner:opacity-100 group-hover/owner:pointer-events-auto group-hover/owner:translate-x-0 group-hover/owner:opacity-100 motion-reduce:transition-none">
-                          <Button
-                            size="xs"
-                            variant="ghost"
-                            className="transition-all duration-200 ease-out"
-                            onClick={() => setOwnerForm(toOwnerFormState(owner))}
-                            aria-label={t("models_page.edit_owner_aria", { owner: owner.label })}
-                            title={t("models_page.edit_owner_aria", { owner: owner.label })}
-                          >
-                            <Edit3 size={13} />
-                          </Button>
-                          <Button
-                            size="xs"
-                            variant="ghost"
-                            className="transition-all duration-200 ease-out"
-                            onClick={() => setDeleteOwnerTarget(owner)}
-                            aria-label={t("models_page.delete_owner_aria", { owner: owner.label })}
-                            title={t("models_page.delete_owner_aria", { owner: owner.label })}
-                          >
-                            <Trash2 size={13} />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </Card>
-          </div>
-
-          <div data-testid="model-library-card" className="flex h-full min-h-0 min-w-0 flex-col gap-4">
-            <div>
-              <MonitorSectionHeader
-                title={t("models_page.section_filters")}
-                description={t("models_page.section_filters_desc")}
-              />
-              {filterToolbar}
-            </div>
-
-            <Card
-              title={t("models_page.model_library")}
-              className="flex min-h-0 flex-1 flex-col overflow-hidden"
-              bodyClassName="relative flex min-h-0 flex-1 flex-col"
-            >
-              <div
-                data-testid="openrouter-sync-section"
-                className="mb-3 border-b border-slate-200 pb-3 dark:border-neutral-800"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-slate-900 dark:text-white">
-                      <span>{t("models_page.openrouter_sync_title")}</span>
-                      <span
-                        className={[
-                          "rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                          openRouterSyncState.enabled
-                            ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300"
-                            : "bg-slate-100 text-slate-500 dark:bg-white/[0.08] dark:text-white/45",
-                        ].join(" ")}
-                      >
-                        {openRouterSyncState.enabled
-                          ? t("models_page.openrouter_sync_auto_on")
-                          : t("models_page.openrouter_sync_auto_off")}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-white/55">
-                      <span>
-                        {t("models_page.openrouter_sync_last_sync", {
-                          value: formatSyncTimestamp(
-                            openRouterSyncState.lastSyncAt,
-                            t("models_page.openrouter_sync_never"),
-                          ),
-                        })}
-                      </span>
-                      <span>
-                        {t("models_page.openrouter_sync_result", {
-                          seen: openRouterSyncState.lastSeen,
-                          added: openRouterSyncState.lastAdded,
-                          updated: openRouterSyncState.lastUpdated,
-                          skipped: openRouterSyncState.lastSkipped,
-                        })}
-                      </span>
-                      {openRouterSyncLoading ? <span>{t("models_page.loading")}</span> : null}
-                    </div>
-                    {openRouterSyncState.lastError || openRouterSyncError ? (
-                      <div className="mt-2 text-xs text-rose-600 dark:text-rose-300">
-                        {t("models_page.openrouter_sync_error", {
-                          error: openRouterSyncError || openRouterSyncState.lastError,
-                        })}
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="flex flex-wrap items-end gap-3">
-                    <div className="w-28">
-                      <label
-                        htmlFor="openrouter-sync-interval"
-                        className="mb-1 block text-xs font-medium text-slate-600 dark:text-white/60"
-                      >
-                        {t("models_page.openrouter_sync_interval")}
-                      </label>
-                      <TextInput
-                        id="openrouter-sync-interval"
-                        type="number"
-                        value={syncIntervalHours}
-                        onChange={(e) => setSyncIntervalHours(e.target.value)}
-                        onBlur={() => {
-                          if (skipSyncIntervalBlurRef.current) {
-                            skipSyncIntervalBlurRef.current = false;
-                            return;
-                          }
-                          void saveOpenRouterSyncSettings(openRouterSyncState.enabled);
-                        }}
-                        min={1}
-                        step={1}
-                        size="sm"
-                      />
-                    </div>
-                    <div
-                      onMouseDownCapture={() => {
-                        skipSyncIntervalBlurRef.current = true;
-                      }}
-                      className="flex flex-wrap items-end gap-3"
-                    >
-                      <ToggleSwitch
-                        checked={openRouterSyncState.enabled}
-                        onCheckedChange={(enabled) => void saveOpenRouterSyncSettings(enabled)}
-                        label={t("models_page.openrouter_sync_auto")}
-                        disabled={openRouterSyncSaving}
-                      />
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => void runOpenRouterSync()}
-                        disabled={
-                          openRouterSyncRunning ||
-                          openRouterSyncState.running ||
-                          openRouterSyncLoading
-                        }
-                      >
-                        <RefreshCw
-                          size={14}
-                          className={
-                            openRouterSyncRunning || openRouterSyncState.running
-                              ? "animate-spin"
-                              : ""
-                          }
-                        />
-                        {t("models_page.openrouter_sync_now")}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mb-3 min-h-0 flex-1">
-                {modelTable}
-              </div>
-            </Card>
-            {showingModelsFooter}
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="border-t border-slate-100 px-5 pt-4 pb-3 dark:border-neutral-800/60">
-            <MonitorSectionHeader
-              title={t("models_page.section_filters")}
-              description={t("models_page.section_filters_desc")}
-            />
-            {filterToolbar}
-          </div>
-
-          <div className="border-t border-slate-100 px-5 pt-3 pb-1 dark:border-neutral-800/60">
-            <MonitorSectionHeader
-              title={t("models_page.section_table")}
-              description={t("models_page.section_table_desc")}
-            />
-          </div>
-
-          <div className="px-5 pb-4">{modelTable}</div>
-          {showingModelsFooter}
-        </>
-      )}
+        {activeTab === "library" ? (
+          <ModelsLibraryTab
+            filterToolbar={filterToolbar}
+            modelTable={modelTable}
+            showingModelsFooter={showingModelsFooter}
+            ownerSidebar={{
+              totalModelCount: models.length,
+              libraryOwners,
+              filteredLibraryOwners,
+              ownerModelCounts,
+              ownerFilter,
+              ownerSearchFilter,
+              onOwnerFilterChange: setOwnerFilter,
+              onOwnerSearchFilterChange: setOwnerSearchFilter,
+              onAddOwner: () => setOwnerForm(emptyOwnerForm),
+              onEditOwner: (owner) => setOwnerForm(toOwnerFormState(owner)),
+              onDeleteOwner: setDeleteOwnerTarget,
+            }}
+            openRouterSync={{
+              syncState: openRouterSyncState,
+              loading: openRouterSyncLoading,
+              saving: openRouterSyncSaving,
+              running: openRouterSyncRunning,
+              error: openRouterSyncError,
+              syncIntervalHours,
+              onSyncIntervalHoursChange: setSyncIntervalHours,
+              onSaveSettings: saveOpenRouterSyncSettings,
+              onRunSync: runOpenRouterSync,
+            }}
+          />
+        ) : (
+          <ModelsActiveTab
+            filterToolbar={filterToolbar}
+            modelTable={modelTable}
+            showingModelsFooter={showingModelsFooter}
+          />
+        )}
       </div>
 
-      <Modal
+      <ModelConfigModal
         open={form !== null}
+        form={form}
+        activeTab={activeTab}
+        saving={saving}
+        ownerOptions={ownerOptions}
+        reusableModelCandidates={reusableModelCandidates}
+        showReusableModelCandidates={showReusableModelCandidates}
         onClose={() => {
           setForm(null);
           setModelIdSuggestionsOpen(false);
         }}
-        title={form?.originalId ? t("models_page.edit_model") : t("models_page.add_model")}
-        description={t("models_page.config_desc")}
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setForm(null)}>
-              {t("models_page.cancel")}
-            </Button>
-            <Button variant="primary" onClick={() => void handleSave()} disabled={saving}>
-              {saving ? t("models_page.saving") : t("models_page.save")}
-            </Button>
-          </>
-        }
-      >
-        {form ? (
-          <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label
-                  htmlFor="model-config-id"
-                  className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80"
-                >
-                  {t("models_page.model_id")}
-                </label>
-                <div className="relative">
-                  <TextInput
-                    id="model-config-id"
-                    role={!form.originalId && activeTab === "library" ? "combobox" : undefined}
-                    aria-label={t("models_page.model_id")}
-                    aria-autocomplete={
-                      !form.originalId && activeTab === "library" ? "list" : undefined
-                    }
-                    aria-controls={
-                      showReusableModelCandidates ? "model-config-id-reuse-options" : undefined
-                    }
-                    aria-expanded={
-                      !form.originalId && activeTab === "library"
-                        ? showReusableModelCandidates
-                        : undefined
-                    }
-                    value={form.id}
-                    onChange={(e) => {
-                      const nextId = e.target.value;
-                      updateForm({ id: nextId });
-                      setModelIdSuggestionsOpen(Boolean(nextId.trim()));
-                    }}
-                    onFocus={() => setModelIdSuggestionsOpen(Boolean(form.id.trim()))}
-                    onBlur={() => {
-                      window.setTimeout(() => setModelIdSuggestionsOpen(false), 120);
-                    }}
-                    placeholder={
-                      !form.originalId && activeTab === "library"
-                        ? t("models_page.model_id_reuse_placeholder")
-                        : "gpt-4.1"
-                    }
-                    autoComplete="off"
-                  />
-                  {showReusableModelCandidates ? (
-                    <div
-                      id="model-config-id-reuse-options"
-                      role="listbox"
-                      className="absolute left-0 right-0 top-full z-30 mt-2 max-h-64 overflow-y-auto rounded-2xl bg-white p-1 shadow-[0_8px_28px_rgb(0_0_0_/_0.16)] dark:bg-[#27272A] dark:shadow-[0_14px_36px_rgb(0_0_0_/_0.38)]"
-                    >
-                      {reusableModelCandidates.map((model) => (
-                        <button
-                          key={model.id}
-                          type="button"
-                          role="option"
-                          aria-selected={form.id === model.id}
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => applyReusableModel(model)}
-                          className="flex w-full min-w-0 items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-[#F4F4F5] dark:hover:bg-white/[0.06]"
-                        >
-                          <span className="min-w-0">
-                            <span className="block truncate font-medium text-[#18181B] dark:text-white">
-                              {model.id}
-                            </span>
-                            <span className="block truncate text-xs text-[#71717A] dark:text-[#A1A1AA]">
-                              {model.description || model.owned_by}
-                            </span>
-                          </span>
-                          <span className="shrink-0 text-xs font-medium text-[#71717A] dark:text-[#A1A1AA]">
-                            {formatPrice(model, t("models_page.not_priced"))}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80">
-                  {t("models_page.owner")}
-                </label>
-                <SearchableSelect
-                  value={form.ownedBy}
-                  onChange={(ownedBy) => updateForm({ ownedBy })}
-                  onCreate={(ownedBy) => updateForm({ ownedBy: normalizeOwnerValue(ownedBy) })}
-                  options={ownerOptions}
-                  placeholder={t("models_page.owner_placeholder")}
-                  searchPlaceholder={t("models_page.owner_search_placeholder")}
-                  aria-label={t("models_page.owner")}
-                  allowCreate
-                  normalizeCreateValue={normalizeOwnerValue}
-                  createLabel={(ownedBy) =>
-                    t("models_page.owner_create_option", { owner: normalizeOwnerValue(ownedBy) })
-                  }
-                />
-              </div>
-            </div>
+        onSave={() => void handleSave()}
+        onUpdateForm={updateForm}
+        onModelIdSuggestionsOpenChange={setModelIdSuggestionsOpen}
+        onApplyReusableModel={applyReusableModel}
+      />
 
-            <div>
-              <label
-                htmlFor="model-config-description"
-                className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80"
-              >
-                {t("models_page.description_label")}
-              </label>
-              <textarea
-                id="model-config-description"
-                value={form.description}
-                onChange={(e) => updateForm({ description: e.target.value })}
-                rows={3}
-                className="min-h-20 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-200/70 dark:border-neutral-800 dark:bg-neutral-950 dark:text-white dark:focus:border-neutral-700 dark:focus:ring-white/10"
-                placeholder={t("models_page.description_placeholder")}
-              />
-            </div>
-
-            <ToggleSwitch
-              checked={form.enabled}
-              onCheckedChange={(enabled) => updateForm({ enabled })}
-              label={t("models_page.enabled")}
-            />
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80">
-                {t("models_page.pricing_mode")}
-              </label>
-              <Select
-                value={form.mode}
-                onChange={(mode) => updateForm({ mode: mode as ModelPricingMode })}
-                aria-label={t("models_page.pricing_mode")}
-                options={[
-                  { value: "token", label: t("models_page.mode_token") },
-                  { value: "call", label: t("models_page.mode_call") },
-                ]}
-              />
-            </div>
-
-            {form.mode === "call" ? (
-              <div>
-                <label
-                  htmlFor="model-config-price-per-call"
-                  className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80"
-                >
-                  {t("models_page.price_per_call")}
-                </label>
-                <TextInput
-                  id="model-config-price-per-call"
-                  type="number"
-                  value={form.pricePerCall}
-                  onChange={(e) => updateForm({ pricePerCall: e.target.value })}
-                  placeholder="0.04"
-                  step="0.01"
-                  min={0}
-                />
-              </div>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div>
-                  <label
-                    htmlFor="model-config-input-price"
-                    className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80"
-                  >
-                    {t("models_page.input_token_price")}
-                  </label>
-                  <TextInput
-                    id="model-config-input-price"
-                    type="number"
-                    value={form.inputPrice}
-                    onChange={(e) => updateForm({ inputPrice: e.target.value })}
-                    placeholder={t("models_page.input_price_placeholder")}
-                    step="0.01"
-                    min={0}
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="model-config-output-price"
-                    className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80"
-                  >
-                    {t("models_page.output_token_price")}
-                  </label>
-                  <TextInput
-                    id="model-config-output-price"
-                    type="number"
-                    value={form.outputPrice}
-                    onChange={(e) => updateForm({ outputPrice: e.target.value })}
-                    placeholder={t("models_page.output_price_placeholder")}
-                    step="0.01"
-                    min={0}
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="model-config-cache-price"
-                    className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80"
-                  >
-                    {t("models_page.cache_token_price")}
-                  </label>
-                  <TextInput
-                    id="model-config-cache-price"
-                    type="number"
-                    value={form.cachedPrice}
-                    onChange={(e) => updateForm({ cachedPrice: e.target.value })}
-                    placeholder={t("models_page.input_price_hint")}
-                    step="0.01"
-                    min={0}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        ) : null}
-      </Modal>
-
-      <Modal
+      <ModelOwnerPresetModal
         open={ownerForm !== null}
+        ownerForm={ownerForm}
+        saving={savingOwnerPresets}
         onClose={() => setOwnerForm(null)}
-        title={ownerForm?.originalValue ? t("models_page.edit_owner") : t("models_page.add_owner")}
-        description={t("models_page.owner_form_desc")}
-        maxWidth="max-w-xl"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setOwnerForm(null)}>
-              {t("models_page.cancel")}
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => void saveOwnerForm()}
-              disabled={savingOwnerPresets}
-            >
-              {savingOwnerPresets ? t("models_page.saving") : t("models_page.save")}
-            </Button>
-          </>
-        }
-      >
-        {ownerForm ? (
-          <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label
-                  htmlFor="owner-preset-value"
-                  className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80"
-                >
-                  {t("models_page.owner_value")}
-                </label>
-                <TextInput
-                  id="owner-preset-value"
-                  value={ownerForm.value}
-                  onChange={(e) => updateOwnerForm({ value: e.target.value })}
-                  placeholder="openai"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="owner-preset-label"
-                  className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80"
-                >
-                  {t("models_page.owner_label")}
-                </label>
-                <TextInput
-                  id="owner-preset-label"
-                  value={ownerForm.label}
-                  onChange={(e) => updateOwnerForm({ label: e.target.value })}
-                  placeholder="OpenAI"
-                />
-              </div>
-            </div>
-            <div>
-              <label
-                htmlFor="owner-preset-description"
-                className="mb-1 block text-sm font-medium text-slate-700 dark:text-white/80"
-              >
-                {t("models_page.owner_description")}
-              </label>
-              <TextInput
-                id="owner-preset-description"
-                value={ownerForm.description}
-                onChange={(e) => updateOwnerForm({ description: e.target.value })}
-                placeholder={t("models_page.owner_description_placeholder")}
-              />
-            </div>
-            <ToggleSwitch
-              checked={ownerForm.enabled}
-              onCheckedChange={(enabled) => updateOwnerForm({ enabled })}
-              label={t("models_page.enabled")}
-            />
-          </div>
-        ) : null}
-      </Modal>
+        onSave={() => void saveOwnerForm()}
+        onUpdateForm={updateOwnerForm}
+      />
 
       <ConfirmModal
         open={deleteOwnerTarget !== null}

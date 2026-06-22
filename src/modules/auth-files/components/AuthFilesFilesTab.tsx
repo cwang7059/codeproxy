@@ -1,31 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type RefObject, type ReactNode } from "react";
-import { useTranslation } from "react-i18next";
-import {
-  BarChart3,
-  CircleHelp,
-  Download,
-  Eye,
-  MoreHorizontal,
-  Plus,
-  RefreshCw,
-  Search,
-  Settings2,
-  Tags,
-  Upload,
-} from "lucide-react";
-import { formatCompact } from "@/modules/monitor/monitor-format";
+import { useEffect, useState, type RefObject, type ReactNode } from "react";
 import type { AuthFileItem } from "@/lib/http/types";
-import { Button } from "@/modules/ui/Button";
-import { Card } from "@/modules/ui/Card";
-import { EmptyState } from "@/modules/ui/EmptyState";
-import { TextInput } from "@/modules/ui/Input";
-import { Modal } from "@/modules/ui/Modal";
-import { HoverTooltip } from "@/modules/ui/Tooltip";
-import { Select } from "@/modules/ui/Select";
-import { SearchableSelect, type SearchableSelectOption } from "@/modules/ui/SearchableSelect";
-import { Tabs, TabsList, TabsTrigger } from "@/modules/ui/Tabs";
-import { VirtualTable, type VirtualTableColumn } from "@/modules/ui/VirtualTable";
-import { ToggleSwitch } from "@/modules/ui/ToggleSwitch";
+import { AuthFilesBatchActionsBar, AuthFilesPaginationFooter } from "@/modules/auth-files/components/AuthFilesFilesFooter";
+import { AuthFilesFilesContent } from "@/modules/auth-files/components/AuthFilesFilesContent";
+import { AuthFilesFiltersCard } from "@/modules/auth-files/components/AuthFilesFiltersCard";
+import { AuthFilesModelOwnerGroupModal } from "@/modules/auth-files/components/AuthFilesModelOwnerGroupModal";
+import { AuthFilesOverviewStats } from "@/modules/auth-files/components/AuthFilesOverviewStats";
 import type {
   AuthFileModelOwnerGroup,
   AuthFilesSortMode,
@@ -34,21 +13,10 @@ import type {
   QuotaAutoRefreshMs,
   UsageIndex,
 } from "@/modules/auth-files/helpers/authFilesPageUtils";
-import {
-  TYPE_BADGE_CLASSES,
-  computeAuthFilesSummaryStats,
-  formatModified,
-  isRuntimeOnlyAuthFile,
-  normalizeAuthFilesSortMode,
-  normalizeProviderKey,
-  resolveAuthFileDisplayName,
-  resolveAuthFilePlanType,
-  resolveAuthFileSupplementalTags,
-  resolveFileType,
-  shouldShowAuthFileDisplayTag,
-} from "@/modules/auth-files/helpers/authFilesPageUtils";
-import type { QuotaItem, QuotaState } from "@/modules/quota/quota-helpers";
+import { normalizeProviderKey } from "@/modules/auth-files/helpers/authFilesPageUtils";
 import type { QuotaProvider } from "@/modules/quota/quota-fetch";
+import type { QuotaItem, QuotaState } from "@/modules/quota/quota-helpers";
+import type { VirtualTableColumn } from "@/modules/ui/VirtualTable";
 
 interface AuthFilesFilesTabProps {
   fileInputRef: RefObject<HTMLInputElement | null>;
@@ -201,100 +169,17 @@ export function AuthFilesFilesTab({
   setPage,
   usageData,
 }: AuthFilesFilesTabProps) {
-  const { t } = useTranslation();
   const [modelOwnerDialogOpen, setModelOwnerDialogOpen] = useState(false);
   const [draftModelOwner, setDraftModelOwner] = useState(selectedModelOwner);
-  const [actionsOpen, setActionsOpen] = useState(false);
-  const actionsRef = useRef<HTMLDivElement | null>(null);
+
   const normalizedFilter = normalizeProviderKey(filter);
   const canSetModelOwnerGroup = normalizedFilter !== "all";
-  const draftModelOwnerGroup =
-    draftModelOwner === ""
-      ? null
-      : (modelOwnerGroups.find((group) => group.value === draftModelOwner) ?? null);
-  const modelOwnerOptions = useMemo<SearchableSelectOption[]>(
-    () => [
-      {
-        value: "",
-        label: t("auth_files.auth_file_models_option"),
-        searchText: t("auth_files.auth_file_models_option"),
-      },
-      ...modelOwnerGroups.map((group) => ({
-        value: group.value,
-        label: group.label,
-        searchText: `${group.value} ${group.label} ${group.description}`,
-      })),
-    ],
-    [modelOwnerGroups, t],
-  );
 
   useEffect(() => {
     if (!modelOwnerDialogOpen) {
       setDraftModelOwner(selectedModelOwner);
     }
   }, [modelOwnerDialogOpen, selectedModelOwner]);
-
-  useEffect(() => {
-    if (!actionsOpen) return;
-
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!actionsRef.current?.contains(event.target as Node)) {
-        setActionsOpen(false);
-      }
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setActionsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [actionsOpen]);
-
-  const summaryStats = useMemo(
-    () => computeAuthFilesSummaryStats(filteredFiles, quotaByFileName, usageIndex),
-    [filteredFiles, quotaByFileName, usageIndex],
-  );
-
-  const statCards = useMemo(
-    () => [
-      {
-        key: "total",
-        label: t("auth_files.stats_total"),
-        value: summaryStats.total.toLocaleString(),
-        valueClass: "text-slate-900 dark:text-white",
-      },
-      {
-        key: "enabled",
-        label: t("auth_files.stats_enabled"),
-        value: summaryStats.enabled.toLocaleString(),
-        valueClass: "text-emerald-600 dark:text-emerald-400",
-      },
-      {
-        key: "alerts",
-        label: t("auth_files.stats_quota_alerts"),
-        value: summaryStats.quotaAlerts.toLocaleString(),
-        valueClass:
-          summaryStats.quotaAlerts > 0
-            ? "text-amber-600 dark:text-amber-400"
-            : "text-slate-500 dark:text-white/55",
-      },
-      {
-        key: "calls",
-        label: t("auth_files.stats_total_calls"),
-        value: formatCompact(summaryStats.totalCalls),
-        valueTitle: summaryStats.totalCalls.toLocaleString(),
-        valueClass: "text-sky-600 dark:text-sky-400",
-      },
-    ],
-    [summaryStats.enabled, summaryStats.quotaAlerts, summaryStats.total, summaryStats.totalCalls, t],
-  );
 
   return (
     <div className="mt-3 space-y-3">
@@ -307,776 +192,127 @@ export function AuthFilesFilesTab({
         onChange={(e) => void handleUpload(e.currentTarget.files)}
       />
 
-      {loading && filesLength === 0 ? null : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {statCards.map((card) => (
-            <div
-              key={card.key}
-              className="rounded-xl border border-slate-200/80 bg-slate-50/50 px-4 py-3.5 dark:border-white/[0.08] dark:bg-white/[0.02]"
-            >
-              <p className="text-xs font-medium text-slate-500 dark:text-white/58">{card.label}</p>
-              <p
-                className={`mt-1.5 font-mono text-2xl font-semibold tabular-nums tracking-tight ${card.valueClass}`}
-                title={"valueTitle" in card ? card.valueTitle : undefined}
-              >
-                {card.value}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
+      <AuthFilesOverviewStats
+        filteredFiles={filteredFiles}
+        quotaByFileName={quotaByFileName}
+        usageIndex={usageIndex}
+        loading={loading}
+        filesLength={filesLength}
+      />
 
-      <Card padding="compact">
-        <div className="flex flex-col gap-3">
-          <div className="flex min-w-0 flex-1 flex-col gap-3 lg:flex-row lg:items-end">
-              <div className="w-fit max-w-full space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <p className="text-[11px] font-semibold text-slate-600 dark:text-white/65">
-                    {t("auth_files.type_filter")}
-                  </p>
-                  <HoverTooltip content={t("auth_files.count_hint")} placement="top">
-                    <span
-                      className="inline-flex h-5 w-5 items-center justify-center rounded-full text-slate-400 dark:text-white/45"
-                      aria-label={t("auth_files.count_info")}
-                    >
-                      <CircleHelp size={14} />
-                    </span>
-                  </HoverTooltip>
-                </div>
-                <Tabs value={filter} onValueChange={setFilter}>
-                  <TabsList>
-                    {filterChips.map((key) => {
-                      const active = filter === key;
-                      const normalizedKey = normalizeProviderKey(key);
-                      const count =
-                        key === "all"
-                          ? filterCounts.total
-                          : (filterCounts.counts[normalizedKey] ?? 0);
-                      const label = key === "all" ? t("auth_files.all") : key;
-                      const countClass = active
-                        ? "bg-black/[0.06] text-[#18181B] dark:bg-white/12 dark:text-white"
-                        : "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-white/70";
-                      return (
-                        <TabsTrigger key={key} value={key}>
-                          {label}
-                          <span
-                            className={[
-                              "ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums",
-                              countClass,
-                            ].join(" ")}
-                          >
-                            {count}
-                          </span>
-                        </TabsTrigger>
-                      );
-                    })}
-                  </TabsList>
-                </Tabs>
-              </div>
+      <AuthFilesFiltersCard
+        filterChips={filterChips}
+        filter={filter}
+        setFilter={setFilter}
+        filterCounts={filterCounts}
+        planFilterChips={planFilterChips}
+        planFilter={planFilter}
+        setPlanFilter={setPlanFilter}
+        planFilterCounts={planFilterCounts}
+        sortMode={sortMode}
+        setSortMode={setSortMode}
+        canSetModelOwnerGroup={canSetModelOwnerGroup}
+        selectedModelOwner={selectedModelOwner}
+        onOpenModelOwnerDialog={() => {
+          setDraftModelOwner(selectedModelOwner);
+          setModelOwnerDialogOpen(true);
+        }}
+        search={search}
+        setSearch={setSearch}
+        quotaLastUpdatedText={quotaLastUpdatedText}
+        loading={loading}
+        filesLength={filesLength}
+        quotaAutoRefreshMs={quotaAutoRefreshMs}
+        setQuotaAutoRefreshMsRaw={setQuotaAutoRefreshMsRaw}
+        normalizeQuotaAutoRefreshMs={normalizeQuotaAutoRefreshMs}
+        refreshFilesAndQuota={refreshFilesAndQuota}
+        usageLoading={usageLoading}
+        refreshingAll={refreshingAll}
+        uploading={uploading}
+        onUploadClick={() => fileInputRef.current?.click()}
+        onOpenOAuthDialog={(tab) => {
+          setOauthDialogDefaultTab(tab);
+          setOauthDialogOpen(true);
+        }}
+        openGroupOverview={openGroupOverview}
+        groupOverviewLoading={groupOverviewLoading}
+        filteredFiles={filteredFiles}
+        formatPlanTypeLabel={formatPlanTypeLabel}
+      />
 
-              {planFilterChips.length > 1 ? (
-                <div className="w-fit max-w-full space-y-1.5">
-                  <p className="text-[11px] font-semibold text-slate-600 dark:text-white/65">
-                    {t("auth_files.account_type_filter")}
-                  </p>
-                  <Tabs value={planFilter} onValueChange={setPlanFilter}>
-                    <TabsList>
-                      {planFilterChips.map((key) => {
-                        const active = planFilter === key;
-                        const normalizedKey = normalizeProviderKey(key);
-                        const count =
-                          key === "all"
-                            ? planFilterCounts.total
-                            : (planFilterCounts.counts[normalizedKey] ?? 0);
-                        const label = key === "all" ? t("auth_files.all") : formatPlanTypeLabel(key);
-                        const countClass = active
-                          ? "bg-black/[0.06] text-[#18181B] dark:bg-white/12 dark:text-white"
-                          : "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-white/70";
-                        return (
-                          <TabsTrigger key={key} value={key}>
-                            {label}
-                            <span
-                              className={[
-                                "ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums",
-                                countClass,
-                              ].join(" ")}
-                            >
-                              {count}
-                            </span>
-                          </TabsTrigger>
-                        );
-                      })}
-                    </TabsList>
-                  </Tabs>
-                </div>
-              ) : null}
+      <AuthFilesFilesContent
+        loading={loading}
+        filesLength={filesLength}
+        pageItems={pageItems}
+        filesViewMode={filesViewMode}
+        renderFilesViewModeTabs={renderFilesViewModeTabs}
+        selectableFilteredFiles={selectableFilteredFiles}
+        selectedCount={selectedCount}
+        allPageSelected={allPageSelected}
+        allFilteredSelected={allFilteredSelected}
+        selectablePageNames={selectablePageNames}
+        selectCurrentPage={selectCurrentPage}
+        selectFilteredFiles={selectFilteredFiles}
+        fileColumns={fileColumns}
+        selectedFileNameSet={selectedFileNameSet}
+        fileCardProps={{
+          quotaByFileName,
+          usageIndex,
+          statusUpdating,
+          formatPlanTypeLabel,
+          translateQuotaText,
+          renderRestrictionBadges,
+          renderSubscriptionBadge,
+          renderQuotaBar,
+          resolveQuotaProvider,
+          resolveQuotaCardSlots,
+          resolveAuthFileStats,
+          refreshQuota,
+          setFileEnabled,
+          toggleFileSelection,
+          openTagsEditor,
+          openDetail,
+          downloadAuthFile,
+        }}
+      />
 
-              <div className="w-full max-w-[190px] space-y-1.5 sm:w-[190px]">
-                <p className="text-[11px] font-semibold text-slate-600 dark:text-white/65">
-                  {t("auth_files.sort")}
-                </p>
-                <Select
-                  value={sortMode}
-                  onChange={(value) => setSortMode(normalizeAuthFilesSortMode(value))}
-                  options={[
-                    { value: "name", label: t("auth_files.sort_name") },
-                    { value: "usage_desc", label: t("auth_files.sort_usage_desc") },
-                    { value: "usage_asc", label: t("auth_files.sort_usage_asc") },
-                  ]}
-                  aria-label={t("auth_files.sort")}
-                />
-              </div>
-
-              {canSetModelOwnerGroup ? (
-                <div className="flex items-end">
-                  <HoverTooltip content={t("auth_files.model_owner_group")} placement="top">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="relative !h-9 !w-9 px-0"
-                      onClick={() => {
-                        setDraftModelOwner(selectedModelOwner);
-                        setModelOwnerDialogOpen(true);
-                      }}
-                      aria-label={t("auth_files.model_owner_group")}
-                    >
-                      <Settings2 size={15} />
-                      {selectedModelOwner ? (
-                        <span
-                          aria-hidden="true"
-                          className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-neutral-900"
-                        />
-                      ) : null}
-                    </Button>
-                  </HoverTooltip>
-                </div>
-              ) : null}
-
-              <div className="w-full max-w-[560px] space-y-1.5 lg:flex-1">
-                <p className="text-[11px] font-semibold text-slate-600 dark:text-white/65">
-                  {t("auth_files.search")}
-                </p>
-                <TextInput
-                  value={search}
-                  onChange={(e) => setSearch(e.currentTarget.value)}
-                  placeholder={t("auth_files_page.filename_hint")}
-                  endAdornment={<Search size={16} className="text-slate-400" />}
-                />
-              </div>
-          </div>
-
-          <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 dark:border-neutral-800/60 sm:flex-row sm:items-center sm:justify-between">
-            <div className="inline-flex items-center gap-2 text-xs text-slate-500 dark:text-white/45">
-              <span className="font-medium">{t("auth_files.quota_updated_at")}</span>
-              <span className="font-mono tabular-nums">
-                {loading && filesLength === 0 ? "--" : quotaLastUpdatedText}
-              </span>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-1.5">
-              <div className="inline-flex items-center gap-1.5">
-                <span className="text-xs font-medium text-slate-500 dark:text-white/45">
-                  {t("auth_files.quota_auto_refresh")}
-                </span>
-                <div
-                  className={loading && filesLength === 0 ? "pointer-events-none opacity-60" : ""}
-                >
-                  <Select
-                    value={String(quotaAutoRefreshMs)}
-                    onChange={(value) =>
-                      setQuotaAutoRefreshMsRaw(normalizeQuotaAutoRefreshMs(value))
-                    }
-                    options={[
-                      { value: "0", label: t("auth_files.quota_refresh_off") },
-                      { value: "5000", label: "5s" },
-                      { value: "10000", label: "10s" },
-                      { value: "30000", label: "30s" },
-                      { value: "60000", label: "60s" },
-                    ]}
-                    aria-label={t("auth_files.quota_auto_refresh")}
-                    variant="chip"
-                    className="w-[88px]"
-                  />
-                </div>
-              </div>
-
-              <HoverTooltip content={t("auth_files.refresh")}>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => void refreshFilesAndQuota()}
-                  disabled={loading || usageLoading || refreshingAll}
-                  aria-label={t("auth_files.refresh")}
-                  title={t("auth_files.refresh")}
-                >
-                  <RefreshCw
-                    size={15}
-                    className={loading || usageLoading || refreshingAll ? "animate-spin" : ""}
-                  />
-                </Button>
-              </HoverTooltip>
-              <HoverTooltip content={t("auth_files.upload")}>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  aria-label={t("auth_files.upload")}
-                  title={t("auth_files.upload")}
-                >
-                  <Upload size={15} />
-                </Button>
-              </HoverTooltip>
-              <HoverTooltip content={t("auth_files_page.add_oauth")}>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    const normalized = normalizeProviderKey(filter);
-                    const oauthTab =
-                      normalized === "codex" ||
-                      normalized === "anthropic" ||
-                      normalized === "antigravity" ||
-                      normalized === "gemini-cli" ||
-                      normalized === "kimi" ||
-                      normalized === "qwen"
-                        ? (normalized as OAuthDialogTab)
-                        : "codex";
-                    setOauthDialogDefaultTab(oauthTab);
-                    setOauthDialogOpen(true);
-                  }}
-                  aria-label={t("auth_files_page.add_oauth")}
-                  title={t("auth_files_page.add_oauth")}
-                >
-                  <Plus size={15} />
-                </Button>
-              </HoverTooltip>
-              <div className="relative" ref={actionsRef}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-expanded={actionsOpen}
-                  aria-haspopup="menu"
-                  aria-label={t("auth_files.more_actions")}
-                  title={t("auth_files.more_actions")}
-                  onClick={() => setActionsOpen((prev) => !prev)}
-                >
-                  <MoreHorizontal size={15} aria-hidden="true" />
-                </Button>
-                {actionsOpen ? (
-                  <div
-                    role="menu"
-                    aria-label={t("auth_files.more_actions")}
-                    className="absolute right-0 top-[calc(100%+0.5rem)] z-20 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_20px_50px_rgba(15,23,42,0.14)] dark:border-neutral-800 dark:bg-neutral-950"
-                  >
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        openGroupOverview();
-                        setActionsOpen(false);
-                      }}
-                      disabled={loading || groupOverviewLoading || filteredFiles.length === 0}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:text-white/80 dark:hover:bg-white/10"
-                    >
-                      <BarChart3
-                        size={15}
-                        className={groupOverviewLoading ? "animate-pulse" : ""}
-                      />
-                      {t("auth_files.group_overview_button")}
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {loading && filesLength === 0 ? (
-        <Card padding="none" className="relative overflow-hidden">
-          <div className="p-4 sm:p-5" data-testid="auth-files-table-skeleton">
-            <div className="space-y-2">
-              {Array.from({ length: 7 }).map((_, idx) => (
-                <div
-                  key={`s-${idx}`}
-                  className="h-[84px] rounded-xl bg-slate-50/80 transition-colors duration-200 ease-out motion-safe:animate-pulse dark:bg-white/[0.03]"
-                />
-              ))}
-            </div>
-          </div>
-        </Card>
-      ) : pageItems.length === 0 ? (
-        <EmptyState
-          title={t("auth_files_page.no_files")}
-          description={t("auth_files_page.no_files_desc")}
-        />
-      ) : (
-        <Card padding="none" className="relative overflow-hidden">
-          <div className="p-4 sm:p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div className={loading && filesLength === 0 ? "pointer-events-none opacity-60" : ""}>
-                {renderFilesViewModeTabs}
-              </div>
-              {selectableFilteredFiles.length > 0 && selectedCount === 0 ? (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="!h-8 px-2 text-xs"
-                    onClick={() => selectCurrentPage(!allPageSelected)}
-                    disabled={selectablePageNames.length === 0}
-                  >
-                    {allPageSelected
-                      ? t("auth_files.batch_deselect_page")
-                      : t("auth_files.batch_select_page")}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="!h-8 px-2 text-xs"
-                    onClick={() => selectFilteredFiles(!allFilteredSelected)}
-                    disabled={selectableFilteredFiles.length === 0}
-                  >
-                    {allFilteredSelected
-                      ? t("auth_files.batch_deselect_filtered")
-                      : t("auth_files.batch_select_filtered")}
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-            {filesViewMode === "table" ? (
-              <VirtualTable<AuthFileItem>
-                rows={pageItems}
-                columns={fileColumns}
-                rowKey={(row) => row.name}
-                loading={false}
-                virtualize={false}
-                rowHeight={84}
-                caption={t("auth_files.table_caption")}
-                emptyText={t("auth_files_page.no_files_desc")}
-                minWidth="min-w-[1960px]"
-                height="h-[calc(100dvh-452px)]"
-                rowClassName={(row) => {
-                  const runtimeOnly = isRuntimeOnlyAuthFile(row);
-                  const disabled = Boolean(row.disabled);
-                  const selected = selectedFileNameSet.has(row.name);
-                  return [
-                    selected
-                      ? "bg-slate-100/80 dark:bg-white/[0.08] hover:bg-slate-100 dark:hover:bg-white/[0.1]"
-                      : "",
-                    runtimeOnly
-                      ? "bg-slate-50/80 dark:bg-neutral-950/55 hover:bg-slate-100/80 dark:hover:bg-neutral-900/60"
-                      : "",
-                    disabled ? "opacity-85" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ");
-                }}
-              />
-            ) : (
-              <div
-                data-testid="auth-files-cards"
-                className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3"
-              >
-                {pageItems.map((file) => {
-                  const runtimeOnly = isRuntimeOnlyAuthFile(file);
-                  const fileDisabled = Boolean(file.disabled);
-                  const fileSelected = selectedFileNameSet.has(file.name);
-                  const typeKey = resolveFileType(file);
-                  const badgeClass = TYPE_BADGE_CLASSES[typeKey] ?? TYPE_BADGE_CLASSES.unknown;
-                  const displayTitle = resolveAuthFileDisplayName(file) || String(file.name || "");
-                  const provider = resolveQuotaProvider(file);
-                  const state = quotaByFileName[file.name] ?? { status: "idle", items: [] };
-                  const planType = resolveAuthFilePlanType(file, state);
-                  const displayTags = resolveAuthFileSupplementalTags(file, state);
-                  const showTypeBadge = shouldShowAuthFileDisplayTag(file, typeKey);
-                  const showPlanBadge = planType
-                    ? shouldShowAuthFileDisplayTag(file, planType)
-                    : false;
-                  const subscriptionBadge = renderSubscriptionBadge(file);
-                  const stats = resolveAuthFileStats(file, usageIndex);
-                  const totalCalls = stats.success + stats.failure;
-
-                  const items = Array.isArray(state.items) ? (state.items as QuotaItem[]) : [];
-                  const slots = provider ? resolveQuotaCardSlots(provider, items) : [];
-
-                  const quotaRefreshing = provider
-                    ? quotaByFileName[file.name]?.status === "loading"
-                    : false;
-
-                  return (
-                    <Card
-                      key={file.name}
-                      padding="default"
-                      bodyClassName="mt-0 flex min-h-0 flex-1 flex-col"
-                      className={[
-                        "group flex h-full flex-col transition-colors duration-200 ease-out hover:border-slate-300 hover:bg-white dark:hover:border-neutral-700 dark:hover:bg-neutral-950/70",
-                        fileSelected
-                          ? "border-slate-900 ring-1 ring-slate-300 dark:border-white dark:ring-white/20"
-                          : "",
-                        runtimeOnly ? "opacity-90" : "",
-                        fileDisabled ? "opacity-85" : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                    >
-                      <div className="space-y-2">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex min-w-0 items-start gap-2">
-                            {!runtimeOnly ? (
-                              <input
-                                type="checkbox"
-                                aria-label={t("auth_files.select_file", {
-                                  name: displayTitle || file.name,
-                                })}
-                                checked={fileSelected}
-                                onChange={(e) =>
-                                  toggleFileSelection(file.name, e.currentTarget.checked)
-                                }
-                                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-slate-900 accent-slate-900 focus-visible:ring-2 focus-visible:ring-slate-400/35 dark:border-neutral-700 dark:bg-neutral-950 dark:text-white dark:accent-white dark:focus-visible:ring-white/15"
-                              />
-                            ) : null}
-                            <span className="min-w-0 truncate text-sm font-semibold text-slate-900 dark:text-white">
-                              {displayTitle}
-                            </span>
-                          </div>
-
-                          <div className="flex shrink-0 items-center gap-2">
-                            {runtimeOnly ? (
-                              <span className="text-xs text-slate-400 dark:text-white/40">--</span>
-                            ) : (
-                              <ToggleSwitch
-                                ariaLabel={t("auth_files.enable_disable")}
-                                checked={!fileDisabled}
-                                onCheckedChange={(enabled) => void setFileEnabled(file, enabled)}
-                                disabled={Boolean(statusUpdating[file.name])}
-                              />
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
-                          {showTypeBadge ? (
-                            <span
-                              className={[
-                                "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                                badgeClass,
-                              ].join(" ")}
-                            >
-                              {typeKey}
-                            </span>
-                          ) : null}
-                          {showPlanBadge && planType ? (
-                            <span className="inline-flex shrink-0 items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-200">
-                              {t("codex_quota.plan_label")} {formatPlanTypeLabel(planType)}
-                            </span>
-                          ) : null}
-                          <span className="text-[11px] tabular-nums text-slate-500 dark:text-white/50">
-                            {t("auth_files.calls_count", { count: totalCalls })}
-                          </span>
-                          {renderRestrictionBadges(file)}
-                          {subscriptionBadge}
-                          {runtimeOnly ? (
-                            <span className="inline-flex shrink-0 items-center rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white dark:bg-white dark:text-neutral-950">
-                              {t("auth_files.virtual_auth_file")}
-                            </span>
-                          ) : null}
-                        </div>
-                        {displayTags.length > 0 ? (
-                          <div className="min-w-0 flex flex-wrap gap-1.5">
-                            {displayTags.map((tag) => (
-                              <span
-                                key={tag}
-                                className="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-500/15 dark:text-sky-200"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
-                        <p className="truncate text-[11px] text-slate-500 dark:text-white/45">
-                          {formatModified(file)}
-                        </p>
-                      </div>
-
-                      <div
-                        className="mt-4 min-w-0 rounded-2xl border border-slate-200/80 bg-slate-100/80 px-3 py-3 transition-colors duration-200 ease-out dark:border-white/[0.06] dark:bg-white/[0.05]"
-                        data-testid="auth-file-card-quota"
-                      >
-                        {provider && (state.status === "error" || state.error) ? (
-                          <p className="truncate text-[11px] font-semibold text-rose-700 dark:text-rose-200">
-                            {translateQuotaText(state.error ?? t("common.error"))}
-                          </p>
-                        ) : null}
-
-                        {!provider ? (
-                          <div className="text-xs text-slate-400 dark:text-white/40">--</div>
-                        ) : slots.length > 0 ? (
-                          <div className="space-y-2.5">
-                            {slots.map((slot) => renderQuotaBar(slot.label, slot.item))}
-                          </div>
-                        ) : (
-                          <div className="text-xs text-slate-400 dark:text-white/40">--</div>
-                        )}
-                      </div>
-
-                      <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-                        <div className="inline-flex items-center gap-1">
-                          {provider ? (
-                            <HoverTooltip content={t("common.refresh")}>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => void refreshQuota(file, provider)}
-                                title={t("common.refresh")}
-                                aria-label={t("common.refresh")}
-                              >
-                                <RefreshCw
-                                  size={16}
-                                  className={quotaRefreshing ? "animate-spin" : ""}
-                                />
-                              </Button>
-                            </HoverTooltip>
-                          ) : null}
-
-                          <HoverTooltip content={t("auth_files.edit_tags")}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openTagsEditor(file)}
-                              title={t("auth_files.edit_tags")}
-                              aria-label={t("auth_files.edit_tags")}
-                            >
-                              <Tags size={16} />
-                            </Button>
-                          </HoverTooltip>
-
-                          <HoverTooltip content={t("auth_files.view")}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => void openDetail(file)}
-                              title={t("auth_files.view")}
-                              aria-label={t("auth_files.view")}
-                            >
-                              <Eye size={16} />
-                            </Button>
-                          </HoverTooltip>
-
-                          <HoverTooltip content={t("auth_files.download")}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => void downloadAuthFile(file)}
-                              title={t("auth_files.download")}
-                              aria-label={t("auth_files.download")}
-                            >
-                              <Download size={16} />
-                            </Button>
-                          </HoverTooltip>
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
-
-      {selectedCount > 0 ? (
-        <div className="sticky bottom-4 z-30 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-[0_12px_40px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:border-neutral-700 dark:bg-neutral-950/95">
-          <span className="text-sm font-medium text-slate-700 dark:text-white/80">
-            {t("auth_files.batch_selected", { count: selectedCount })}
-          </span>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="!h-8 px-2 text-xs"
-              onClick={() => selectCurrentPage(!allPageSelected)}
-              disabled={selectablePageNames.length === 0}
-            >
-              {allPageSelected
-                ? t("auth_files.batch_deselect_page")
-                : t("auth_files.batch_select_page")}
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="!h-8 px-2 text-xs"
-              onClick={() => selectFilteredFiles(!allFilteredSelected)}
-              disabled={selectableFilteredFiles.length === 0}
-            >
-              {allFilteredSelected
-                ? t("auth_files.batch_deselect_filtered")
-                : t("auth_files.batch_select_filtered")}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="!h-8 px-2 text-xs"
-              onClick={() => setSelectedFileNames([])}
-            >
-              {t("auth_files.batch_clear")}
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              className="!h-8 px-2 text-xs"
-              onClick={() => setConfirm({ type: "deleteSelection", names: [...selectedFileNames] })}
-              disabled={deletingAll}
-            >
-              {t("auth_files.batch_delete_action", { count: selectedCount })}
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-slate-600 dark:text-white/65 tabular-nums">
-          {t("auth_files.total_page", {
-            total: filteredFiles.length,
-            page: safePage,
-            pages: totalPages,
-          })}
-        </p>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-            disabled={safePage <= 1}
-          >
-            {t("auth_files.prev")}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-            disabled={safePage >= totalPages}
-          >
-            {t("auth_files.next")}
-          </Button>
-        </div>
-      </div>
-
-      {usageData ? null : (
-        <p className="text-xs text-slate-500 dark:text-white/55">
-          {t("auth_files.usage_stats_warning")}
-        </p>
-      )}
-
-      <Modal
-        open={modelOwnerDialogOpen}
-        title={t("auth_files.model_owner_group")}
-        description={canSetModelOwnerGroup ? normalizedFilter : undefined}
-        maxWidth="max-w-3xl"
-        bodyHeightClassName="max-h-[68vh]"
-        onClose={() => setModelOwnerDialogOpen(false)}
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setModelOwnerDialogOpen(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => {
-                setSelectedModelOwner(draftModelOwner);
-                setModelOwnerDialogOpen(false);
-              }}
-            >
-              {t("common.save")}
-            </Button>
-          </>
+      <AuthFilesBatchActionsBar
+        selectedCount={selectedCount}
+        allPageSelected={allPageSelected}
+        allFilteredSelected={allFilteredSelected}
+        selectablePageNames={selectablePageNames}
+        selectableFilteredFilesLength={selectableFilteredFiles.length}
+        deletingAll={deletingAll}
+        selectCurrentPage={selectCurrentPage}
+        selectFilteredFiles={selectFilteredFiles}
+        onClearSelection={() => setSelectedFileNames([])}
+        onDeleteSelection={() =>
+          setConfirm({ type: "deleteSelection", names: [...selectedFileNames] })
         }
-      >
-        <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
-            <div className="min-w-0 space-y-1.5">
-              <label className="block text-sm font-medium text-slate-700 dark:text-white/80">
-                {t("auth_files.model_owner_group")}
-              </label>
-              <SearchableSelect
-                value={draftModelOwner}
-                onChange={setDraftModelOwner}
-                options={modelOwnerOptions}
-                placeholder={t("auth_files.auth_file_models_option")}
-                searchPlaceholder={t("auth_files.model_owner_group_search_placeholder")}
-                aria-label={t("auth_files.model_owner_group")}
-              />
-            </div>
+      />
 
-            <div className="flex min-w-0 items-center rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-neutral-800 dark:bg-white/[0.04]">
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase text-slate-400 dark:text-white/35">
-                  {t("auth_files.type_filter")}
-                </p>
-                <p className="mt-1 truncate font-mono text-sm font-semibold text-slate-900 dark:text-white">
-                  {normalizedFilter}
-                </p>
-              </div>
-            </div>
-          </div>
+      <AuthFilesPaginationFooter
+        filteredFilesCount={filteredFiles.length}
+        safePage={safePage}
+        totalPages={totalPages}
+        setPage={setPage}
+        usageData={usageData}
+      />
 
-          <div className="rounded-2xl border border-slate-200 bg-white/70 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                {t("auth_files.detail_tab_models")}
-              </p>
-              {draftModelOwnerGroup ? (
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-white/10 dark:text-white/65">
-                  {t("auth_files.count_items", { count: draftModelOwnerGroup.models.length })}
-                </span>
-              ) : null}
-            </div>
-
-            {modelOwnerGroupsLoading ? (
-              <div className="text-sm text-slate-600 dark:text-white/65">
-                {t("common.loading_ellipsis")}
-              </div>
-            ) : draftModelOwnerGroup ? (
-              draftModelOwnerGroup.models.length === 0 ? (
-                <EmptyState
-                  title={t("common.no_model_data")}
-                  description={t("auth_files.no_owner_group_models")}
-                />
-              ) : (
-                <div className="max-h-[340px] space-y-2 overflow-y-auto pr-1">
-                  {draftModelOwnerGroup.models.map((model) => {
-                    const modelMeta = [
-                      model.display_name ? `display_name: ${model.display_name}` : "",
-                      model.owned_by ? `owned_by: ${model.owned_by}` : "",
-                    ].filter(Boolean);
-                    return (
-                      <div
-                        key={model.id}
-                        className="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 dark:border-neutral-800 dark:bg-white/[0.03]"
-                      >
-                        <p className="truncate font-mono text-xs font-semibold text-slate-900 dark:text-white">
-                          {model.id}
-                        </p>
-                        {modelMeta.length > 0 ? (
-                          <p className="mt-1 truncate text-xs text-slate-600 dark:text-white/55">
-                            {modelMeta.join(" · ")}
-                          </p>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-              )
-            ) : (
-              <EmptyState
-                title={t("common.no_model_data")}
-                description={t("auth_files.auth_file_models_option")}
-              />
-            )}
-          </div>
-        </div>
-      </Modal>
+      <AuthFilesModelOwnerGroupModal
+        open={modelOwnerDialogOpen}
+        normalizedFilter={normalizedFilter}
+        canSetModelOwnerGroup={canSetModelOwnerGroup}
+        modelOwnerGroupsLoading={modelOwnerGroupsLoading}
+        modelOwnerGroups={modelOwnerGroups}
+        draftModelOwner={draftModelOwner}
+        onDraftModelOwnerChange={setDraftModelOwner}
+        onClose={() => setModelOwnerDialogOpen(false)}
+        onSave={() => {
+          setSelectedModelOwner(draftModelOwner);
+          setModelOwnerDialogOpen(false);
+        }}
+      />
     </div>
   );
 }

@@ -44,6 +44,7 @@ export const AUTH_FILES_QUOTA_PREVIEW_KEY = "authFilesPage.quotaPreview.v1";
 export const AUTH_FILES_QUOTA_AUTO_REFRESH_KEY = "authFilesPage.quotaAutoRefreshMs.v1";
 export const AUTH_FILES_FILES_VIEW_MODE_KEY = "authFilesPage.filesViewMode.v1";
 export const AUTH_FILES_MODEL_OWNER_GROUP_MAP_KEY = "authFilesPage.modelOwnerGroupMap.v1";
+export const AUTH_FILES_ADVANCED_FILTERS_EXPANDED_KEY = "authFilesPage.advancedFiltersExpanded.v1";
 
 export type QuotaPreviewMode = "5h" | "week";
 export type QuotaAutoRefreshMs = 0 | 5000 | 10000 | 30000 | 60000;
@@ -63,6 +64,42 @@ export type AuthFilesUiState = {
 export const normalizeAuthFilesSortMode = (value: unknown): AuthFilesSortMode => {
   if (value === "usage_desc" || value === "usage_asc") return value;
   return "name";
+};
+
+export const readAuthFilesAdvancedFiltersExpanded = (): boolean => {
+  if (typeof window === "undefined") return false;
+  try {
+    const raw = window.localStorage.getItem(AUTH_FILES_ADVANCED_FILTERS_EXPANDED_KEY);
+    if (!raw) return false;
+    return JSON.parse(raw) === true;
+  } catch {
+    return false;
+  }
+};
+
+export const writeAuthFilesAdvancedFiltersExpanded = (expanded: boolean) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      AUTH_FILES_ADVANCED_FILTERS_EXPANDED_KEY,
+      JSON.stringify(expanded),
+    );
+  } catch {
+    // ignore
+  }
+};
+
+export const hasActiveAuthFilesAdvancedFilters = (input: {
+  planFilter: string;
+  sortMode: AuthFilesSortMode;
+  selectedModelOwner: string;
+}): boolean => {
+  const normalizedPlan = normalizeProviderKey(input.planFilter);
+  return (
+    (normalizedPlan !== "" && normalizedPlan !== "all") ||
+    input.sortMode !== "name" ||
+    Boolean(input.selectedModelOwner.trim())
+  );
 };
 
 export type AuthFilesDataCache = {

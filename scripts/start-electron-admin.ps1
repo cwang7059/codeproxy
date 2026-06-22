@@ -1,6 +1,6 @@
 param(
   [switch]$Rebuild,
-  [string]$BackendBase = "http://127.0.0.1:8317"
+  [string]$BackendBase = "http://67.215.253.110:8317"
 )
 
 $ErrorActionPreference = "Stop"

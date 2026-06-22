@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import i18n from "@/i18n";
@@ -41,6 +41,12 @@ function renderPage() {
       </ToastProvider>
     </ThemeProvider>,
   );
+}
+
+async function waitForChannelGroupsPageReady() {
+  await waitFor(() => {
+    expect(screen.queryByText("加载中...")).not.toBeInTheDocument();
+  });
 }
 
 describe("ChannelGroupsPage", () => {
@@ -120,10 +126,11 @@ describe("ChannelGroupsPage", () => {
     const user = userEvent.setup();
 
     renderPage();
+    await waitForChannelGroupsPageReady();
 
     await user.click(await screen.findByRole("button", { name: "新增分组" }));
-    await user.type(screen.getByPlaceholderText("pro"), "team-claude");
-    await user.type(screen.getByPlaceholderText("/pro"), "/team-claude");
+    await user.type(await screen.findByPlaceholderText("pro"), "team-claude");
+    await user.type(await screen.findByPlaceholderText("/pro"), "/team-claude");
     await user.click(screen.getByRole("combobox", { name: "选择渠道" }));
     await user.click(await screen.findByRole("option", { name: "Team A Claude" }));
     await user.click(screen.getByRole("combobox", { name: "选择渠道" }));
@@ -218,10 +225,11 @@ describe("ChannelGroupsPage", () => {
     const user = userEvent.setup();
 
     renderPage();
+    await waitForChannelGroupsPageReady();
 
     await user.click(await screen.findByRole("button", { name: "新增分组" }));
-    await user.type(screen.getByPlaceholderText("pro"), "kimi");
-    await user.type(screen.getByPlaceholderText("/pro"), "/kimi");
+    await user.type(await screen.findByPlaceholderText("pro"), "kimi");
+    await user.type(await screen.findByPlaceholderText("/pro"), "/kimi");
     await user.click(screen.getByRole("combobox", { name: "选择渠道" }));
     await user.click(await screen.findByRole("option", { name: "kimi" }));
     await user.click(screen.getByRole("combobox", { name: "选择渠道" }));
@@ -288,10 +296,11 @@ describe("ChannelGroupsPage", () => {
     const user = userEvent.setup();
 
     renderPage();
+    await waitForChannelGroupsPageReady();
 
     await user.click(await screen.findByRole("button", { name: "新增分组" }));
-    await user.type(screen.getByPlaceholderText("pro"), "kimi");
-    await user.type(screen.getByPlaceholderText("/pro"), "/kimi");
+    await user.type(await screen.findByPlaceholderText("pro"), "kimi");
+    await user.type(await screen.findByPlaceholderText("/pro"), "/kimi");
     await user.click(screen.getByRole("combobox", { name: "选择渠道" }));
     await user.click(await screen.findByRole("option", { name: "kimi" }));
     await user.click(screen.getByRole("combobox", { name: "选择渠道" }));
@@ -352,9 +361,10 @@ describe("ChannelGroupsPage", () => {
 
     const user = userEvent.setup();
     renderPage();
+    await waitForChannelGroupsPageReady();
 
     await user.click(await screen.findByRole("button", { name: "新增分组" }));
-    await user.click(screen.getByRole("combobox", { name: "选择渠道" }));
+    await user.click(await screen.findByRole("combobox", { name: "选择渠道" }));
 
     const option = await screen.findByRole("option", { name: "A_GptPro" });
     expect(option).toHaveTextContent("codex");
@@ -410,9 +420,10 @@ describe("ChannelGroupsPage", () => {
 
     const user = userEvent.setup();
     renderPage();
+    await waitForChannelGroupsPageReady();
 
     await user.click(await screen.findByRole("button", { name: "新增分组" }));
-    await user.click(screen.getByRole("combobox", { name: "选择渠道" }));
+    await user.click(await screen.findByRole("combobox", { name: "选择渠道" }));
 
     expect(await screen.findByRole("option", { name: "Fresh Claude" })).toBeInTheDocument();
     expect(channelGroupsCalls).toBeGreaterThanOrEqual(2);

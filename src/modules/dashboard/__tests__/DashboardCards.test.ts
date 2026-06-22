@@ -8,43 +8,57 @@ const readModule = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 describe("dashboard card composition", () => {
   test("uses the shared Card component for dashboard KPI cards", () => {
-    const source = readModule("modules/dashboard/DashboardPage.tsx");
+    const pageSource = readModule("modules/dashboard/DashboardPage.tsx");
+    const kpiSource = readModule("modules/dashboard/components/DashboardKpiCard.tsx");
+    const businessSource = readModule("modules/dashboard/components/DashboardBusinessSection.tsx");
+    const throughputSource = readModule("modules/dashboard/components/ThroughputTrendChart.tsx");
+    const constantsSource = readModule("modules/dashboard/dashboard-constants.ts");
+    const chartUtilsSource = readModule("modules/dashboard/dashboard-chart-utils.ts");
 
-    expect(source).toContain('from "@/modules/ui/Card"');
-    expect(source).toContain('from "@/modules/ui/charts/EChart"');
-    expect(source).toContain('from "@/modules/dashboard/useSystemStats"');
-    expect(source).toContain("createSparklineOption");
-    expect(source).toContain("ThroughputTrendChart");
-    expect(source).toContain("ChartLegend");
-    expect(source).toContain("useInterval");
-    expect(source).toContain("const DASHBOARD_RANGES = [1, 7, 30, 365, 1095] as const");
-    expect(source).toContain("const PRIMARY_DASHBOARD_RANGES = [1, 7, 30] as const");
-    expect(source).toContain('"dashboard.last_365_days"');
-    expect(source).toContain('"dashboard.last_1095_days"');
-    expect(source).toContain("summary?.trends");
-    expect(source).toContain("const { stats, connected } = useSystemStats(5)");
-    expect(source).toContain("rpm={stats?.total_rpm ?? 0}");
-    expect(source).toContain("tpm={stats?.total_tpm ?? 0}");
-    expect(source).toContain("meta.generated_at");
-    expect(source).toContain("const autoRefreshMs = range > 30 ? 60_000 : 5_000");
-    expect(source).toContain('<EChart option={option} className="h-10" overflowVisible />');
-    expect(source).toContain("}, autoRefreshMs);");
-    expect(source).toContain('"dashboard.section_business"');
-    expect(source).toContain('"dashboard.sparkline_empty"');
-    expect(source).toContain('from "react-router-dom"');
-    expect(source).not.toContain('replaceMerge="series"');
-    expect(source).not.toContain('from "@/modules/monitor/MonitorPagePieces"');
-    expect(source).not.toContain("<KpiCard");
+    expect(pageSource).toContain('from "@/modules/dashboard/useSystemStats"');
+    expect(pageSource).toContain("ThroughputTrendChart");
+    expect(pageSource).toContain("DashboardBusinessSection");
+    expect(pageSource).toContain("summary?.trends");
+    expect(pageSource).toContain("const { stats, connected } = useSystemStats(5)");
+    expect(pageSource).toContain("rpm={stats?.total_rpm ?? 0}");
+    expect(pageSource).toContain("tpm={stats?.total_tpm ?? 0}");
+    expect(pageSource).toContain("meta.generated_at");
+    expect(pageSource).toContain("const autoRefreshMs = range > 30 ? 60_000 : 5_000");
+    expect(pageSource).toContain("}, autoRefreshMs);");
+    expect(pageSource).not.toContain('replaceMerge="series"');
+    expect(pageSource).not.toContain('from "@/modules/monitor/MonitorPagePieces"');
+    expect(pageSource).not.toContain("<KpiCard");
+
+    expect(kpiSource).toContain('from "@/modules/ui/Card"');
+    expect(kpiSource).toContain('from "@/modules/ui/charts/EChart"');
+    expect(kpiSource).toContain('<EChart option={option} className="h-10" overflowVisible />');
+    expect(kpiSource).toContain('from "react-router-dom"');
+
+    expect(businessSource).toContain("createSparklineOption");
+    expect(businessSource).toContain('"dashboard.section_business"');
+    expect(kpiSource).toContain('"dashboard.sparkline_empty"');
+
+    expect(throughputSource).toContain("ChartLegend");
+    expect(throughputSource).toContain('from "@/modules/ui/Card"');
+
+    expect(constantsSource).toContain("const DASHBOARD_RANGES = [1, 7, 30, 365, 1095] as const");
+    expect(constantsSource).toContain("const PRIMARY_DASHBOARD_RANGES = [1, 7, 30] as const");
+    expect(constantsSource).toContain('"dashboard.last_365_days"');
+    expect(constantsSource).toContain('"dashboard.last_1095_days"');
+
+    expect(chartUtilsSource).toContain("createSparklineOption");
+    expect(chartUtilsSource).toContain("createThroughputOption");
   });
 
   test("formats throughput chart values with at most two decimal places", () => {
-    const source = readModule("modules/dashboard/DashboardPage.tsx");
+    const chartUtilsSource = readModule("modules/dashboard/dashboard-chart-utils.ts");
+    const throughputSource = readModule("modules/dashboard/components/ThroughputTrendChart.tsx");
 
-    expect(source).toContain("formatThroughputValue");
-    expect(source).toContain("maximumFractionDigits: 2");
-    expect(source).toContain("formatThroughputTooltip");
-    expect(source).toContain("formatter: formatThroughputTooltip");
-    expect(source).toContain('"dashboard.throughput_empty_title"');
+    expect(chartUtilsSource).toContain("formatThroughputValue");
+    expect(chartUtilsSource).toContain("maximumFractionDigits: 2");
+    expect(chartUtilsSource).toContain("formatThroughputTooltip");
+    expect(chartUtilsSource).toContain("formatter: formatThroughputTooltip");
+    expect(throughputSource).toContain('"dashboard.throughput_empty_title"');
   });
 
   test("uses the shared Card component for system monitor panels", () => {
@@ -86,11 +100,12 @@ describe("dashboard card composition", () => {
   });
 
   test("includes dark mode surfaces for throughput and system monitor summary cards", () => {
-    const dashboardSource = readModule("modules/dashboard/DashboardPage.tsx");
+    const throughputSource = readModule("modules/dashboard/components/ThroughputTrendChart.tsx");
+    const kpiSource = readModule("modules/dashboard/components/DashboardKpiCard.tsx");
     const systemMonitorSource = readModule("modules/dashboard/SystemMonitorSection.tsx");
 
-    expect(dashboardSource).toContain("dark:bg-neutral-900/70");
-    expect(dashboardSource).toContain("dark:text-slate-200");
+    expect(throughputSource).toContain("dark:bg-neutral-900/70");
+    expect(kpiSource).toContain("dark:text-slate-200");
     expect(systemMonitorSource).toContain("dark:bg-neutral-950/85");
     expect(systemMonitorSource).toContain("dark:text-white/80");
   });

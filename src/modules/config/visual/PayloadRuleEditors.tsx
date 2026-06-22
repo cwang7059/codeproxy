@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Plus, Trash2 } from "lucide-react";
 import type {
@@ -97,18 +98,49 @@ function updateRuleParams(
   );
 }
 
+function EditorShell({
+  embedded,
+  title,
+  description,
+  actions,
+  children,
+}: {
+  embedded?: boolean;
+  title: string;
+  description?: string;
+  actions: ReactNode;
+  children: ReactNode;
+}) {
+  if (embedded) {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-end">{actions}</div>
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <Card title={title} description={description} actions={actions}>
+      {children}
+    </Card>
+  );
+}
+
 export function PayloadRulesEditor({
   title,
   description,
   rules,
   disabled,
   onChange,
+  embedded,
 }: {
   title: string;
   description?: string;
   rules: PayloadRule[];
   disabled?: boolean;
   onChange: (rules: PayloadRule[]) => void;
+  embedded?: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -187,16 +219,19 @@ export function PayloadRulesEditor({
     return "e.g. hello";
   };
 
+  const addRuleAction = (
+    <Button size="sm" onClick={addRule} disabled={disabled}>
+      <Plus size={14} />
+      {t("visual_config.add_rule")}
+    </Button>
+  );
+
   return (
-    <Card
+    <EditorShell
+      embedded={embedded}
       title={title}
       description={description}
-      actions={
-        <Button size="sm" onClick={addRule} disabled={disabled}>
-          <Plus size={14} />
-          {t("visual_config.add_rule")}
-        </Button>
-      }
+      actions={addRuleAction}
     >
       {rules.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-4 text-center text-sm text-slate-600 dark:border-neutral-800 dark:bg-neutral-950/40 dark:text-white/65">
@@ -362,7 +397,7 @@ export function PayloadRulesEditor({
           ))}
         </div>
       )}
-    </Card>
+    </EditorShell>
   );
 }
 
@@ -370,10 +405,12 @@ export function PayloadFilterRulesEditor({
   rules,
   disabled,
   onChange,
+  embedded,
 }: {
   rules: PayloadFilterRule[];
   disabled?: boolean;
   onChange: (rules: PayloadFilterRule[]) => void;
+  embedded?: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -438,16 +475,19 @@ export function PayloadFilterRulesEditor({
     });
   };
 
+  const addRuleAction = (
+    <Button size="sm" onClick={addRule} disabled={disabled}>
+      <Plus size={14} />
+      {t("visual_config.add_rule")}
+    </Button>
+  );
+
   return (
-    <Card
+    <EditorShell
+      embedded={embedded}
       title={t("visual_config.payload_filter")}
       description={t("visual_config.payload_filter_desc")}
-      actions={
-        <Button size="sm" onClick={addRule} disabled={disabled}>
-          <Plus size={14} />
-          {t("visual_config.add_rule")}
-        </Button>
-      }
+      actions={addRuleAction}
     >
       {rules.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-4 text-center text-sm text-slate-600 dark:border-neutral-800 dark:bg-neutral-950/40 dark:text-white/65">
@@ -580,6 +620,6 @@ export function PayloadFilterRulesEditor({
           ))}
         </div>
       )}
-    </Card>
+    </EditorShell>
   );
 }

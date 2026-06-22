@@ -1,6 +1,7 @@
 import { apiClient } from "@/lib/http/client";
 
 export interface ApiKeyEntry {
+  id?: string;
   key: string;
   name?: string;
   disabled?: boolean;

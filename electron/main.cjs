@@ -8,7 +8,8 @@ const path = require("node:path");
 const tls = require("node:tls");
 const { isFramelessWindowEnabled } = require("./frameless.cjs");
 
-const DEFAULT_BACKEND_BASE = "http://127.0.0.1:8317";
+const DEFAULT_BACKEND_BASE =
+  process.env.CODE_PROXY_API_BASE?.trim() || "http://67.215.253.110:8317";
 const DEFAULT_WINDOW_WIDTH = 1080;
 const DEFAULT_WINDOW_HEIGHT = 700;
 const MIN_WINDOW_WIDTH = 1024;

@@ -26,6 +26,7 @@ import {
   loadConfiguredModelAvailability,
 } from "@/modules/models/modelAvailability";
 import { useToast } from "@/modules/ui/ToastProvider";
+import { PageToolbar } from "@/modules/ui/PageToolbar";
 
 function createEmptyRoutingValues(): VisualConfigValues {
   return {
@@ -342,15 +343,14 @@ export function ChannelGroupsPage() {
   );
 
   return (
-    <section className="space-y-6 overflow-x-hidden">
-      <div className="rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgb(15_23_42_/_0.035)] dark:border-white/[0.06] dark:bg-neutral-950/70 dark:shadow-[0_1px_2px_rgb(0_0_0_/_0.22)]">
+    <section className="page-stack">
+      <div className="surface-card">
         <div className="px-5 pt-5 pb-4">
-          <h1 className="text-base font-semibold text-slate-900 dark:text-white">
-            {t("channel_groups_page.title")}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-white/45">
-            {t("channel_groups_page.description")}
-          </p>
+          <PageToolbar
+            title={t("channel_groups_page.title")}
+            description={t("channel_groups_page.description")}
+            titleAs="h1"
+          />
         </div>
 
         {error ? (

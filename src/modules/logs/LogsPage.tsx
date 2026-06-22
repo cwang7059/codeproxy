@@ -1,7 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ScrollText } from "lucide-react";
 import { configApi, logsApi } from "@/lib/http/apis";
 import { ConfirmModal } from "@/modules/ui/ConfirmModal";
+import { PageToolbar } from "@/modules/ui/PageToolbar";
 import { useToast } from "@/modules/ui/ToastProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/modules/ui/Tabs";
 import { ErrorLogsTab } from "@/modules/logs/components/ErrorLogsTab";
@@ -343,7 +345,16 @@ export function LogsPage() {
   }, [latestTimestamp]);
 
   return (
-    <div className="space-y-6">
+    <section className="page-stack">
+      <div className="surface-card">
+        <div className="px-5 pt-5 pb-4">
+          <PageToolbar
+            title={t("shell.nav_logs")}
+            description={t("logs_page.page_intro")}
+            icon={<ScrollText size={18} className="text-slate-900 dark:text-white" aria-hidden="true" />}
+          />
+        </div>
+        <div className="px-5 pb-5">
       <Tabs value={tab} onValueChange={(next) => setTab(next as typeof tab)}>
         <TabsList>
           <TabsTrigger value="content">{t("logs_page.log_content")}</TabsTrigger>
@@ -395,6 +406,8 @@ export function LogsPage() {
           />
         </TabsContent>
       </Tabs>
+        </div>
+      </div>
 
       <ConfirmModal
         open={confirmClearOpen}
@@ -407,6 +420,6 @@ export function LogsPage() {
           void handleClearServerLogs();
         }}
       />
-    </div>
+    </section>
   );
 }

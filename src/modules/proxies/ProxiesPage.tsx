@@ -5,6 +5,7 @@ import { proxiesApi, type ProxyCheckResult, type ProxyPoolEntry } from "@/lib/ht
 import { Button } from "@/modules/ui/Button";
 import { Card } from "@/modules/ui/Card";
 import { EmptyState } from "@/modules/ui/EmptyState";
+import { PageToolbar } from "@/modules/ui/PageToolbar";
 import { TextInput } from "@/modules/ui/Input";
 import { Modal } from "@/modules/ui/Modal";
 import { ToggleSwitch } from "@/modules/ui/ToggleSwitch";
@@ -321,31 +322,33 @@ export function ProxiesPage() {
   const modalTitle = editingID ? t("proxies.edit_title") : t("proxies.add_title");
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">
-            {t("proxies.title")}
-          </h2>
-          <p className="mt-1 max-w-3xl text-sm text-slate-600 dark:text-white/65">
-            {t("proxies.description")}
-          </p>
+    <section className="page-stack">
+      <Card
+        padding="none"
+        className="overflow-hidden"
+        loading={loading && entries.length === 0}
+      >
+        <div className="px-5 pt-5 pb-4">
+          <PageToolbar
+            title={t("proxies.title")}
+            description={t("proxies.description")}
+            actions={
+              <div className="flex shrink-0 items-center gap-2">
+                <Button onClick={loadEntries} disabled={loading} size="sm">
+                  <RefreshCw size={15} />
+                  {t("common.refresh")}
+                </Button>
+                {sortedEntries.length > 0 ? (
+                  <Button onClick={openCreate} variant="primary" size="sm">
+                    <Plus size={15} />
+                    {t("proxies.add")}
+                  </Button>
+                ) : null}
+              </div>
+            }
+          />
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Button onClick={loadEntries} disabled={loading} size="sm">
-            <RefreshCw size={15} />
-            {t("common.refresh")}
-          </Button>
-          {sortedEntries.length > 0 ? (
-            <Button onClick={openCreate} variant="primary" size="sm">
-              <Plus size={15} />
-              {t("proxies.add")}
-            </Button>
-          ) : null}
-        </div>
-      </div>
-
-      <Card className="overflow-hidden" loading={loading && entries.length === 0}>
+        <div className="px-5 pb-5">
         {sortedEntries.length === 0 && !loading ? (
           <div data-testid="proxies-empty-state">
             <EmptyState
@@ -374,6 +377,7 @@ export function ProxiesPage() {
             showAllLoadedMessage={false}
           />
         )}
+        </div>
       </Card>
 
       <Modal
@@ -430,6 +434,6 @@ export function ProxiesPage() {
           />
         </div>
       </Modal>
-    </div>
+    </section>
   );
 }

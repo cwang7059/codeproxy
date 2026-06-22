@@ -1,5 +1,4 @@
 import { apiClient } from "@/lib/http/client";
-import { MANAGEMENT_API_PREFIX } from "@/lib/constants";
 
 export type PanelRole = "admin" | "user";
 
@@ -31,27 +30,27 @@ export interface PanelUserRecord {
 
 export const panelAuthApi = {
   login(input: { username: string; password: string }) {
-    return apiClient.post<PanelLoginResponse>(`${MANAGEMENT_API_PREFIX}/auth/login`, input, {
+    return apiClient.post<PanelLoginResponse>("/auth/login", input, {
       timeoutMs: 15_000,
     });
   },
 
   logout() {
-    return apiClient.post<{ status: string }>(`${MANAGEMENT_API_PREFIX}/auth/logout`);
+    return apiClient.post<{ status: string }>("/auth/logout");
   },
 
   me() {
-    return apiClient.get<PanelMeResponse>(`${MANAGEMENT_API_PREFIX}/auth/me`);
+    return apiClient.get<PanelMeResponse>("/auth/me");
   },
 
   changePassword(input: { current_password: string; new_password: string }) {
-    return apiClient.put<{ status: string }>(`${MANAGEMENT_API_PREFIX}/auth/password`, input);
+    return apiClient.put<{ status: string }>("/auth/password", input);
   },
 };
 
 export const panelUsersApi = {
   list() {
-    return apiClient.get<{ users: PanelUserRecord[] }>(`${MANAGEMENT_API_PREFIX}/users`);
+    return apiClient.get<{ users: PanelUserRecord[] }>("/users");
   },
 
   create(input: {
@@ -60,30 +59,27 @@ export const panelUsersApi = {
     role: PanelRole;
     api_key_ids?: string[];
   }) {
-    return apiClient.post<PanelUserRecord>(`${MANAGEMENT_API_PREFIX}/users`, input);
+    return apiClient.post<PanelUserRecord>("/users", input);
   },
 
   update(id: string, input: { role: PanelRole; disabled: boolean }) {
-    return apiClient.put<PanelUserRecord>(`${MANAGEMENT_API_PREFIX}/users/${encodeURIComponent(id)}`, input);
+    return apiClient.put<PanelUserRecord>(`/users/${encodeURIComponent(id)}`, input);
   },
 
   remove(id: string) {
-    return apiClient.delete<{ status: string }>(
-      `${MANAGEMENT_API_PREFIX}/users/${encodeURIComponent(id)}`,
-    );
+    return apiClient.delete<{ status: string }>(`/users/${encodeURIComponent(id)}`);
   },
 
   resetPassword(id: string, password: string) {
     return apiClient.post<{ status: string }>(
-      `${MANAGEMENT_API_PREFIX}/users/${encodeURIComponent(id)}/reset-password`,
+      `/users/${encodeURIComponent(id)}/reset-password`,
       { password },
     );
   },
 
   setApiKeys(id: string, api_key_ids: string[]) {
-    return apiClient.put<PanelUserRecord>(
-      `${MANAGEMENT_API_PREFIX}/users/${encodeURIComponent(id)}/api-keys`,
-      { api_key_ids },
-    );
+    return apiClient.put<PanelUserRecord>(`/users/${encodeURIComponent(id)}/api-keys`, {
+      api_key_ids,
+    });
   },
 };

@@ -9,9 +9,11 @@ const readModule = (path: string) => readFileSync(resolve(root, path), "utf8");
 describe("shared primitive usage", () => {
   test("models page reuses shared cards and text inputs", () => {
     const source = readModule("modules/models/ModelsPage.tsx");
+    const filterToolbarSource = readModule("modules/models/components/ModelsFilterToolbar.tsx");
 
-    expect(source).toContain('from "@/modules/ui/Card"');
-    expect(source).toContain('from "@/modules/ui/Input"');
+    expect(source).toContain("page-stack");
+    expect(source).toContain("surface-card");
+    expect(filterToolbarSource).toContain('from "@/modules/ui/Input"');
     expect(source).not.toContain("<input");
     expect(source).not.toContain("rounded-2xl border border-slate-200 bg-white p-4 shadow-sm");
     expect(source).not.toContain("flex flex-1 flex-col rounded-2xl border border-black/[0.06]");
@@ -36,16 +38,20 @@ describe("shared primitive usage", () => {
     const presentationSource = readModule(
       "modules/auth-files/hooks/useAuthFilesFilesPresentation.tsx",
     );
-    const filesTabSource = readModule("modules/auth-files/components/AuthFilesFilesTab.tsx");
+    const filtersCardSource = readModule("modules/auth-files/components/AuthFilesFiltersCard.tsx");
+    const filesContentSource = readModule("modules/auth-files/components/AuthFilesFilesContent.tsx");
 
     expect(presentationSource).toContain('from "@/modules/ui/Tabs"');
     expect(presentationSource).not.toContain('role="tablist"');
-    expect(filesTabSource).toContain('from "@/modules/ui/Card"');
-    expect(filesTabSource).toContain('from "@/modules/ui/Tabs"');
-    expect(filesTabSource).not.toContain(
+    expect(filtersCardSource).toContain('from "@/modules/ui/Card"');
+    expect(filesContentSource).toContain('from "@/modules/ui/Card"');
+    const authFilesPageSource = readModule("modules/auth-files/AuthFilesPage.tsx");
+    expect(authFilesPageSource).toContain('from "@/modules/ui/PageToolbar"');
+    expect(authFilesPageSource).toContain("surface-card");
+    expect(filtersCardSource).not.toContain(
       "rounded-2xl border border-slate-200 bg-white/70 px-3 py-3 shadow-sm",
     );
-    expect(filesTabSource).not.toContain(
+    expect(presentationSource).not.toContain(
       "inline-flex w-fit max-w-full gap-1 overflow-x-auto whitespace-nowrap rounded-2xl",
     );
   });
@@ -53,17 +59,38 @@ describe("shared primitive usage", () => {
   test("auth files channel surfaces transition naturally between themes", () => {
     const aliasSource = readModule("modules/auth-files/components/AuthFilesAliasTab.tsx");
     const excludedSource = readModule("modules/auth-files/components/AuthFilesExcludedTab.tsx");
-    const filesTabSource = readModule("modules/auth-files/components/AuthFilesFilesTab.tsx");
+    const fileCardSource = readModule("modules/auth-files/components/AuthFilesFileCard.tsx");
 
+    expect(aliasSource).toContain("surface-card");
     expect(aliasSource).toContain("transition-colors duration-200 ease-out");
+    expect(excludedSource).toContain("surface-card");
     expect(excludedSource).toContain("transition-colors duration-200 ease-out");
-    expect(filesTabSource).toContain("transition-colors duration-200 ease-out");
+    expect(fileCardSource).toContain("transition-colors duration-200 ease-out");
+  });
+
+  test("dashboard and logs pages use shared page toolbar", () => {
+    const dashboardSource = readModule("modules/dashboard/DashboardPage.tsx");
+    const logsSource = readModule("modules/logs/LogsPage.tsx");
+
+    expect(dashboardSource).toContain("page-stack");
+    expect(dashboardSource).toContain('from "@/modules/ui/PageToolbar"');
+    expect(logsSource).toContain('from "@/modules/ui/PageToolbar"');
+    expect(logsSource).toContain("surface-card");
+  });
+
+  test("config page uses shared page toolbar", () => {
+    const configSource = readModule("modules/config/ConfigPage.tsx");
+
+    expect(configSource).toContain("page-stack");
+    expect(configSource).toContain('from "@/modules/ui/PageToolbar"');
   });
 
   test("system page and api key form reuse shared card and input primitives", () => {
     const systemSource = readModule("modules/system/SystemPage.tsx");
     const formSource = readModule("modules/api-keys/components/ApiKeyFormFields.tsx");
 
+    expect(systemSource).toContain("page-stack");
+    expect(systemSource).toContain('from "@/modules/ui/PageToolbar"');
     expect(systemSource).toContain('from "@/modules/ui/Card"');
     expect(systemSource).not.toContain("rounded-2xl border border-slate-200 bg-white/70 shadow-sm");
     expect(formSource).toContain('from "@/modules/ui/Input"');

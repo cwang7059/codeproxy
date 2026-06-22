@@ -184,3 +184,29 @@ body {
     radial-gradient(circle at 28% 28%, rgba(255, 255, 255, 0.18), transparent 28%),
     radial-gradient(circle at 72% 62%, rgba(148, 163, 184, 0.16), transparent 24%);
 }
+
+@layer components {
+  .surface-card {
+    @apply relative min-w-0 rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgb(15_23_42_/_0.035)] dark:border-white/[0.06] dark:bg-neutral-950/70 dark:shadow-[0_1px_2px_rgb(0_0_0_/_0.22)];
+  }
+
+  .surface-card-interactive {
+    @apply relative min-w-0 rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgb(15_23_42_/_0.035)] transition hover:border-slate-300/80 dark:border-white/[0.06] dark:bg-neutral-950/70 dark:shadow-[0_1px_2px_rgb(0_0_0_/_0.22)] dark:hover:border-white/12;
+  }
+
+  .page-stack {
+    @apply space-y-6 overflow-x-hidden;
+  }
+
+  .section-header-wrap {
+    @apply mb-3;
+  }
+
+  .section-header {
+    @apply text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-white/50;
+  }
+
+  .section-header-desc {
+    @apply mt-1 text-xs text-slate-500 dark:text-white/45;
+  }
+}

@@ -184,13 +184,18 @@ describe("ApiKeyPermissionsPage", () => {
 
     await userEvent.type(within(dialog).getByRole("textbox", { name: "配置名称" }), "专业配置");
     await userEvent.type(within(dialog).getByRole("spinbutton", { name: "每日请求限额" }), "15000");
+
+    await userEvent.click(
+      within(dialog).getByTestId("permission-profile-section-permissions"),
+    );
+    await userEvent.click(within(dialog).getByRole("button", { name: /全部渠道分组/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /pro/i }));
+
+    await userEvent.click(within(dialog).getByTestId("permission-profile-section-advanced"));
     await userEvent.type(
       within(dialog).getByRole("textbox", { name: "系统提示词" }),
       "专业系统提示词",
     );
-
-    await userEvent.click(within(dialog).getByRole("button", { name: /全部渠道分组/i }));
-    await userEvent.click(await screen.findByRole("button", { name: /pro/i }));
 
     await userEvent.click(within(dialog).getByRole("button", { name: "保存配置" }));
 

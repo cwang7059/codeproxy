@@ -441,10 +441,9 @@ describe("RoutingConfigEditor", () => {
       />,
     );
 
-    expect(screen.getByText("异常")).toBeInTheDocument();
-    expect(screen.getByText("1 个已删除渠道")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /1 个已删除渠道/ })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /异常/ }));
+    await user.click(screen.getByRole("button", { name: /1 个已删除渠道/ }));
 
     expect(screen.getByText("该分组包含已删除渠道")).toBeInTheDocument();
     expect(screen.getAllByText("Legacy Claude").length).toBeGreaterThan(1);

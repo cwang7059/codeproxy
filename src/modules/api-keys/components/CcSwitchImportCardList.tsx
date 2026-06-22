@@ -47,7 +47,7 @@ export function CcSwitchImportCardList({
               key={config.id}
               type="button"
               onClick={() => onSelect(config)}
-              className="flex w-full items-start gap-4 rounded-2xl border border-black/[0.06] bg-white p-4 text-left shadow-[0_1px_2px_rgb(15_23_42_/_0.035)] transition hover:border-slate-200 hover:shadow-sm active:translate-y-px dark:border-white/[0.06] dark:bg-neutral-900 dark:hover:border-neutral-700"
+              className="surface-card-interactive flex w-full items-start gap-4 p-4 text-left active:translate-y-px"
             >
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200/70 bg-white shadow-xs dark:border-neutral-800 dark:bg-neutral-950">
                 <img src={iconByType[config.clientType]} alt="" className="h-5 w-5" />

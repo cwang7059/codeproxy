@@ -17,13 +17,9 @@ export const MonitorSectionHeader = ({
   title: string;
   description?: string;
 }) => (
-  <div className="mb-3">
-    <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-white/50">
-      {title}
-    </h3>
-    {description ? (
-      <p className="mt-1 text-xs text-slate-500 dark:text-white/45">{description}</p>
-    ) : null}
+  <div className="section-header-wrap">
+    <h3 className="section-header">{title}</h3>
+    {description ? <p className="section-header-desc">{description}</p> : null}
   </div>
 );
 
@@ -41,7 +37,7 @@ export const KpiCard = ({
   to?: string;
 }) => {
   const body = (
-    <article className="h-full rounded-2xl border border-black/[0.06] bg-white p-5 shadow-[0_1px_2px_rgb(15_23_42_/_0.035)] transition hover:border-slate-300/80 dark:border-white/[0.06] dark:bg-neutral-950/70 dark:shadow-[0_1px_2px_rgb(0_0_0_/_0.22)] dark:hover:border-white/12">
+    <article className="surface-card-interactive h-full p-5">
       <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-white/55">
         <Icon size={14} className="text-slate-900 dark:text-white" />
         <span>{title}</span>
@@ -127,7 +123,7 @@ export const MonitorCard = ({
   const { t } = useTranslation();
   return (
     <section
-      className="min-w-0 rounded-2xl border border-black/[0.06] bg-white p-5 shadow-[0_1px_2px_rgb(15_23_42_/_0.035)] dark:border-white/[0.06] dark:bg-neutral-950/70 dark:shadow-[0_1px_2px_rgb(0_0_0_/_0.22)]"
+      className="surface-card min-w-0 p-5"
       aria-busy={loading}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">

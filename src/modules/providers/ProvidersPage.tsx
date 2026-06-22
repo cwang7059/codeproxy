@@ -608,9 +608,9 @@ export function ProvidersPage() {
   }, [importPreview, notify, refreshAll, saveImportedItems, startTransition, t]);
 
   return (
-    <div
+    <section
       data-testid="providers-page-shell"
-      className="flex h-[calc(100dvh-112px)] min-h-0 flex-col gap-6 overflow-hidden"
+      className="page-stack flex h-[calc(100dvh-112px)] min-h-0 flex-col overflow-hidden"
     >
       <PageToolbar
         title={t("providers.config_overview")}
@@ -760,6 +760,6 @@ export function ProvidersPage() {
         onClose={() => setImportPreview(null)}
         onConfirm={() => void confirmImport()}
       />
-    </div>
+    </section>
   );
 }

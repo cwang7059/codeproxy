@@ -19,6 +19,10 @@ import {
   shouldShowAuthFileDisplayTag,
   writeAuthFilesDataCache,
   writeAuthFilesUiState,
+  readAuthFilesAdvancedFiltersExpanded,
+  writeAuthFilesAdvancedFiltersExpanded,
+  hasActiveAuthFilesAdvancedFilters,
+  AUTH_FILES_ADVANCED_FILTERS_EXPANDED_KEY,
 } from "@/modules/auth-files/helpers/authFilesPageUtils";
 import { useAuthFilesListState } from "@/modules/auth-files/hooks/useAuthFilesListState";
 import { useAuthFilesDetailEditors } from "@/modules/auth-files/hooks/useAuthFilesDetailEditors";
@@ -100,6 +104,24 @@ describe("Auth Files helper coverage", () => {
       search: "oauth",
       page: 3,
     });
+
+    writeAuthFilesAdvancedFiltersExpanded(true);
+    expect(window.localStorage.getItem(AUTH_FILES_ADVANCED_FILTERS_EXPANDED_KEY)).toBe("true");
+    expect(readAuthFilesAdvancedFiltersExpanded()).toBe(true);
+    expect(
+      hasActiveAuthFilesAdvancedFilters({
+        planFilter: "all",
+        sortMode: "name",
+        selectedModelOwner: "",
+      }),
+    ).toBe(false);
+    expect(
+      hasActiveAuthFilesAdvancedFilters({
+        planFilter: "oauth",
+        sortMode: "usage_desc",
+        selectedModelOwner: "openai",
+      }),
+    ).toBe(true);
 
     const files: AuthFileItem[] = [
       {

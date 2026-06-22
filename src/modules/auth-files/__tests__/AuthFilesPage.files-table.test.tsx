@@ -2251,10 +2251,8 @@ describe("AuthFilesPage files table", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("kimi.json")).toBeInTheDocument();
-    fireEvent.click(
-      within(screen.getByTestId("auth-files-cards")).getByRole("button", { name: "Refresh" }),
-    );
+    const cards = await screen.findByTestId("auth-files-cards");
+    fireEvent.click(within(cards).getByRole("button", { name: "Refresh" }));
 
     expect(await screen.findByText("Code: 5h")).toBeInTheDocument();
     expect(screen.getByText("Code: Weekly")).toBeInTheDocument();

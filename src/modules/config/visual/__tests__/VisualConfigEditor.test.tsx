@@ -7,6 +7,8 @@ import { DEFAULT_VISUAL_VALUES } from "@/modules/config/visual/types";
 import { useVisualConfig } from "@/modules/config/visual/useVisualConfig";
 import { ThemeProvider } from "@/modules/ui/ThemeProvider";
 
+import type { VisualConfigSectionId } from "@/modules/config/visual/visual-config-sections";
+
 function renderEditor(onChange = vi.fn()) {
   render(
     <ThemeProvider>
@@ -24,6 +26,16 @@ function renderEditor(onChange = vi.fn()) {
   return onChange;
 }
 
+async function expandSection(id: VisualConfigSectionId) {
+  const section = document.getElementById(`visual-config-section-${id}`);
+  expect(section).toBeTruthy();
+  const toggle = section!.querySelector<HTMLButtonElement>("button[aria-expanded]");
+  expect(toggle).toBeTruthy();
+  if (toggle!.getAttribute("aria-expanded") !== "true") {
+    await userEvent.click(toggle!);
+  }
+}
+
 describe("VisualConfigEditor auto update config", () => {
   beforeEach(async () => {
     await i18n.changeLanguage("en");
@@ -31,6 +43,7 @@ describe("VisualConfigEditor auto update config", () => {
 
   test("shows automatic update settings and exposes main/dev source branches", async () => {
     const onChange = renderEditor();
+    await expandSection("switches");
 
     const toggle = screen.getByRole("switch", { name: /automatic update checks/i });
     await userEvent.click(toggle);
@@ -46,6 +59,7 @@ describe("VisualConfigEditor auto update config", () => {
 
   test("exposes custom docker image repository with a risk warning", async () => {
     const onChange = renderEditor();
+    await expandSection("switches");
 
     const input = screen.getByRole("textbox", { name: /docker image repository/i });
     expect(input).toHaveValue("ghcr.io/kittors/clirelay");
@@ -95,6 +109,7 @@ describe("VisualConfigEditor auto update config", () => {
 
   test("exposes browser CORS origins as one origin per line", async () => {
     const onChange = renderEditor();
+    await expandSection("cors");
 
     const textarea = screen.getByRole("textbox", { name: /cors allowed origins/i });
     fireEvent.change(textarea, {
@@ -106,6 +121,47 @@ describe("VisualConfigEditor auto update config", () => {
     expect(onChange).toHaveBeenLastCalledWith({
       corsAllowOriginsText: "chrome-extension://abcdefghijklmnop\nhttp://localhost:5173",
     });
+  });
+
+  test("nav click focuses the selected section and collapses others", async () => {
+    renderEditor();
+
+    expect(screen.getByPlaceholderText("0.0.0.0")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /^tls$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("switch", { name: /enable tls/i })).toBeInTheDocument();
+      expect(screen.queryByPlaceholderText("0.0.0.0")).not.toBeInTheDocument();
+    });
+
+    const basicsSection = document.getElementById("visual-config-section-basics");
+    expect(basicsSection?.querySelector("button[aria-expanded]")).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+
+    const tlsSection = document.getElementById("visual-config-section-tls");
+    expect(tlsSection?.querySelector("button[aria-expanded]")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
+  test("supports section search and navigation", async () => {
+    renderEditor();
+
+    expect(screen.getByRole("navigation", { name: /sections/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^basics$/i }).length).toBeGreaterThan(0);
+
+    const search = screen.getByPlaceholderText(/search sections or config keys/i);
+    fireEvent.change(search, { target: { value: "proxy-url" } });
+    fireEvent.keyDown(search, { key: "Enter" });
+
+    const proxySection = document.getElementById("visual-config-section-proxy-retry");
+    expect(proxySection).toBeInTheDocument();
+    const toggle = proxySection!.querySelector("button[aria-expanded]");
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
   });
 
   test("loads and writes cors allow origins in config yaml", async () => {
