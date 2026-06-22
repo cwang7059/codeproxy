@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Copy, Eye, EyeOff, LoaderCircle, Lock } from "lucide-react";
 import { detectApiBaseFromLocation, normalizeApiBase } from "@/lib/connection";
-import { getDesktopBackendBase } from "@/lib/desktop";
 import { useAuth } from "@/modules/auth/AuthProvider";
 import { useLoginConnectionProbe } from "@/modules/login/useLoginConnectionProbe";
 import { Button } from "@/modules/ui/Button";
@@ -91,8 +90,7 @@ export function LoginPage() {
   } = useAuth();
   const { notify } = useToast();
 
-  const detectedAddress = useMemo(() => detectApiBaseFromLocation(), []);
-  const [currentAddress, setCurrentAddress] = useState(detectedAddress);
+  const currentAddress = useMemo(() => detectApiBaseFromLocation(), []);
   const defaultBase = useMemo(() => persistedBase || currentAddress, [currentAddress, persistedBase]);
 
   const [apiBase, setApiBase] = useState(defaultBase);
@@ -116,30 +114,6 @@ export function LoginPage() {
     managementKeyRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    let active = true;
-
-    void getDesktopBackendBase().then((desktopBase) => {
-      const normalizedDesktopBase = normalizeApiBase(desktopBase || "");
-      if (!active || !normalizedDesktopBase) {
-        return;
-      }
-
-      setCurrentAddress(normalizedDesktopBase);
-      setApiBase((previous) => {
-        const normalizedPrevious = normalizeApiBase(previous);
-        const normalizedDetected = normalizeApiBase(detectedAddress);
-        if (!normalizedPrevious || normalizedPrevious === normalizedDetected) {
-          return normalizedDesktopBase;
-        }
-        return previous;
-      });
-    });
-
-    return () => {
-      active = false;
-    };
-  }, [detectedAddress]);
 
   const handleUseCurrentAddress = useCallback(() => {
     setApiBase(currentAddress);

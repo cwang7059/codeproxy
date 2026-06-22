@@ -13,7 +13,7 @@ import {
   detectApiBaseFromLocation,
   normalizeApiBase,
 } from "@/lib/connection";
-import { getDesktopBackendBase } from "@/lib/desktop";
+import { isDesktopClient } from "@/lib/desktop";
 import { apiClient } from "@/lib/http/client";
 import { configApi } from "@/lib/http/apis";
 import type { AuthSnapshot } from "@/lib/http/types";
@@ -150,11 +150,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [serverBuildDate, setServerBuildDate] = useState<string | null>(null);
 
   const bootstrap = useCallback(async () => {
-    const desktopBackendBase = await getDesktopBackendBase();
-    const fallbackBase = desktopBackendBase || detectApiBaseFromLocation();
+    const desktopClient = isDesktopClient();
+    const fallbackBase = detectApiBaseFromLocation();
     const snapshot = await readAuthSnapshot();
 
-    const resolvedBase = snapshot?.apiBase ?? fallbackBase;
+    const resolvedBase = desktopClient ? fallbackBase : snapshot?.apiBase ?? fallbackBase;
     const resolvedKey = snapshot?.managementKey ?? "";
     const resolvedRemember = snapshot?.rememberPassword ?? false;
 
@@ -177,33 +177,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
       await configApi.getConfig();
       setIsAuthenticated(true);
     } catch {
-      const retryBase =
-        desktopBackendBase && normalizeApiBase(desktopBackendBase) !== normalizeApiBase(resolvedBase)
-          ? normalizeApiBase(desktopBackendBase)
-          : "";
-
-      if (retryBase && resolvedKey) {
-        try {
-          apiClient.setConfig({
-            apiBase: retryBase,
-            managementKey: resolvedKey,
-          });
-          await configApi.getConfig();
-          setApiBase(retryBase);
-          setIsAuthenticated(true);
-          if (resolvedRemember) {
-            await writeAuthSnapshot({
-              apiBase: retryBase,
-              managementKey: resolvedKey,
-              rememberPassword: true,
-            });
-          }
-          return;
-        } catch {
-          // Fall through and clear stale auth snapshot.
-        }
-      }
-
       setIsAuthenticated(false);
       await clearAuthSnapshot();
     } finally {
