@@ -70,6 +70,7 @@
   "build": {
     "appId": "xyz.07230805.codeproxy.admin",
     "productName": "Code Proxy Admin",
+    "icon": "electron/assets/clirelay-icon.png",
     "directories": {
       "output": "release/electron"
     },
@@ -83,6 +84,7 @@
     ],
     "asar": true,
     "win": {
+      "icon": "electron/assets/clirelay-icon.ico",
       "signAndEditExecutable": false,
       "target": [
         "nsis",
@@ -91,12 +93,14 @@
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "mac": {
+      "icon": "electron/assets/clirelay-icon.png",
       "target": [
         "dmg"
       ],
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "linux": {
+      "icon": "electron/assets/clirelay-icon.png",
       "target": [
         "AppImage"
       ],

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, shell } = require("electron");
 const fs = require("node:fs");
 const http = require("node:http");
 const https = require("node:https");
@@ -29,6 +29,9 @@ const HTTP_HOP_BY_HOP_HEADERS = [
 let localServer = null;
 let localServerOrigin = null;
 let mainWindow = null;
+let tray = null;
+let isQuitting = false;
+let trayHintShown = false;
 
 const mimeTypes = new Map([
   [".css", "text/css; charset=utf-8"],
@@ -42,6 +45,123 @@ const mimeTypes = new Map([
   [".woff", "font/woff"],
   [".woff2", "font/woff2"],
 ]);
+
+function getTrayIconPath() {
+  return path.join(__dirname, "assets", "clirelay-icon.ico");
+}
+
+function getWindowIconPath() {
+  return path.join(__dirname, "assets", "clirelay-icon.png");
+}
+
+function isWindowVisible() {
+  return Boolean(mainWindow && mainWindow.isVisible() && !mainWindow.isMinimized());
+}
+
+function refreshTrayMenu() {
+  if (!tray) {
+    return;
+  }
+
+  const visible = isWindowVisible();
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      {
+        label: visible ? "隐藏窗口" : "显示窗口",
+        click: () => {
+          if (visible) {
+            hideMainWindowToTray();
+            return;
+          }
+          showMainWindowFromTray();
+        },
+      },
+      { type: "separator" },
+      {
+        label: "退出",
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        },
+      },
+    ]),
+  );
+}
+
+function showTrayHint() {
+  if (trayHintShown || !tray) {
+    return;
+  }
+
+  trayHintShown = true;
+  if (process.platform === "win32" && typeof tray.displayBalloon === "function") {
+    tray.displayBalloon({
+      title: "代理控制台",
+      content: "客户端已隐藏到托盘，点击托盘图标可重新打开。",
+      iconType: "info",
+    });
+  }
+}
+
+function hideMainWindowToTray() {
+  if (!mainWindow) {
+    return;
+  }
+
+  mainWindow.hide();
+  mainWindow.setSkipTaskbar(true);
+  refreshTrayMenu();
+  showTrayHint();
+}
+
+function showMainWindowFromTray() {
+  if (!mainWindow) {
+    return;
+  }
+
+  mainWindow.setSkipTaskbar(false);
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+  mainWindow.show();
+  mainWindow.focus();
+  refreshTrayMenu();
+}
+
+function createTray() {
+  if (tray) {
+    refreshTrayMenu();
+    return;
+  }
+
+  const trayIcon = nativeImage.createFromPath(getTrayIconPath());
+  tray = new Tray(trayIcon);
+  tray.setToolTip("代理控制台");
+  tray.on("click", () => {
+    if (isWindowVisible()) {
+      hideMainWindowToTray();
+      return;
+    }
+    showMainWindowFromTray();
+  });
+  tray.on("double-click", () => {
+    showMainWindowFromTray();
+  });
+  refreshTrayMenu();
+}
+
+function releaseDesktopResources() {
+  if (tray) {
+    tray.destroy();
+    tray = null;
+  }
+
+  if (localServer) {
+    localServer.close();
+    localServer = null;
+    localServerOrigin = null;
+  }
+}
 
 function getBackendBase() {
   return (process.env.CODE_PROXY_API_BASE || DEFAULT_BACKEND_BASE).replace(/\/+$/, "");
@@ -370,6 +490,7 @@ async function createMainWindow() {
     backgroundColor: "#f4f4f5",
     show: false,
     autoHideMenuBar: true,
+    icon: getWindowIconPath(),
     frame: !frameless,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
@@ -395,9 +516,12 @@ async function createMainWindow() {
   }
 
   mainWindow = new BrowserWindow(windowOptions);
+  refreshTrayMenu();
 
   mainWindow.once("ready-to-show", () => {
     mainWindow?.show();
+    mainWindow?.setSkipTaskbar(false);
+    refreshTrayMenu();
   });
 
   const notifyMaximizeChanged = () => {
@@ -410,6 +534,29 @@ async function createMainWindow() {
 
   mainWindow.on("maximize", notifyMaximizeChanged);
   mainWindow.on("unmaximize", notifyMaximizeChanged);
+  mainWindow.on("show", refreshTrayMenu);
+  mainWindow.on("hide", refreshTrayMenu);
+  mainWindow.on("restore", refreshTrayMenu);
+  mainWindow.on("minimize", (event) => {
+    if (isQuitting) {
+      return;
+    }
+
+    event.preventDefault();
+    hideMainWindowToTray();
+  });
+  mainWindow.on("close", (event) => {
+    if (isQuitting) {
+      return;
+    }
+
+    event.preventDefault();
+    hideMainWindowToTray();
+  });
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+    refreshTrayMenu();
+  });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (isInternalUrl(url)) {
@@ -441,16 +588,14 @@ if (!gotLock) {
       return;
     }
 
-    if (mainWindow.isMinimized()) {
-      mainWindow.restore();
-    }
-    mainWindow.focus();
+    showMainWindowFromTray();
   });
 
   app.whenReady().then(async () => {
+    app.setAppUserModelId("代理控制台");
     ipcMain.handle("desktop:get-backend-base", () => getBackendBase());
     ipcMain.handle("desktop:window-minimize", () => {
-      mainWindow?.minimize();
+      hideMainWindowToTray();
     });
     ipcMain.handle("desktop:window-toggle-maximize", () => {
       if (!mainWindow) {
@@ -466,12 +611,18 @@ if (!gotLock) {
       return mainWindow.isMaximized();
     });
     ipcMain.handle("desktop:window-close", () => {
-      mainWindow?.close();
+      hideMainWindowToTray();
     });
     ipcMain.handle("desktop:window-is-maximized", () => mainWindow?.isMaximized() ?? false);
+    createTray();
     await createMainWindow();
 
     app.on("activate", async () => {
+      if (mainWindow) {
+        showMainWindowFromTray();
+        return;
+      }
+
       if (BrowserWindow.getAllWindows().length === 0) {
         await createMainWindow();
       }
@@ -479,14 +630,17 @@ if (!gotLock) {
   });
 }
 
-app.on("window-all-closed", () => {
-  if (localServer) {
-    localServer.close();
-    localServer = null;
-    localServerOrigin = null;
-  }
+app.on("before-quit", () => {
+  isQuitting = true;
+});
 
+app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
+    releaseDesktopResources();
     app.quit();
   }
+});
+
+app.on("quit", () => {
+  releaseDesktopResources();
 });
