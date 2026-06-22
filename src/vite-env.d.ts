@@ -32,6 +32,19 @@ declare global {
       node: string;
     };
     getBackendBase: () => Promise<string>;
+    readAuthSnapshot?: () => Promise<{
+      apiBase?: string;
+      managementKey?: string;
+      rememberPassword?: boolean;
+      expiresAt?: number;
+    } | null>;
+    writeAuthSnapshot?: (snapshot: {
+      apiBase: string;
+      managementKey: string;
+      rememberPassword: boolean;
+      expiresAt: number;
+    }) => Promise<void>;
+    clearAuthSnapshot?: () => Promise<void>;
     minimizeWindow?: () => Promise<void>;
     toggleWindowMaximize?: () => Promise<boolean>;
     closeWindow?: () => Promise<void>;

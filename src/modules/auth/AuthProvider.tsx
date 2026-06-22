@@ -13,6 +13,7 @@ import {
   detectApiBaseFromLocation,
   normalizeApiBase,
 } from "@/lib/connection";
+import { getDesktopBackendBase } from "@/lib/desktop";
 import { apiClient } from "@/lib/http/client";
 import { configApi } from "@/lib/http/apis";
 import type { AuthSnapshot } from "@/lib/http/types";
@@ -50,7 +51,16 @@ interface PersistedAuthSnapshot extends AuthSnapshot {
   expiresAt: number;
 }
 
-const readAuthSnapshot = (): AuthSnapshot | null => {
+function isDesktopAuthStorageAvailable() {
+  return Boolean(
+    window.codeProxyDesktop?.isDesktop &&
+      window.codeProxyDesktop?.readAuthSnapshot &&
+      window.codeProxyDesktop?.writeAuthSnapshot &&
+      window.codeProxyDesktop?.clearAuthSnapshot,
+  );
+}
+
+const readAuthSnapshotFromLocalStorage = (): PersistedAuthSnapshot | null => {
   try {
     const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) {
@@ -64,25 +74,69 @@ const readAuthSnapshot = (): AuthSnapshot | null => {
     if (!parsed.apiBase || !parsed.managementKey) {
       return null;
     }
-    return {
-      apiBase: normalizeApiBase(parsed.apiBase),
-      managementKey: parsed.managementKey,
-      rememberPassword: Boolean(parsed.rememberPassword),
-    };
+    return parsed as PersistedAuthSnapshot;
   } catch {
     return null;
   }
 };
 
-const writeAuthSnapshot = (snapshot: AuthSnapshot): void => {
+function normalizePersistedAuthSnapshot(
+  snapshot: Partial<PersistedAuthSnapshot> | null | undefined,
+): AuthSnapshot | null {
+  if (!snapshot) {
+    return null;
+  }
+  if (typeof snapshot.expiresAt !== "number" || snapshot.expiresAt <= Date.now()) {
+    return null;
+  }
+  if (!snapshot.apiBase || !snapshot.managementKey) {
+    return null;
+  }
+
+  return {
+    apiBase: normalizeApiBase(snapshot.apiBase),
+    managementKey: snapshot.managementKey,
+    rememberPassword: Boolean(snapshot.rememberPassword),
+  };
+}
+
+const readAuthSnapshot = async (): Promise<AuthSnapshot | null> => {
+  if (isDesktopAuthStorageAvailable()) {
+    try {
+      const snapshot = await window.codeProxyDesktop?.readAuthSnapshot?.();
+      const normalized = normalizePersistedAuthSnapshot(snapshot);
+      if (!normalized && snapshot) {
+        await window.codeProxyDesktop?.clearAuthSnapshot?.();
+      }
+      return normalized;
+    } catch {
+      return null;
+    }
+  }
+
+  return normalizePersistedAuthSnapshot(readAuthSnapshotFromLocalStorage());
+};
+
+const writeAuthSnapshot = async (snapshot: AuthSnapshot): Promise<void> => {
   const payload: PersistedAuthSnapshot = {
     ...snapshot,
     expiresAt: Date.now() + AUTH_PERSIST_TTL_MS,
   };
+
+  if (isDesktopAuthStorageAvailable()) {
+    await window.codeProxyDesktop?.writeAuthSnapshot?.(payload);
+    return;
+  }
+
   window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload));
 };
 
-const clearAuthSnapshot = (): void => {
+const clearAuthSnapshot = async (): Promise<void> => {
+  if (isDesktopAuthStorageAvailable()) {
+    await window.codeProxyDesktop?.clearAuthSnapshot?.();
+    return;
+  }
+
   window.localStorage.removeItem(AUTH_STORAGE_KEY);
 };
 
@@ -96,8 +150,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [serverBuildDate, setServerBuildDate] = useState<string | null>(null);
 
   const bootstrap = useCallback(async () => {
-    const fallbackBase = detectApiBaseFromLocation();
-    const snapshot = readAuthSnapshot();
+    const desktopBackendBase = await getDesktopBackendBase();
+    const fallbackBase = desktopBackendBase || detectApiBaseFromLocation();
+    const snapshot = await readAuthSnapshot();
 
     const resolvedBase = snapshot?.apiBase ?? fallbackBase;
     const resolvedKey = snapshot?.managementKey ?? "";
@@ -122,8 +177,35 @@ export function AuthProvider({ children }: PropsWithChildren) {
       await configApi.getConfig();
       setIsAuthenticated(true);
     } catch {
+      const retryBase =
+        desktopBackendBase && normalizeApiBase(desktopBackendBase) !== normalizeApiBase(resolvedBase)
+          ? normalizeApiBase(desktopBackendBase)
+          : "";
+
+      if (retryBase && resolvedKey) {
+        try {
+          apiClient.setConfig({
+            apiBase: retryBase,
+            managementKey: resolvedKey,
+          });
+          await configApi.getConfig();
+          setApiBase(retryBase);
+          setIsAuthenticated(true);
+          if (resolvedRemember) {
+            await writeAuthSnapshot({
+              apiBase: retryBase,
+              managementKey: resolvedKey,
+              rememberPassword: true,
+            });
+          }
+          return;
+        } catch {
+          // Fall through and clear stale auth snapshot.
+        }
+      }
+
       setIsAuthenticated(false);
-      clearAuthSnapshot();
+      await clearAuthSnapshot();
     } finally {
       setIsRestoring(false);
     }
@@ -136,7 +218,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     const handleUnauthorized = () => {
       setIsAuthenticated(false);
-      clearAuthSnapshot();
+      void clearAuthSnapshot();
     };
 
     const handleVersion = (event: Event) => {
@@ -175,13 +257,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setIsAuthenticated(true);
 
       if (input.rememberPassword) {
-        writeAuthSnapshot({
+        await writeAuthSnapshot({
           apiBase: normalizedBase,
           managementKey: trimmedKey,
           rememberPassword: true,
         });
       } else {
-        clearAuthSnapshot();
+        await clearAuthSnapshot();
       }
     },
     [],
@@ -189,9 +271,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const logout = useCallback(() => {
     setIsAuthenticated(false);
+    apiClient.setConfig({
+      apiBase,
+      managementKey: "",
+    });
+
+    if (rememberPassword && managementKey.trim()) {
+      setManagementKey(managementKey);
+      return;
+    }
+
     setManagementKey("");
-    clearAuthSnapshot();
-  }, []);
+    void clearAuthSnapshot();
+  }, [apiBase, managementKey, rememberPassword]);
 
   const replaceManagementKey = useCallback(
     (nextManagementKey: string) => {
@@ -203,13 +295,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
       });
 
       if (rememberPassword && trimmedKey) {
-        writeAuthSnapshot({
+        void writeAuthSnapshot({
           apiBase,
           managementKey: trimmedKey,
           rememberPassword: true,
         });
       } else {
-        clearAuthSnapshot();
+        void clearAuthSnapshot();
       }
     },
     [apiBase, rememberPassword],

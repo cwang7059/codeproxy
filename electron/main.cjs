@@ -12,6 +12,7 @@ const DEFAULT_WINDOW_WIDTH = 1080;
 const DEFAULT_WINDOW_HEIGHT = 700;
 const MIN_WINDOW_WIDTH = 1024;
 const MIN_WINDOW_HEIGHT = 640;
+const AUTH_SNAPSHOT_FILE = "auth-snapshot.json";
 const API_PREFIXES = ["/v0", "/v1", "/v1beta"];
 const MANAGE_PREFIX = "/manage";
 const HTTP_HOP_BY_HOP_HEADERS = [
@@ -165,6 +166,38 @@ function releaseDesktopResources() {
 
 function getBackendBase() {
   return (process.env.CODE_PROXY_API_BASE || DEFAULT_BACKEND_BASE).replace(/\/+$/, "");
+}
+
+function getAuthSnapshotPath() {
+  return path.join(app.getPath("userData"), AUTH_SNAPSHOT_FILE);
+}
+
+async function readDesktopAuthSnapshot() {
+  try {
+    const raw = await fs.promises.readFile(getAuthSnapshotPath(), "utf8");
+    return JSON.parse(raw);
+  } catch (error) {
+    if (error && typeof error === "object" && error.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function writeDesktopAuthSnapshot(snapshot) {
+  const snapshotPath = getAuthSnapshotPath();
+  await fs.promises.mkdir(path.dirname(snapshotPath), { recursive: true });
+  await fs.promises.writeFile(snapshotPath, JSON.stringify(snapshot, null, 2), "utf8");
+}
+
+async function clearDesktopAuthSnapshot() {
+  try {
+    await fs.promises.unlink(getAuthSnapshotPath());
+  } catch (error) {
+    if (!error || typeof error !== "object" || error.code !== "ENOENT") {
+      throw error;
+    }
+  }
 }
 
 function getConfiguredRendererUrl() {
@@ -594,6 +627,13 @@ if (!gotLock) {
   app.whenReady().then(async () => {
     app.setAppUserModelId("代理控制台");
     ipcMain.handle("desktop:get-backend-base", () => getBackendBase());
+    ipcMain.handle("desktop:auth-snapshot-read", async () => readDesktopAuthSnapshot());
+    ipcMain.handle("desktop:auth-snapshot-write", async (_event, snapshot) => {
+      await writeDesktopAuthSnapshot(snapshot);
+    });
+    ipcMain.handle("desktop:auth-snapshot-clear", async () => {
+      await clearDesktopAuthSnapshot();
+    });
     ipcMain.handle("desktop:window-minimize", () => {
       hideMainWindowToTray();
     });
