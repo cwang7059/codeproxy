@@ -3403,6 +3403,7 @@
   "models_page": {
     "title": "模型配置管理",
     "description": "维护由后端数据库持久化的模型 ID、描述、状态与计价规则。",
+    "description_user": "查看可用模型列表与定价信息，不可新增或修改。",
     "section_overview": "数据概览",
     "section_filters": "筛选条件",
     "section_filters_desc": "按模型 ID、归属或描述搜索，并按定价状态筛选。",

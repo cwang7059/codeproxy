@@ -14,6 +14,7 @@ export type ModelOwnerSidebarProps = {
   ownerSearchFilter: string;
   onOwnerFilterChange: (value: string) => void;
   onOwnerSearchFilterChange: (value: string) => void;
+  readOnly?: boolean;
   onAddOwner: () => void;
   onEditOwner: (owner: ModelOwnerPreset) => void;
   onDeleteOwner: (owner: ModelOwnerPreset) => void;
@@ -29,6 +30,7 @@ export function ModelOwnerSidebar({
   ownerSearchFilter,
   onOwnerFilterChange,
   onOwnerSearchFilterChange,
+  readOnly = false,
   onAddOwner,
   onEditOwner,
   onDeleteOwner,
@@ -46,16 +48,18 @@ export function ModelOwnerSidebar({
         className="flex h-full min-h-0 flex-col overflow-hidden"
         bodyClassName={compact ? "flex max-h-80 min-h-0 flex-1 flex-col gap-2" : "flex min-h-0 flex-1 flex-col gap-2"}
         actions={
-          <Button
-            variant="secondary"
-            size="xs"
-            onClick={onAddOwner}
-            aria-label={t("models_page.add_owner")}
-            title={t("models_page.add_owner")}
-          >
-            <Plus size={13} />
-            {t("models_page.add_owner")}
-          </Button>
+          readOnly ? undefined : (
+            <Button
+              variant="secondary"
+              size="xs"
+              onClick={onAddOwner}
+              aria-label={t("models_page.add_owner")}
+              title={t("models_page.add_owner")}
+            >
+              <Plus size={13} />
+              {t("models_page.add_owner")}
+            </Button>
+          )
         }
       >
         <TextInput
@@ -128,9 +132,10 @@ export function ModelOwnerSidebar({
                       {owner.value}
                     </span>
                   </button>
-                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500 transition-transform duration-200 ease-out group-focus-within/owner:-translate-x-16 group-hover/owner:-translate-x-16 motion-reduce:transition-none dark:bg-white/[0.08] dark:text-white/45">
+                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500 transition-transform duration-200 ease-out dark:bg-white/[0.08] dark:text-white/45">
                     {t("models_page.owner_model_count", { count })}
                   </span>
+                  {!readOnly ? (
                   <div className="pointer-events-none absolute right-2 top-1/2 flex -translate-y-1/2 translate-x-3 items-center gap-1 opacity-0 transition-all duration-200 ease-out group-focus-within/owner:pointer-events-auto group-focus-within/owner:translate-x-0 group-focus-within/owner:opacity-100 group-hover/owner:pointer-events-auto group-hover/owner:translate-x-0 group-hover/owner:opacity-100 motion-reduce:transition-none">
                     <Button
                       size="xs"
@@ -153,6 +158,7 @@ export function ModelOwnerSidebar({
                       <Trash2 size={13} />
                     </Button>
                   </div>
+                  ) : null}
                 </div>
               );
             })

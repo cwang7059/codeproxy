@@ -5,6 +5,8 @@ import { ConfirmModal } from "@/modules/ui/ConfirmModal";
 import { Tabs, TabsList, TabsTrigger } from "@/modules/ui/Tabs";
 import { useToast } from "@/modules/ui/ToastProvider";
 import { apiClient } from "@/lib/http/client";
+import { isPanelAdmin } from "@/lib/panel-role";
+import { useAuth } from "@/modules/auth/AuthProvider";
 import { loadConfiguredModelAvailability } from "@/modules/models/modelAvailability";
 import { ModelConfigModal } from "@/modules/models/components/ModelConfigModal";
 import { ModelOwnerPresetModal } from "@/modules/models/components/ModelOwnerPresetModal";
@@ -55,6 +57,8 @@ import type { SearchableSelectOption } from "@/modules/ui/SearchableSelect";
 export function ModelsPage() {
   const { t } = useTranslation();
   const { notify } = useToast();
+  const auth = useAuth();
+  const readOnlyModels = !isPanelAdmin(auth.state.role);
 
   const [models, setModels] = useState<ModelItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -578,7 +582,7 @@ export function ModelsPage() {
     }
   }, [loadModels, notify, t]);
 
-  const canDeleteModels = activeTab === "library";
+  const canDeleteModels = activeTab === "library" && !readOnlyModels;
   const addModelOwnedBy = activeTab === "library" ? ownerFilter : "";
 
   const filterToolbar = (
@@ -586,6 +590,7 @@ export function ModelsPage() {
       searchFilter={searchFilter}
       statusFilter={statusFilter}
       loading={loading}
+      readOnly={readOnlyModels}
       selectionToolbar={
         canDeleteModels ? (
           <ModelsSelectionToolbar
@@ -611,6 +616,7 @@ export function ModelsPage() {
       loading={loading}
       hasActiveFilters={hasActiveFilters}
       canDeleteModels={canDeleteModels}
+      readOnly={readOnlyModels}
       tableViewportHeight={tableViewportHeight}
       filteredModelIds={filteredModelIds}
       selectedModelIds={selectedModelIds}
@@ -634,7 +640,9 @@ export function ModelsPage() {
         <div className="px-5 pt-5 pb-4">
           <PageToolbar
             title={t("models_page.title")}
-            description={t("models_page.description")}
+            description={
+              readOnlyModels ? t("models_page.description_user") : t("models_page.description")
+            }
             titleAs="h1"
             actions={
               <Tabs
@@ -665,6 +673,7 @@ export function ModelsPage() {
               ownerModelCounts,
               ownerFilter,
               ownerSearchFilter,
+              readOnly: readOnlyModels,
               onOwnerFilterChange: setOwnerFilter,
               onOwnerSearchFilterChange: setOwnerSearchFilter,
               onAddOwner: () => setOwnerForm(emptyOwnerForm),
@@ -678,6 +687,7 @@ export function ModelsPage() {
               running: openRouterSyncRunning,
               error: openRouterSyncError,
               syncIntervalHours,
+              readOnly: readOnlyModels,
               onSyncIntervalHoursChange: setSyncIntervalHours,
               onSaveSettings: saveOpenRouterSyncSettings,
               onRunSync: runOpenRouterSync,

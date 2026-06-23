@@ -3017,6 +3017,7 @@
   "models_page": {
     "title": "Model Configuration Management",
     "description": "Maintain model IDs, descriptions, status, and pricing stored by the backend database.",
+    "description_user": "View available models and pricing. Create and edit actions are disabled.",
     "section_overview": "Overview",
     "section_filters": "Filters",
     "section_filters_desc": "Search by model ID, owner, or description, then filter by pricing status.",

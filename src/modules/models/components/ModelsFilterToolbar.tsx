@@ -9,6 +9,7 @@ export type ModelsFilterToolbarProps = {
   searchFilter: string;
   statusFilter: ModelStatusFilter;
   loading: boolean;
+  readOnly?: boolean;
   selectionToolbar: ReactNode;
   onSearchFilterChange: (value: string) => void;
   onStatusFilterChange: (value: ModelStatusFilter) => void;
@@ -19,6 +20,7 @@ export function ModelsFilterToolbar({
   searchFilter,
   statusFilter,
   loading,
+  readOnly = false,
   selectionToolbar,
   onSearchFilterChange,
   onStatusFilterChange,
@@ -44,17 +46,19 @@ export function ModelsFilterToolbar({
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           {selectionToolbar}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={onAddModel}
-            aria-label={t("models_page.add_model")}
-            title={t("models_page.add_model")}
-            className="gap-1.5"
-          >
-            <Plus size={14} aria-hidden="true" />
-            {t("models_page.add_model")}
-          </Button>
+          {!readOnly ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onAddModel}
+              aria-label={t("models_page.add_model")}
+              title={t("models_page.add_model")}
+              className="gap-1.5"
+            >
+              <Plus size={14} aria-hidden="true" />
+              {t("models_page.add_model")}
+            </Button>
+          ) : null}
           <Button
             variant="primary"
             size="sm"

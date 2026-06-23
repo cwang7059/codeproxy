@@ -229,7 +229,11 @@ export async function fetchModelConfigs(scope: ModelScope): Promise<ModelItem[]>
 }
 
 export async function fetchOwnerPresets(): Promise<ModelOwnerPreset[]> {
-  return normalizeOwnerPresetResponse(await apiClient.get("/model-owner-presets"));
+  try {
+    return normalizeOwnerPresetResponse(await apiClient.get("/model-owner-presets"));
+  } catch {
+    return [];
+  }
 }
 
 function availabilityItemToModel(item: ModelAvailabilityItem): ModelItem {

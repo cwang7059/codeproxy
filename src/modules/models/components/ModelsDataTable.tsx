@@ -19,6 +19,7 @@ export type ModelsDataTableProps = {
   loading: boolean;
   hasActiveFilters: boolean;
   canDeleteModels: boolean;
+  readOnly?: boolean;
   tableViewportHeight: number;
   filteredModelIds: string[];
   selectedModelIds: Set<string>;
@@ -37,6 +38,7 @@ export function ModelsDataTable({
   loading,
   hasActiveFilters,
   canDeleteModels,
+  readOnly = false,
   tableViewportHeight,
   filteredModelIds,
   selectedModelIds,
@@ -143,35 +145,39 @@ export function ModelsDataTable({
           );
         },
       },
-      {
-        key: "actions",
-        label: t("models_page.col_actions"),
-        width: "w-24",
-        render: (row) => (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={() => onEditModel(row.id)}
-              aria-label={t("models_page.edit_model_aria", { model: row.id })}
-              title={t("models_page.edit_model_aria", { model: row.id })}
-            >
-              <Edit3 size={14} />
-            </Button>
-            {canDeleteModels ? (
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={() => onDeleteModel(row)}
-                aria-label={t("models_page.delete_model_aria", { model: row.id })}
-                title={t("models_page.delete_model_aria", { model: row.id })}
-              >
-                <Trash2 size={14} />
-              </Button>
-            ) : null}
-          </div>
-        ),
-      },
+      ...(readOnly
+        ? []
+        : [
+            {
+              key: "actions",
+              label: t("models_page.col_actions"),
+              width: "w-24",
+              render: (row: ModelItem) => (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => onEditModel(row.id)}
+                    aria-label={t("models_page.edit_model_aria", { model: row.id })}
+                    title={t("models_page.edit_model_aria", { model: row.id })}
+                  >
+                    <Edit3 size={14} />
+                  </Button>
+                  {canDeleteModels ? (
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => onDeleteModel(row)}
+                      aria-label={t("models_page.delete_model_aria", { model: row.id })}
+                      title={t("models_page.delete_model_aria", { model: row.id })}
+                    >
+                      <Trash2 size={14} />
+                    </Button>
+                  ) : null}
+                </div>
+              ),
+            } satisfies VirtualTableColumn<ModelItem>,
+          ]),
     ],
     [
       allVisibleModelsSelected,
@@ -181,6 +187,7 @@ export function ModelsDataTable({
       onEditModel,
       onToggleModelSelection,
       onToggleVisibleModelSelection,
+      readOnly,
       selectedModelIds,
       someVisibleModelsSelected,
       t,
@@ -195,10 +202,12 @@ export function ModelsDataTable({
           description={t("models_page.empty_models_desc")}
           icon={<Cpu size={32} className="text-slate-400" />}
           action={
-            <Button variant="primary" size="sm" onClick={onAddModel} disabled={loading}>
-              <Plus size={14} aria-hidden="true" />
-              {t("models_page.add_model")}
-            </Button>
+            readOnly ? undefined : (
+              <Button variant="primary" size="sm" onClick={onAddModel} disabled={loading}>
+                <Plus size={14} aria-hidden="true" />
+                {t("models_page.add_model")}
+              </Button>
+            )
           }
         />
       ) : (

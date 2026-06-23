@@ -13,6 +13,7 @@ export type OpenRouterSyncSectionProps = {
   running: boolean;
   error: string | null;
   syncIntervalHours: string;
+  readOnly?: boolean;
   onSyncIntervalHoursChange: (value: string) => void;
   onSaveSettings: (enabled: boolean) => void | Promise<void>;
   onRunSync: () => void | Promise<void>;
@@ -25,6 +26,7 @@ export function OpenRouterSyncSection({
   running,
   error,
   syncIntervalHours,
+  readOnly = false,
   onSyncIntervalHoursChange,
   onSaveSettings,
   onRunSync,
@@ -82,6 +84,7 @@ export function OpenRouterSyncSection({
           ) : null}
         </div>
 
+        {!readOnly ? (
         <div className="flex flex-wrap items-end gap-3">
           <div className="w-28">
             <label
@@ -133,6 +136,7 @@ export function OpenRouterSyncSection({
             </Button>
           </div>
         </div>
+        ) : null}
       </div>
     </div>
   );
