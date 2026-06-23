@@ -233,12 +233,20 @@ experimental_bearer_token = "${token}"
 `;
 }
 
+function parseJsonUtf8(raw) {
+  return JSON.parse(raw.replace(/^\uFEFF/, "").trim());
+}
+
 async function readDesktopAuthSnapshot() {
   try {
     const raw = await fs.promises.readFile(getAuthSnapshotPath(), "utf8");
-    return JSON.parse(raw);
+    return parseJsonUtf8(raw);
   } catch (error) {
     if (error && typeof error === "object" && error.code === "ENOENT") {
+      return null;
+    }
+    if (error instanceof SyntaxError) {
+      console.warn("Ignoring invalid auth snapshot JSON:", error.message);
       return null;
     }
     throw error;
@@ -264,13 +272,17 @@ async function clearDesktopAuthSnapshot() {
 async function readDesktopSettings() {
   try {
     const raw = await fs.promises.readFile(getDesktopSettingsPath(), "utf8");
-    const parsed = JSON.parse(raw);
+    const parsed = parseJsonUtf8(raw);
     if (!parsed || typeof parsed !== "object") {
       return {};
     }
     return parsed;
   } catch (error) {
     if (error && typeof error === "object" && error.code === "ENOENT") {
+      return {};
+    }
+    if (error instanceof SyntaxError) {
+      console.warn("Ignoring invalid desktop settings JSON:", error.message);
       return {};
     }
     throw error;
