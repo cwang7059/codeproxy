@@ -22,6 +22,8 @@ export function UsersPage() {
   const [creating, setCreating] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [role, setRole] = useState<PanelRole>("user");
   const [bindingUser, setBindingUser] = useState<PanelUserRecord | null>(null);
   const [bindingKeys, setBindingKeys] = useState<string[]>([]);
@@ -81,9 +83,17 @@ export function UsersPage() {
     }
     setCreating(true);
     try {
-      await panelUsersApi.create({ username: username.trim(), password, role });
+      await panelUsersApi.create({
+        username: username.trim(),
+        password,
+        email: email.trim() || undefined,
+        display_name: displayName.trim() || undefined,
+        role,
+      });
       setUsername("");
       setPassword("");
+      setEmail("");
+      setDisplayName("");
       setRole("user");
       notify({ type: "success", message: t("users.create_success") });
       await refresh();
@@ -95,7 +105,7 @@ export function UsersPage() {
     } finally {
       setCreating(false);
     }
-  }, [notify, password, refresh, role, t, username]);
+  }, [displayName, email, notify, password, refresh, role, t, username]);
 
   const handleToggleDisabled = useCallback(
     async (user: PanelUserRecord) => {
@@ -180,7 +190,7 @@ export function UsersPage() {
       />
 
       <Card title={t("users.create_title")}>
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
           <TextInput
             value={username}
             onChange={(event) => setUsername(event.target.value)}
@@ -191,6 +201,17 @@ export function UsersPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder={t("users.password_placeholder")}
+          />
+          <TextInput
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder={t("users.email_placeholder")}
+            autoComplete="email"
+          />
+          <TextInput
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            placeholder={t("users.display_name_placeholder")}
           />
           <Select value={role} onChange={(value) => setRole(value as PanelRole)} options={roleOptions} />
           <Button onClick={() => void handleCreate()} disabled={creating}>
@@ -210,6 +231,8 @@ export function UsersPage() {
               <thead>
                 <tr className="border-b border-slate-200 text-left dark:border-neutral-800">
                   <th className="px-3 py-2">{t("users.column_username")}</th>
+                  <th className="px-3 py-2">{t("users.column_email")}</th>
+                  <th className="px-3 py-2">{t("users.column_display_name")}</th>
                   <th className="px-3 py-2">{t("users.column_role")}</th>
                   <th className="px-3 py-2">{t("users.column_api_keys")}</th>
                   <th className="px-3 py-2">{t("users.column_status")}</th>
@@ -221,6 +244,8 @@ export function UsersPage() {
                 {users.map((user) => (
                   <tr key={user.id} className="border-b border-slate-100 dark:border-neutral-900">
                     <td className="px-3 py-2 font-medium">{user.username}</td>
+                    <td className="px-3 py-2">{user.email || "-"}</td>
+                    <td className="px-3 py-2">{user.display_name || "-"}</td>
                     <td className="px-3 py-2">{user.role === "admin" ? t("users.role_admin") : t("users.role_user")}</td>
                     <td className="px-3 py-2">
                       {user.role === "admin"

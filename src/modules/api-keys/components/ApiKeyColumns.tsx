@@ -23,6 +23,7 @@ import type { VirtualTableColumn } from "@/modules/ui/VirtualTable";
 
 type CreateApiKeyColumnsOptions = {
   t: TFunction;
+  readOnly?: boolean;
   onToggleDisable: (index: number) => void;
   onViewUsage: (entry: ApiKeyEntry) => void;
   onCopy: (key: string) => void;
@@ -33,6 +34,7 @@ type CreateApiKeyColumnsOptions = {
 
 export const createApiKeyColumns = ({
   t,
+  readOnly = false,
   onToggleDisable,
   onViewUsage,
   onCopy,
@@ -46,24 +48,37 @@ export const createApiKeyColumns = ({
     width: "w-[88px] min-w-[88px]",
     headerClassName: "text-center",
     cellClassName: "text-center",
-    render: (row, idx) => (
-      <button
-        type="button"
-        onClick={() => onToggleDisable(idx)}
-        aria-label={
-          row.disabled ? t("api_keys_page.click_enable") : t("api_keys_page.click_disable")
-        }
-        data-tooltip-placement="bottom"
-        title={row.disabled ? t("api_keys_page.click_enable") : t("api_keys_page.click_disable")}
-        className={`inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
-          row.disabled
-            ? "text-slate-400 hover:bg-red-50 hover:text-red-500 dark:text-white/30 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-            : "text-emerald-500 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
-        }`}
-      >
-        <Power size={15} />
-      </button>
-    ),
+    render: (row, idx) =>
+      readOnly ? (
+        <span
+          className={`inline-flex h-7 w-7 items-center justify-center ${
+            row.disabled
+              ? "text-slate-400 dark:text-white/30"
+              : "text-emerald-500 dark:text-emerald-400"
+          }`}
+          aria-label={row.disabled ? t("api_keys_page.filter_disabled") : t("api_keys_page.filter_active")}
+          title={row.disabled ? t("api_keys_page.filter_disabled") : t("api_keys_page.filter_active")}
+        >
+          <Power size={15} />
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={() => onToggleDisable(idx)}
+          aria-label={
+            row.disabled ? t("api_keys_page.click_enable") : t("api_keys_page.click_disable")
+          }
+          data-tooltip-placement="bottom"
+          title={row.disabled ? t("api_keys_page.click_enable") : t("api_keys_page.click_disable")}
+          className={`inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
+            row.disabled
+              ? "text-slate-400 hover:bg-red-50 hover:text-red-500 dark:text-white/30 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+              : "text-emerald-500 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+          }`}
+        >
+          <Power size={15} />
+        </button>
+      ),
   },
   {
     key: "name",
@@ -349,36 +364,40 @@ export const createApiKeyColumns = ({
               <Copy size={15} />
             </button>
           </HoverTooltip>
-          <HoverTooltip content={importLabel}>
-            <button
-              type="button"
-              onClick={() => onImportToCcSwitch(row)}
-              className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-cyan-600 dark:text-white/50 dark:hover:bg-neutral-800 dark:hover:text-cyan-400"
-              aria-label={importLabel}
-            >
-              <Upload size={15} />
-            </button>
-          </HoverTooltip>
-          <HoverTooltip content={editLabel}>
-            <button
-              type="button"
-              onClick={() => onEdit(idx)}
-              className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-amber-600 dark:text-white/50 dark:hover:bg-neutral-800 dark:hover:text-amber-400"
-              aria-label={editLabel}
-            >
-              <Pencil size={15} />
-            </button>
-          </HoverTooltip>
-          <HoverTooltip content={deleteLabel}>
-            <button
-              type="button"
-              onClick={() => onDelete(idx)}
-              className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-white/50 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-              aria-label={deleteLabel}
-            >
-              <Trash2 size={15} />
-            </button>
-          </HoverTooltip>
+          {readOnly ? null : (
+            <>
+              <HoverTooltip content={importLabel}>
+                <button
+                  type="button"
+                  onClick={() => onImportToCcSwitch(row)}
+                  className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-cyan-600 dark:text-white/50 dark:hover:bg-neutral-800 dark:hover:text-cyan-400"
+                  aria-label={importLabel}
+                >
+                  <Upload size={15} />
+                </button>
+              </HoverTooltip>
+              <HoverTooltip content={editLabel}>
+                <button
+                  type="button"
+                  onClick={() => onEdit(idx)}
+                  className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-amber-600 dark:text-white/50 dark:hover:bg-neutral-800 dark:hover:text-amber-400"
+                  aria-label={editLabel}
+                >
+                  <Pencil size={15} />
+                </button>
+              </HoverTooltip>
+              <HoverTooltip content={deleteLabel}>
+                <button
+                  type="button"
+                  onClick={() => onDelete(idx)}
+                  className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-white/50 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                  aria-label={deleteLabel}
+                >
+                  <Trash2 size={15} />
+                </button>
+              </HoverTooltip>
+            </>
+          )}
         </div>
       );
     },

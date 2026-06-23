@@ -14,12 +14,16 @@ export interface PanelMeResponse {
   role: PanelRole;
   user_id?: string;
   auth_mode?: string;
+  email?: string;
+  display_name?: string;
   permissions: string[];
 }
 
 export interface PanelUserRecord {
   id: string;
   username: string;
+  email?: string;
+  display_name?: string;
   role: PanelRole;
   disabled: boolean;
   created_at: string;
@@ -28,9 +32,28 @@ export interface PanelUserRecord {
   api_key_ids?: string[];
 }
 
+export interface PanelRegisterResponse {
+  id: string;
+  username: string;
+  email: string;
+  display_name?: string;
+  role: PanelRole;
+}
+
 export const panelAuthApi = {
   login(input: { username: string; password: string }) {
     return apiClient.post<PanelLoginResponse>("/auth/login", input, {
+      timeoutMs: 45_000,
+    });
+  },
+
+  register(input: {
+    username: string;
+    password: string;
+    email: string;
+    display_name?: string;
+  }) {
+    return apiClient.post<PanelRegisterResponse>("/auth/register", input, {
       timeoutMs: 45_000,
     });
   },
@@ -56,6 +79,8 @@ export const panelUsersApi = {
   create(input: {
     username: string;
     password: string;
+    email?: string;
+    display_name?: string;
     role: PanelRole;
     api_key_ids?: string[];
   }) {

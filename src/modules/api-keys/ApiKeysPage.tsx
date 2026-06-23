@@ -12,6 +12,7 @@ import {
 } from "@/lib/http/apis/api-key-permission-profiles";
 import { ccSwitchImportConfigsApi } from "@/lib/http/apis/ccswitch-import-configs";
 import { detectApiBaseFromLocation } from "@/lib/connection";
+import { isPanelAdmin } from "@/lib/panel-role";
 import { useOptionalAuth } from "@/modules/auth/AuthProvider";
 import {
   generateApiKey,
@@ -58,8 +59,9 @@ export function ApiKeysPage() {
   const { t } = useTranslation();
   const { notify } = useToast();
   const auth = useOptionalAuth();
+  const readOnlyKeys = !isPanelAdmin(auth?.state.role);
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = resolveApiKeysPageTab(searchParams);
+  const activeTab = readOnlyKeys ? "keys" : resolveApiKeysPageTab(searchParams);
 
   const [entries, setEntries] = useState<ApiKeyEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -482,6 +484,7 @@ export function ApiKeysPage() {
     () =>
       createApiKeyColumns({
         t,
+        readOnly: readOnlyKeys,
         onToggleDisable: (index) => void handleToggleDisable(index),
         onViewUsage: handleViewUsage,
         onCopy: (key) => void handleCopy(key),
@@ -496,6 +499,7 @@ export function ApiKeysPage() {
       handleOpenCcSwitchImport,
       handleOpenEdit,
       handleOpenDelete,
+      readOnlyKeys,
       t,
     ],
   );
@@ -533,7 +537,9 @@ export function ApiKeysPage() {
             description={
               activeTab === "ccswitch-import"
                 ? t("ccswitch.settings_description")
-                : t("api_keys_page.description")
+                : readOnlyKeys
+                  ? t("api_keys_page.description_user")
+                  : t("api_keys_page.description")
             }
             titleAs="h1"
             icon={<KeyRound size={18} className="text-slate-900 dark:text-white" aria-hidden="true" />}
@@ -554,21 +560,24 @@ export function ApiKeysPage() {
                     />
                     {t("api_keys_page.refresh")}
                   </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleOpenCreate}
-                    className="gap-1.5"
-                  >
-                    <Plus size={14} aria-hidden="true" />
-                    {t("api_keys_page.create_key")}
-                  </Button>
+                  {readOnlyKeys ? null : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleOpenCreate}
+                      className="gap-1.5"
+                    >
+                      <Plus size={14} aria-hidden="true" />
+                      {t("api_keys_page.create_key")}
+                    </Button>
+                  )}
                 </div>
               ) : null
             }
           />
         </div>
 
+        {readOnlyKeys ? null : (
         <div className="border-t border-slate-100 px-5 py-3 dark:border-neutral-800/60">
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ApiKeysPageTab)}>
             <TabsList aria-label={t("api_keys_page.tab_nav")}>
@@ -580,6 +589,7 @@ export function ApiKeysPage() {
             </TabsList>
           </Tabs>
         </div>
+        )}
 
         {activeTab === "keys" ? (
           <ApiKeysKeysTab

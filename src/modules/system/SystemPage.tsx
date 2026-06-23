@@ -25,8 +25,8 @@ import {
   type DesktopCodexStatus,
 } from "@/lib/desktop";
 import { connectDesktopCodex } from "@/modules/system/codexIntegration";
-import { maskApiKey } from "@/lib/mask-api-key";
 import { isPanelAdmin } from "@/lib/panel-role";
+import { panelAuthApi } from "@/lib/http/apis/panel-auth";
 import { useAuth } from "@/modules/auth/AuthProvider";
 import { Button } from "@/modules/ui/Button";
 import { Card } from "@/modules/ui/Card";
@@ -376,6 +376,10 @@ export function SystemPage({
   const [backendSaving, setBackendSaving] = useState(false);
   const [codexStatus, setCodexStatus] = useState<DesktopCodexStatus | null>(null);
   const [codexLoading, setCodexLoading] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
   const { notify } = useToast();
 
   useEffect(() => {
@@ -510,6 +514,40 @@ export function SystemPage({
     }
   }, [notify, t]);
 
+  const handleChangePassword = useCallback(async () => {
+    if (!currentPassword.trim()) {
+      notify({ type: "error", message: t("system_page.password_current_required") });
+      return;
+    }
+    if (!newPassword.trim()) {
+      notify({ type: "error", message: t("system_page.password_new_required") });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      notify({ type: "error", message: t("system_page.password_mismatch") });
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      await panelAuthApi.changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      notify({ type: "success", message: t("system_page.password_changed") });
+    } catch (error) {
+      notify({
+        type: "error",
+        message: error instanceof Error ? error.message : t("system_page.password_change_failed"),
+      });
+    } finally {
+      setPasswordSaving(false);
+    }
+  }, [confirmPassword, currentPassword, newPassword, notify, t]);
+
   return (
     <section className="page-stack min-w-0 overflow-x-hidden">
       <PageToolbar
@@ -608,36 +646,36 @@ export function SystemPage({
                 {t("system_page.codex_integration_title")}
               </h3>
               <p className="text-sm text-slate-500 dark:text-white/55">
-                {t("system_page.codex_integration_desc")}
+                {adminView
+                  ? t("system_page.codex_integration_desc")
+                  : t("system_page.codex_integration_desc_user")}
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <InfoCard
-                icon={FileKey}
-                label={t("system_page.codex_config_path")}
-                value={codexStatus?.path || "--"}
-                mono
-                copyable
-              />
-              <InfoCard
-                icon={Link2}
-                label={t("system_page.codex_target_server")}
-                value={auth.state.apiBase || "--"}
-                mono
-                copyable
-              />
-              <InfoCard
-                icon={KeyRound}
-                label={adminView ? t("system_page.codex_dev_key") : t("system_page.codex_api_key")}
-                value={
-                  adminView
-                    ? codexStatus?.localDevKey || "--"
-                    : maskApiKey(codexStatus?.localDevKey || "")
-                }
-                mono
-                copyable={adminView}
-              />
-            </div>
+            {adminView ? (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <InfoCard
+                  icon={FileKey}
+                  label={t("system_page.codex_config_path")}
+                  value={codexStatus?.path || "--"}
+                  mono
+                  copyable
+                />
+                <InfoCard
+                  icon={Link2}
+                  label={t("system_page.codex_target_server")}
+                  value={auth.state.apiBase || "--"}
+                  mono
+                  copyable
+                />
+                <InfoCard
+                  icon={KeyRound}
+                  label={t("system_page.codex_dev_key")}
+                  value={codexStatus?.localDevKey || "--"}
+                  mono
+                  copyable
+                />
+              </div>
+            ) : null}
             <div className="flex flex-wrap items-center gap-3">
               <span
                 className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
@@ -663,14 +701,69 @@ export function SystemPage({
                 )}
                 {t("system_page.codex_connect_button")}
               </Button>
+              {adminView ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void handleRestoreCodex()}
+                  disabled={codexLoading || !codexStatus?.managed}
+                >
+                  <RotateCcw size={13} />
+                  {t("system_page.codex_restore_button")}
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </Card>
+      ) : null}
+
+      {!adminView ? (
+        <Card>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                {t("system_page.password_title")}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-white/55">
+                {t("system_page.password_desc")}
+              </p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <TextInput
+                type="password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                placeholder={t("system_page.password_current_placeholder")}
+                autoComplete="current-password"
+              />
+              <TextInput
+                type="password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                placeholder={t("system_page.password_new_placeholder")}
+                autoComplete="new-password"
+              />
+              <TextInput
+                type="password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                placeholder={t("system_page.password_confirm_placeholder")}
+                autoComplete="new-password"
+              />
+            </div>
+            <div>
               <Button
-                variant="secondary"
+                variant="primary"
                 size="sm"
-                onClick={() => void handleRestoreCodex()}
-                disabled={codexLoading || !codexStatus?.managed}
+                onClick={() => void handleChangePassword()}
+                disabled={passwordSaving}
               >
-                <RotateCcw size={13} />
-                {t("system_page.codex_restore_button")}
+                {passwordSaving ? (
+                  <RefreshCw size={13} className="animate-spin" />
+                ) : (
+                  <KeyRound size={13} />
+                )}
+                {t("system_page.password_save")}
               </Button>
             </div>
           </div>

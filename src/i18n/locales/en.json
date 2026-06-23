@@ -141,7 +141,24 @@
     "connection_checking": "Checking",
     "connection_reachable": "Reachable",
     "connection_unreachable": "Unreachable",
-    "connection_invalid": "Invalid address"
+    "connection_invalid": "Invalid address",
+    "register_title": "Create Account",
+    "register_subtitle": "Sign up as a regular user. You can log in immediately; an admin must assign API keys.",
+    "register_button": "Sign Up",
+    "registering": "Signing up...",
+    "register_success": "Account created. Signing in...",
+    "register_failed": "Registration failed",
+    "switch_to_register": "No account? Sign up",
+    "switch_to_login": "Already have an account? Sign in",
+    "email_label": "Email",
+    "email_placeholder": "Enter email address",
+    "display_name_label": "Display name",
+    "display_name_placeholder": "Optional, helps admins identify you",
+    "confirm_password_label": "Confirm password",
+    "confirm_password_placeholder": "Re-enter password",
+    "error_email_required": "Email is required",
+    "error_email_invalid": "Invalid email address",
+    "error_password_mismatch": "Passwords do not match"
   },
   "header": {
     "check_connection": "Check Connection",
@@ -1955,7 +1972,11 @@
     "bind_search": "Search keys...",
     "bind_select_filtered": "Select filtered",
     "bind_deselect_filtered": "Deselect filtered",
-    "bind_no_results": "No API keys available"
+    "bind_no_results": "No API keys available",
+    "email_placeholder": "Email (optional)",
+    "display_name_placeholder": "Display name (optional)",
+    "column_email": "Email",
+    "column_display_name": "Display name"
   },
   "proxies": {
     "title": "Proxy Management",
@@ -2613,6 +2634,7 @@
   "api_keys_page": {
     "title": "API Keys Management",
     "description": "Create and manage API Keys, then bind each key to a reusable permission config.",
+    "description_user": "View API keys assigned by your administrator. You can copy keys and check usage.",
     "tab_nav": "API Keys sections",
     "tab_keys": "API Keys",
     "section_overview": "Overview",
@@ -3660,6 +3682,7 @@
     "desktop_server_save_failed": "Failed to save the desktop server address",
     "codex_integration_title": "Codex Integration",
     "codex_integration_desc": "Apply the current remote server to the local Codex desktop configuration, create or sync local-dev-key, and restore the previous setup when needed.",
+    "codex_integration_desc_user": "Connect Codex on this device using your assigned API key. Server addresses and other sensitive details are hidden.",
     "codex_config_path": "Codex Config Path",
     "codex_target_server": "Target Server",
     "codex_dev_key": "Local Dev Key",
@@ -3672,7 +3695,18 @@
     "codex_connect_failed": "Failed to connect Codex",
     "codex_no_api_key": "No API key is bound to your account. Contact an administrator.",
     "codex_restore_success": "Codex configuration has been restored",
-    "codex_restore_failed": "Failed to restore the Codex configuration"
+    "codex_restore_failed": "Failed to restore the Codex configuration",
+    "password_title": "Change Password",
+    "password_desc": "Update your panel login password.",
+    "password_current_placeholder": "Current password",
+    "password_new_placeholder": "New password",
+    "password_confirm_placeholder": "Confirm new password",
+    "password_save": "Save new password",
+    "password_current_required": "Enter your current password",
+    "password_new_required": "Enter a new password",
+    "password_mismatch": "New passwords do not match",
+    "password_changed": "Password updated",
+    "password_change_failed": "Failed to change password"
   },
   "codex_connect_prompt": {
     "title": "Connect local Codex?",

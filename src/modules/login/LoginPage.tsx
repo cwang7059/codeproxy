@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Copy, Eye, EyeOff, LoaderCircle, Lock } from "lucide-react";
 import { DEFAULT_API_BASE, HIDE_API_BASE, MANAGEMENT_API_PREFIX } from "@/lib/constants";
-import { detectApiBaseFromLocation, normalizeApiBase } from "@/lib/connection";
+import { detectApiBaseFromLocation, normalizeApiBase, resolveClientManagementApiBase } from "@/lib/connection";
+import { apiClient } from "@/lib/http/client";
+import { panelAuthApi } from "@/lib/http/apis/panel-auth";
 import { useAuth } from "@/modules/auth/AuthProvider";
 import { useLoginConnectionProbe } from "@/modules/login/useLoginConnectionProbe";
 import { Button } from "@/modules/ui/Button";
@@ -29,8 +31,14 @@ type FieldErrors = {
   apiBase?: string;
   username?: string;
   password?: string;
+  email?: string;
+  confirmPassword?: string;
   form?: string;
 };
+
+type AuthMode = "login" | "register";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const INPUT_SURFACE = "rounded-xl";
 const INPUT_ERROR_RING =
@@ -121,8 +129,12 @@ export function LoginPage() {
   const defaultBase = useMemo(() => persistedBase || currentAddress, [currentAddress, persistedBase]);
 
   const [apiBase, setApiBase] = useState(defaultBase);
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [username, setUsername] = useState(persistedUsername || "");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [rememberPassword, setRememberPassword] = useState(persistedRemember);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -217,20 +229,71 @@ export function LoginPage() {
         return;
       }
 
+      const targetBase = hideApiBase ? currentAddress : apiBase;
+      const normalizedBase = normalizeApiBase(targetBase);
+      if (!normalizedBase) {
+        const message = t("login.error_required");
+        setFieldErrors({ apiBase: message, form: message });
+        notify({ type: "error", message });
+        return;
+      }
+
+      if (authMode === "register") {
+        if (!email.trim()) {
+          const message = t("login.error_email_required");
+          setFieldErrors({ email: message, form: message });
+          notify({ type: "error", message });
+          return;
+        }
+        if (!EMAIL_PATTERN.test(email.trim())) {
+          const message = t("login.error_email_invalid");
+          setFieldErrors({ email: message, form: message });
+          notify({ type: "error", message });
+          return;
+        }
+        if (password !== confirmPassword) {
+          const message = t("login.error_password_mismatch");
+          setFieldErrors({ confirmPassword: message, form: message });
+          notify({ type: "error", message });
+          return;
+        }
+      }
+
       setLoading(true);
       try {
+        if (authMode === "register") {
+          apiClient.setConfig({
+            apiBase: resolveClientManagementApiBase(normalizedBase, desktopClient),
+            authToken: "",
+          });
+          await panelAuthApi.register({
+            username: username.trim(),
+            password,
+            email: email.trim(),
+            display_name: displayName.trim() || undefined,
+          });
+        }
+
         await login({
-          apiBase: hideApiBase ? currentAddress : apiBase,
+          apiBase: targetBase,
           username,
           password,
           rememberPassword,
         });
-        notify({ type: "success", message: t("login.login_success") });
+        notify({
+          type: "success",
+          message:
+            authMode === "register" ? t("login.register_success") : t("login.login_success"),
+        });
         const redirect = (location.state as RedirectState | null)?.from?.pathname ?? "/monitor";
         navigate(redirect, { replace: true, viewTransition: true });
       } catch (submitError) {
         const message =
-          submitError instanceof Error ? submitError.message : t("login.error_invalid");
+          submitError instanceof Error
+            ? submitError.message
+            : authMode === "register"
+              ? t("login.register_failed")
+              : t("login.error_invalid");
         const nextErrors = mapSubmitError(message);
         setFieldErrors(nextErrors);
         notify({ type: "error", message });
@@ -240,7 +303,11 @@ export function LoginPage() {
     },
     [
       apiBase,
+      authMode,
+      confirmPassword,
       currentAddress,
+      displayName,
+      email,
       hideApiBase,
       login,
       location.state,
@@ -253,6 +320,16 @@ export function LoginPage() {
       t,
     ],
   );
+
+  const switchAuthMode = useCallback((mode: AuthMode) => {
+    setAuthMode(mode);
+    setFieldErrors({});
+    setConfirmPassword("");
+    if (mode === "login") {
+      setEmail("");
+      setDisplayName("");
+    }
+  }, []);
 
   if (isRestoring) {
     return null;
@@ -312,10 +389,12 @@ export function LoginPage() {
                 <div className="space-y-5">
                   <div className="space-y-1">
                     <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
-                      {t("login.sign_in")}
+                      {authMode === "register" ? t("login.register_title") : t("login.sign_in")}
                     </h2>
                     <p className="text-sm text-slate-500 dark:text-white/55">
-                      {t("login.continue_with_account")}
+                      {authMode === "register"
+                        ? t("login.register_subtitle")
+                        : t("login.continue_with_account")}
                     </p>
                   </div>
 
@@ -403,6 +482,50 @@ export function LoginPage() {
                       ) : null}
                     </label>
 
+                    {authMode === "register" ? (
+                      <>
+                        <label className="block space-y-2">
+                          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-white/55">
+                            {t("login.email_label")}
+                          </span>
+                          <TextInput
+                            value={email}
+                            onChange={(event) => {
+                              setEmail(event.target.value);
+                              setFieldErrors((prev) => ({
+                                ...prev,
+                                email: undefined,
+                                form: undefined,
+                              }));
+                            }}
+                            placeholder={t("login.email_placeholder")}
+                            autoComplete="email"
+                            type="email"
+                            aria-invalid={Boolean(fieldErrors.email)}
+                            className={`${INPUT_SURFACE} px-4 py-3 ${fieldErrors.email ? INPUT_ERROR_RING : ""}`}
+                          />
+                          {fieldErrors.email ? (
+                            <p className="text-xs text-rose-600 dark:text-rose-300">
+                              {fieldErrors.email}
+                            </p>
+                          ) : null}
+                        </label>
+
+                        <label className="block space-y-2">
+                          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-white/55">
+                            {t("login.display_name_label")}
+                          </span>
+                          <TextInput
+                            value={displayName}
+                            onChange={(event) => setDisplayName(event.target.value)}
+                            placeholder={t("login.display_name_placeholder")}
+                            autoComplete="nickname"
+                            className={`${INPUT_SURFACE} px-4 py-3`}
+                          />
+                        </label>
+                      </>
+                    ) : null}
+
                     <label className="block space-y-2">
                       <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-white/55">
                         {t("login.password_label")}
@@ -420,7 +543,7 @@ export function LoginPage() {
                         }}
                         type={showPassword ? "text" : "password"}
                         placeholder={t("login.password_placeholder")}
-                        autoComplete="current-password"
+                        autoComplete={authMode === "register" ? "new-password" : "current-password"}
                         aria-invalid={Boolean(fieldErrors.password)}
                         className={`${INPUT_SURFACE} px-4 py-3 ${fieldErrors.password ? INPUT_ERROR_RING : ""}`}
                         endAdornment={
@@ -440,6 +563,35 @@ export function LoginPage() {
                         </p>
                       ) : null}
                     </label>
+
+                    {authMode === "register" ? (
+                      <label className="block space-y-2">
+                        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-white/55">
+                          {t("login.confirm_password_label")}
+                        </span>
+                        <TextInput
+                          value={confirmPassword}
+                          onChange={(event) => {
+                            setConfirmPassword(event.target.value);
+                            setFieldErrors((prev) => ({
+                              ...prev,
+                              confirmPassword: undefined,
+                              form: undefined,
+                            }));
+                          }}
+                          type={showPassword ? "text" : "password"}
+                          placeholder={t("login.confirm_password_placeholder")}
+                          autoComplete="new-password"
+                          aria-invalid={Boolean(fieldErrors.confirmPassword)}
+                          className={`${INPUT_SURFACE} px-4 py-3 ${fieldErrors.confirmPassword ? INPUT_ERROR_RING : ""}`}
+                        />
+                        {fieldErrors.confirmPassword ? (
+                          <p className="text-xs text-rose-600 dark:text-rose-300">
+                            {fieldErrors.confirmPassword}
+                          </p>
+                        ) : null}
+                      </label>
+                    ) : null}
 
                     <div className="space-y-1">
                       <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600 dark:text-white/70">
@@ -470,8 +622,26 @@ export function LoginPage() {
                           aria-hidden="true"
                         />
                       ) : null}
-                      {loading ? t("login.signing_in") : t("login.submit_button")}
+                      {loading
+                        ? authMode === "register"
+                          ? t("login.registering")
+                          : t("login.signing_in")
+                        : authMode === "register"
+                          ? t("login.register_button")
+                          : t("login.submit_button")}
                     </Button>
+
+                    <div className="text-center">
+                      <button
+                        type="button"
+                        className="text-sm text-slate-600 underline-offset-4 transition hover:text-slate-900 hover:underline dark:text-white/65 dark:hover:text-white"
+                        onClick={() => switchAuthMode(authMode === "login" ? "register" : "login")}
+                      >
+                        {authMode === "login"
+                          ? t("login.switch_to_register")
+                          : t("login.switch_to_login")}
+                      </button>
+                    </div>
                   </form>
                 </div>
               </div>
