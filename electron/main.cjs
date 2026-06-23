@@ -9,7 +9,7 @@ const tls = require("node:tls");
 const { isFramelessWindowEnabled } = require("./frameless.cjs");
 
 const DEFAULT_BACKEND_BASE =
-  process.env.CODE_PROXY_API_BASE?.trim() || "http://67.215.253.110:8317";
+  process.env.CODE_PROXY_API_BASE?.trim() || "https://relay.07230805.xyz";
 const DEFAULT_WINDOW_WIDTH = 1080;
 const DEFAULT_WINDOW_HEIGHT = 700;
 const MIN_WINDOW_WIDTH = 1024;
@@ -620,6 +620,10 @@ function proxyApiRequest(req, res, backendBase) {
       proxyRes.pipe(res);
     },
   );
+
+  proxyReq.setTimeout(90_000, () => {
+    proxyReq.destroy(new Error("backend request timeout"));
+  });
 
   proxyReq.on("error", (error) => {
     sendJson(res, 502, {

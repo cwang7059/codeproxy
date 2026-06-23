@@ -3812,7 +3812,7 @@
     "no_match": "无匹配结果",
     "desktop_server_title": "桌面端服务器地址",
     "desktop_server_desc": "Electron 客户端会把管理请求统一代理到这里。保存后，下次启动会继续使用这个远程服务地址。",
-    "desktop_server_placeholder": "例如：http://67.215.253.110:8317",
+    "desktop_server_placeholder": "例如：https://relay.07230805.xyz",
     "desktop_server_save": "保存服务器地址",
     "desktop_server_required": "请输入服务器地址",
     "desktop_server_saved": "桌面端服务器地址已保存",

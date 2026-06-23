@@ -12,7 +12,7 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $rootDir = Split-Path -Parent $scriptDir
 $launcher = Join-Path $rootDir "scripts\start-electron-admin.ps1"
 $savedBackendFile = Join-Path $rootDir ".code-proxy-admin.local"
-$defaultBackendBase = "http://67.215.253.110:8317"
+$defaultBackendBase = "https://relay.07230805.xyz"
 $workspaceRoot = Split-Path -Parent $rootDir
 $cliRelayRoot = Join-Path $workspaceRoot "CliRelay"
 $cliRelayLauncher = Join-Path $cliRelayRoot "start-clirelay.ps1"
@@ -180,7 +180,7 @@ function Resolve-BackendBase {
 
   Write-Host ""
   Write-Step "No running CliRelay backend was detected on 127.0.0.1:8317."
-  Write-Host "Enter the CliRelay backend URL, for example: http://127.0.0.1:8317"
+  Write-Host "Enter the CliRelay backend URL, for example: https://relay.07230805.xyz"
   $typedBase = Read-Host "Backend URL (press Enter to use $defaultBackendBase)"
 
   $resolved = Normalize-BackendBase $typedBase

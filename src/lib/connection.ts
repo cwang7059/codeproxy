@@ -33,3 +33,14 @@ export const detectApiBaseFromLocation = (): string => {
     return normalizeApiBase(`http://localhost:${DEFAULT_API_PORT}`);
   }
 };
+
+/** Desktop Electron proxies API via same-origin relative paths. */
+export const resolveClientManagementApiBase = (
+  apiBase: string,
+  desktopClient: boolean,
+): string => {
+  if (desktopClient) {
+    return MANAGEMENT_API_PREFIX;
+  }
+  return computeManagementApiBase(apiBase);
+};

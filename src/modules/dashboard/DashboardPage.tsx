@@ -40,14 +40,21 @@ export function DashboardPage() {
       if (!silent) {
         setLoading(true);
       }
-      setError(null);
+      if (!silent) {
+        setError(null);
+      }
       try {
         const data = await usageApi.getDashboardSummary(days);
         setSummary(data);
+        if (!silent) {
+          setError(null);
+        }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : t("dashboard.load_failed");
-        setError(message);
-        notify({ type: "error", message });
+        if (!silent) {
+          setError(message);
+          notify({ type: "error", message });
+        }
       } finally {
         if (!silent) {
           setLoading(false);
@@ -61,7 +68,7 @@ export function DashboardPage() {
     void refresh(range);
   }, [refresh, range]);
 
-  const autoRefreshMs = range > 30 ? 60_000 : 5_000;
+  const autoRefreshMs = range > 30 ? 60_000 : 15_000;
 
   useInterval(() => {
     void refresh(range, true);

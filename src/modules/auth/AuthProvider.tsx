@@ -12,6 +12,7 @@ import {
   computeManagementApiBase,
   detectApiBaseFromLocation,
   normalizeApiBase,
+  resolveClientManagementApiBase,
 } from "@/lib/connection";
 import { getDesktopBackendBase, isDesktopClient, setDesktopBackendBase } from "@/lib/desktop";
 import { apiClient } from "@/lib/http/client";
@@ -171,7 +172,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [serverBuildDate, setServerBuildDate] = useState<string | null>(null);
 
   const resolveRequestApiBase = useCallback(
-    (targetApiBase: string) => (desktopClient ? detectApiBaseFromLocation() : targetApiBase),
+    (targetApiBase: string) => resolveClientManagementApiBase(targetApiBase, desktopClient),
     [desktopClient],
   );
 
@@ -286,12 +287,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const normalizedBase = normalizeApiBase(input.apiBase);
       const desktopBase = desktopClient ? await getDesktopBackendBase() : null;
       const targetBase = desktopClient
-        ? normalizeApiBase(desktopBase || normalizedBase)
+        ? normalizeApiBase(normalizedBase || desktopBase || "")
         : normalizedBase;
       const previousDesktopBase = desktopClient ? await getDesktopBackendBase() : null;
 
       if (desktopClient && targetBase) {
-        await setDesktopBackendBase(targetBase);
+        const currentDesktopBase = normalizeApiBase(previousDesktopBase ?? "");
+        if (currentDesktopBase !== targetBase) {
+          await setDesktopBackendBase(targetBase);
+        }
       }
 
       apiClient.setConfig({

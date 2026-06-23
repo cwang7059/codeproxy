@@ -1,6 +1,6 @@
 param(
   [switch]$Rebuild,
-  [string]$BackendBase = "http://67.215.253.110:8317"
+  [string]$BackendBase = "https://relay.07230805.xyz"
 )
 
 $ErrorActionPreference = "Stop"

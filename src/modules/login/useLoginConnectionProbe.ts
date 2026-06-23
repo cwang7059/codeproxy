@@ -16,11 +16,17 @@ export function useLoginConnectionProbe(apiBase: string, debounceMs = 500) {
     setStatus("checking");
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      void probeManagementEndpoint(apiBase, controller.signal).then((next) => {
-        if (!controller.signal.aborted) {
-          setStatus(next);
-        }
-      });
+      void probeManagementEndpoint(apiBase, controller.signal)
+        .then((next) => {
+          if (!controller.signal.aborted) {
+            setStatus(next);
+          }
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setStatus("unreachable");
+          }
+        });
     }, debounceMs);
 
     return () => {

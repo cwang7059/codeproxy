@@ -3653,7 +3653,7 @@
     "no_match": "No results",
     "desktop_server_title": "Desktop Server Address",
     "desktop_server_desc": "The Electron client proxies all management requests to this remote service. After saving, the address is reused on the next launch.",
-    "desktop_server_placeholder": "For example: http://67.215.253.110:8317",
+    "desktop_server_placeholder": "For example: https://relay.07230805.xyz",
     "desktop_server_save": "Save Server Address",
     "desktop_server_required": "Please enter the server address",
     "desktop_server_saved": "Desktop server address saved",

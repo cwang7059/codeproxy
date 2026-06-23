@@ -1,5 +1,6 @@
+import { MANAGEMENT_API_PREFIX } from "@/lib/constants";
 import { normalizeApiBase } from "@/lib/connection";
-import { probeDesktopBackendBase } from "@/lib/desktop";
+import { isDesktopClient } from "@/lib/desktop";
 
 export type LoginConnectionStatus =
   | "idle"
@@ -13,15 +14,16 @@ export async function probeManagementEndpoint(
   signal?: AbortSignal,
 ): Promise<LoginConnectionStatus> {
   const normalized = normalizeApiBase(apiBase);
-  if (!normalized) return "invalid";
-
-  const desktopStatus = await probeDesktopBackendBase(normalized);
-  if (desktopStatus) {
-    return desktopStatus;
+  if (!normalized && !isDesktopClient()) {
+    return "invalid";
   }
 
+  const probeUrl = isDesktopClient()
+    ? MANAGEMENT_API_PREFIX
+    : `${normalized}${MANAGEMENT_API_PREFIX}`;
+
   try {
-    const response = await fetch(`${normalized}/v0/management`, {
+    const response = await fetch(probeUrl, {
       method: "GET",
       signal,
     });
@@ -32,7 +34,10 @@ export async function probeManagementEndpoint(
       return "unreachable";
     }
     return "reachable";
-  } catch {
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return "idle";
+    }
     return "unreachable";
   }
 }

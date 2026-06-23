@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { useTranslation } from "react-i18next";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Copy, Eye, EyeOff, LoaderCircle, Lock } from "lucide-react";
-import { DEFAULT_API_BASE, HIDE_API_BASE } from "@/lib/constants";
+import { DEFAULT_API_BASE, HIDE_API_BASE, MANAGEMENT_API_PREFIX } from "@/lib/constants";
 import { detectApiBaseFromLocation, normalizeApiBase } from "@/lib/connection";
 import { useAuth } from "@/modules/auth/AuthProvider";
 import { useLoginConnectionProbe } from "@/modules/login/useLoginConnectionProbe";
@@ -93,7 +93,7 @@ export function LoginPage() {
   const { notify } = useToast();
   const desktopClient = isDesktopClient();
 
-  const hideApiBase = HIDE_API_BASE || desktopClient;
+  const hideApiBase = HIDE_API_BASE;
 
   const [desktopBackendBase, setDesktopBackendBase] = useState("");
 
@@ -129,13 +129,16 @@ export function LoginPage() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   useEffect(() => {
-    if (currentAddress) {
-      setApiBase(currentAddress);
+    if (!desktopClient || !desktopBackendBase) {
+      return;
     }
-  }, [currentAddress]);
+    setApiBase(desktopBackendBase);
+  }, [desktopBackendBase, desktopClient]);
 
   const passwordRef = useRef<HTMLInputElement>(null);
-  const connectionStatus = useLoginConnectionProbe(apiBase);
+  const connectionStatus = useLoginConnectionProbe(
+    desktopClient ? MANAGEMENT_API_PREFIX : apiBase,
+  );
 
   const managementEndpoint = useMemo(() => {
     const normalized = normalizeApiBase(apiBase);

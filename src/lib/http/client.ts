@@ -39,7 +39,10 @@ export class ApiClient {
   private authSuspended = false;
 
   setConfig(config: ApiClientConfig): void {
-    this.apiBase = computeManagementApiBase(config.apiBase);
+    const raw = config.apiBase.trim();
+    this.apiBase = raw.startsWith("/")
+      ? raw.replace(/\/$/, "")
+      : computeManagementApiBase(raw);
     this.authToken = (config.authToken ?? config.managementKey ?? "").trim();
     this.authSuspended = false;
   }
@@ -266,6 +269,11 @@ export class ApiClient {
       } catch {
         return text as unknown as T;
       }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new Error("请求超时，请检查网络连接后重试");
+      }
+      throw error;
     } finally {
       cleanup();
     }

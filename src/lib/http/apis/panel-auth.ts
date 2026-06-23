@@ -31,7 +31,7 @@ export interface PanelUserRecord {
 export const panelAuthApi = {
   login(input: { username: string; password: string }) {
     return apiClient.post<PanelLoginResponse>("/auth/login", input, {
-      timeoutMs: 15_000,
+      timeoutMs: 45_000,
     });
   },
 

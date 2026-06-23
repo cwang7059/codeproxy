@@ -26,7 +26,7 @@ vi.mock("@/modules/auth/AuthProvider", () => ({
     state: {
       isAuthenticated: true,
       isRestoring: false,
-      apiBase: "http://67.215.253.110:8317",
+      apiBase: "https://relay.07230805.xyz",
       role: null,
     },
   }),
@@ -65,7 +65,7 @@ describe("CodexConnectPrompt", () => {
     await userEvent.click(screen.getByRole("button", { name: /Connect Codex/i }));
 
     await waitFor(() => {
-      expect(mocks.connectDesktopCodex).toHaveBeenCalledWith("http://67.215.253.110:8317", null);
+      expect(mocks.connectDesktopCodex).toHaveBeenCalledWith("https://relay.07230805.xyz", null);
     });
   });
 
